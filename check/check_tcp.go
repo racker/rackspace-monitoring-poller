@@ -1,13 +1,19 @@
 package check
 
 import (
+	"bufio"
 	"crypto/tls"
 	"encoding/json"
 	log "github.com/Sirupsen/logrus"
+
 	"io"
 	"net"
 	"strconv"
 	"time"
+)
+
+var (
+	MaxTCPBannerLength = int(80)
 )
 
 type TCPCheck struct {
@@ -44,6 +50,7 @@ func (ch *TCPCheck) GenerateAddress() (string, error) {
 func (ch *TCPCheck) Run() (*CheckResultSet, error) {
 	var conn net.Conn
 	var err error
+	cr := NewCheckResult()
 	starttime := NowTimestampMillis()
 	addr, _ := ch.GenerateAddress()
 	nd := &net.Dialer{Timeout: time.Duration(ch.GetTimeout()) * time.Second}
@@ -65,12 +72,24 @@ func (ch *TCPCheck) Run() (*CheckResultSet, error) {
 	}
 	defer conn.Close()
 	conn.SetDeadline(time.Now().Add(time.Duration(ch.GetTimeout()) * time.Second))
-	if len(ch.Details.SendBody) > 0 {
+	if ch.Details.SendBody != "" {
 		io.WriteString(conn, ch.Details.SendBody)
 	}
+	if ch.Details.BannerMatch != "" {
+		bio := bufio.NewReader(conn)
+		line, _, err := bio.ReadLine()
+		if err != nil {
+			log.Error(err)
+			return nil, err
+		}
+		firstbytetime := NowTimestampMillis()
+		if len(line) > MaxTCPBannerLength {
+			line = line[:MaxTCPBannerLength]
+		}
+		cr.AddMetric(NewMetric("tt_firstbyte", "", MetricNumber, firstbytetime-starttime, "ms"))
+		cr.AddMetric(NewMetric("banner", "", MetricString, string(line), ""))
+	}
 	endtime := NowTimestampMillis()
-	cr := NewCheckResult(
-		NewMetric("duration", "", MetricNumber, endtime-starttime, "ms"),
-	)
+	cr.AddMetric(NewMetric("duration", "", MetricNumber, endtime-starttime, "ms"))
 	return NewCheckResultSet(ch, cr), nil
 }
