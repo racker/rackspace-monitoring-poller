@@ -133,7 +133,10 @@ func DisableRedirects(req *http.Request, via []*http.Request) error {
 }
 
 func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
-	log.Debugf("Running HTTP Check: %v", ch.GetId())
+	log.WithFields(log.Fields{
+		"type": ch.CheckType,
+		"id":   ch.Id,
+	}).Info("Running HTTP Check")
 	starttime := utils.NowTimestampMillis()
 	timeout := time.Duration(ch.Timeout) * time.Second
 	netTransport := &http.Transport{

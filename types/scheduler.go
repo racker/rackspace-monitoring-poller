@@ -3,8 +3,9 @@ package types
 import (
 	"context"
 	log "github.com/Sirupsen/logrus"
-	"time"
 	"github.com/racker/rackspace-monitoring-poller/check"
+	"math/rand"
+	"time"
 )
 
 type Scheduler struct {
@@ -38,6 +39,9 @@ func (s *Scheduler) Close() {
 }
 
 func (s *Scheduler) runCheck(ch check.Check) {
+	// Spread the checks out over 30 seconds
+	jitter := rand.Intn(30000) + 1
+	time.Sleep(time.Duration(jitter) * time.Millisecond)
 	for {
 		select {
 		case <-time.After(ch.GetWaitPeriod()):

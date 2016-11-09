@@ -5,7 +5,8 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	log "github.com/Sirupsen/logrus"
-
+	"github.com/racker/rackspace-monitoring-poller/metric"
+	"github.com/racker/rackspace-monitoring-poller/utils"
 	"io"
 	"net"
 	"strconv"
@@ -51,7 +52,7 @@ func (ch *TCPCheck) Run() (*CheckResultSet, error) {
 	var conn net.Conn
 	var err error
 	cr := NewCheckResult()
-	starttime := NowTimestampMillis()
+	starttime := utils.NowTimestampMillis()
 	addr, _ := ch.GenerateAddress()
 	nd := &net.Dialer{Timeout: time.Duration(ch.GetTimeout()) * time.Second}
 	log.WithFields(log.Fields{
@@ -82,14 +83,14 @@ func (ch *TCPCheck) Run() (*CheckResultSet, error) {
 			log.Error(err)
 			return nil, err
 		}
-		firstbytetime := NowTimestampMillis()
+		firstbytetime := utils.NowTimestampMillis()
 		if len(line) > MaxTCPBannerLength {
 			line = line[:MaxTCPBannerLength]
 		}
-		cr.AddMetric(NewMetric("tt_firstbyte", "", MetricNumber, firstbytetime-starttime, "ms"))
-		cr.AddMetric(NewMetric("banner", "", MetricString, string(line), ""))
+		cr.AddMetric(metric.NewMetric("tt_firstbyte", "", metric.MetricNumber, firstbytetime-starttime, "ms"))
+		cr.AddMetric(metric.NewMetric("banner", "", metric.MetricString, string(line), ""))
 	}
-	endtime := NowTimestampMillis()
-	cr.AddMetric(NewMetric("duration", "", MetricNumber, endtime-starttime, "ms"))
+	endtime := utils.NowTimestampMillis()
+	cr.AddMetric(metric.NewMetric("duration", "", metric.MetricNumber, endtime-starttime, "ms"))
 	return NewCheckResultSet(ch, cr), nil
 }
