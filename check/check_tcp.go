@@ -85,7 +85,7 @@ func (ch *TCPCheck) Run() (*CheckResultSet, error) {
 	}).Info("Running TCP Check")
 
 	// Connection
-	nd := &net.Dialer{Timeout: time.Duration(ch.GetTimeout()) * time.Second}
+	nd := &net.Dialer{Timeout: time.Duration(ch.GetTimeout()) * time.Millisecond}
 	if ch.Details.UseSSL {
 		TLSconfig := &tls.Config{}
 		conn, err = tls.DialWithDialer(nd, "tcp", addr, TLSconfig)
@@ -99,7 +99,7 @@ func (ch *TCPCheck) Run() (*CheckResultSet, error) {
 	defer conn.Close()
 
 	// Set read/write timeout
-	conn.SetDeadline(time.Now().Add(time.Duration(ch.GetTimeout()) * time.Second))
+	conn.SetDeadline(time.Now().Add(time.Duration(ch.GetTimeout()) * time.Millisecond))
 
 	// Send Body
 	if len(ch.Details.SendBody) > 0 {
