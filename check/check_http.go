@@ -1,4 +1,4 @@
-package main
+package check
 
 import (
 	"crypto/dsa"
@@ -14,6 +14,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"github.com/racker/rackspace-monitoring-poller/metric"
+	"github.com/racker/rackspace-monitoring-poller/utils"
 )
 
 var (
@@ -48,28 +50,28 @@ func NewHTTPCheck(base *CheckBase) Check {
 
 func (ch *HTTPCheck) ParseTLS(cr *CheckResult, resp *http.Response) {
 	cert := resp.TLS.PeerCertificates[0]
-	cr.AddMetric(NewMetric("cert_serial", "", MetricNumber, cert.SerialNumber, ""))
+	cr.AddMetric(metric.NewMetric("cert_serial", "", metric.MetricNumber, cert.SerialNumber, ""))
 	if len(cert.OCSPServer) > 0 {
-		cr.AddMetric(NewMetric("cert_ocsp", "", MetricString, cert.OCSPServer[0], ""))
+		cr.AddMetric(metric.NewMetric("cert_ocsp", "", metric.MetricNumber, cert.OCSPServer[0], ""))
 	}
 	switch cert.PublicKeyAlgorithm {
 	case x509.RSA:
 		publicKey := cert.PublicKey.(*rsa.PublicKey)
-		cr.AddMetric(NewMetric("cert_bits", "", MetricNumber, publicKey.N.BitLen(), ""))
-		cr.AddMetric(NewMetric("cert_type", "", MetricString, "rsa", ""))
+		cr.AddMetric(metric.NewMetric("cert_bits", "", metric.MetricNumber, publicKey.N.BitLen(), ""))
+		cr.AddMetric(metric.NewMetric("cert_type", "", metric.MetricNumber, "rsa", ""))
 	case x509.DSA:
 		publicKey := cert.PublicKey.(*dsa.PublicKey)
-		cr.AddMetric(NewMetric("cert_bits", "", MetricNumber, publicKey.Q.BitLen(), ""))
-		cr.AddMetric(NewMetric("cert_type", "", MetricString, "dsa", ""))
+		cr.AddMetric(metric.NewMetric("cert_bits", "", metric.MetricNumber, publicKey.Q.BitLen(), ""))
+		cr.AddMetric(metric.NewMetric("cert_type", "", metric.MetricNumber, "dsa", ""))
 	case x509.ECDSA:
 		publicKey := cert.PublicKey.(*ecdsa.PublicKey)
-		cr.AddMetric(NewMetric("cert_bits", "", MetricNumber, publicKey.Params().BitSize, ""))
-		cr.AddMetric(NewMetric("cert_type", "", MetricString, "ecdsa", ""))
+		cr.AddMetric(metric.NewMetric("cert_bits", "", metric.MetricNumber, publicKey.Params().BitSize, ""))
+		cr.AddMetric(metric.NewMetric("cert_type", "", metric.MetricNumber, "ecdsa", ""))
 	default:
-		cr.AddMetric(NewMetric("cert_bits", "", MetricNumber, "0", ""))
-		cr.AddMetric(NewMetric("cert_type", "", MetricString, "-", ""))
+		cr.AddMetric(metric.NewMetric("cert_bits", "", metric.MetricNumber, "0", ""))
+		cr.AddMetric(metric.NewMetric("cert_type", "", metric.MetricNumber, "-", ""))
 	}
-	cr.AddMetric(NewMetric("cert_sig_algo", "", MetricString, strings.ToLower(cert.SignatureAlgorithm.String()), ""))
+	cr.AddMetric(metric.NewMetric("cert_sig_algo", "", metric.MetricNumber, strings.ToLower(cert.SignatureAlgorithm.String()), ""))
 	var sslVersion string
 	switch resp.TLS.Version {
 	case tls.VersionSSL30:
@@ -81,7 +83,7 @@ func (ch *HTTPCheck) ParseTLS(cr *CheckResult, resp *http.Response) {
 	case tls.VersionTLS12:
 		sslVersion = "tls1.2"
 	}
-	cr.AddMetric(NewMetric("ssl_session_version", "", MetricString, sslVersion, ""))
+	cr.AddMetric(metric.NewMetric("ssl_session_version", "", metric.MetricNumber, sslVersion, ""))
 	var cipherSuite string
 	switch resp.TLS.CipherSuite {
 	case tls.TLS_RSA_WITH_RC4_128_SHA:
@@ -122,7 +124,7 @@ func (ch *HTTPCheck) ParseTLS(cr *CheckResult, resp *http.Response) {
 	default:
 		cipherSuite = "-"
 	}
-	cr.AddMetric(NewMetric("ssl_session_cipher", "", MetricString, cipherSuite, ""))
+	cr.AddMetric(metric.NewMetric("ssl_session_cipher", "", metric.MetricNumber, cipherSuite, ""))
 	//TODO Fill in the rest of the SSL info
 }
 
@@ -132,7 +134,7 @@ func DisableRedirects(req *http.Request, via []*http.Request) error {
 
 func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
 	log.Printf("Running HTTP Check: %v", ch.GetId())
-	starttime := NowTimestampMillis()
+	starttime := utils.NowTimestampMillis()
 	timeout := time.Duration(ch.Timeout) * time.Second
 	netTransport := &http.Transport{
 		Dial:                (&net.Dialer{Timeout: timeout}).Dial,
@@ -169,18 +171,18 @@ func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
 		log.Printf("%s: Received error in body read: %v", ch.GetId(), err)
 		return nil, err
 	}
-	endtime := NowTimestampMillis()
+	endtime := utils.NowTimestampMillis()
 	resp.Body.Close()
 	// METRICS
 	cr := NewCheckResult(
-		NewMetric("code", "", MetricString, resp.StatusCode, ""),
-		NewMetric("duration", "", MetricNumber, endtime-starttime, "milliseconds"),
-		NewMetric("bytes", "", MetricNumber, len(body), "bytes"),
+		metric.NewMetric("code", "", metric.MetricNumber, resp.StatusCode, ""),
+		metric.NewMetric("duration", "", metric.MetricNumber, endtime-starttime, "milliseconds"),
+		metric.NewMetric("bytes", "", metric.MetricNumber, len(body), "bytes"),
 	)
 	// BODY MATCHES
 	// BODY
 	if ch.Details.IncludeBody {
-		cr.AddMetric(NewMetric("body", "", MetricString, string(body), ""))
+		cr.AddMetric(metric.NewMetric("body", "", metric.MetricNumber, string(body), ""))
 	}
 	// TLS
 	if resp.TLS != nil {

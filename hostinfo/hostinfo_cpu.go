@@ -1,8 +1,9 @@
-package main
+package hostinfo
 
 import (
 	//"github.com/shirou/gopsutil/cpu"
 	log "github.com/Sirupsen/logrus"
+	"github.com/racker/rackspace-monitoring-poller/check"
 )
 
 type HostInfoCpu struct {
@@ -17,7 +18,7 @@ func NewHostInfoCpu(base *HostInfoBase) HostInfo {
 	return &HostInfoCpu{HostInfoBase: *base}
 }
 
-func (*HostInfoCpu) Run() (*CheckResult, error) {
+func (*HostInfoCpu) Run() (*check.CheckResult, error) {
 	log.Println("Running CPU")
 	/*
 		stats, err := cpu.Times(false)
@@ -29,12 +30,12 @@ func (*HostInfoCpu) Run() (*CheckResult, error) {
 			return nil, err
 		}
 	*/
-	cr := NewCheckResult()
+	cr := check.NewCheckResult()
 	//TODO
 	return cr, nil
 }
 
-func (*HostInfoCpu) BuildResult(cr *CheckResult) interface{}  {
+func (*HostInfoCpu) BuildResult(cr *check.CheckResult) interface{}  {
 	//TODO
 	return nil
 }

@@ -1,21 +1,22 @@
-package main
+package hostinfo
 
 import (
 	"encoding/json"
+	"github.com/racker/rackspace-monitoring-poller/check"
 )
 
 type HostInfo interface {
-	Run() (*CheckResult, error)
-	BuildResult(cr *CheckResult) interface{}
+	Run() (*check.CheckResult, error)
+	BuildResult(cr *check.CheckResult) interface{}
 }
 
 type HostInfoBase struct {
 	Type string `json:"type"`
 }
 
-func NewHostInfo(f Frame) HostInfo {
+func NewHostInfo(rawParams json.RawMessage) HostInfo {
 	hinfo := &HostInfoBase{}
-	err := json.Unmarshal(*f.GetRawParams(), &hinfo)
+	err := json.Unmarshal(rawParams, &hinfo)
 	if err != nil {
 		return nil
 	}
@@ -27,8 +28,4 @@ func NewHostInfo(f Frame) HostInfo {
 	default:
 		return nil
 	}
-}
-
-func (r *HostInfoResponse) Encode() ([]byte, error) {
-	return json.Marshal(r)
 }

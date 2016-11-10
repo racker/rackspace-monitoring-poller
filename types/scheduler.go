@@ -1,9 +1,10 @@
-package main
+package types
 
 import (
 	"context"
 	log "github.com/Sirupsen/logrus"
 	"time"
+	"github.com/racker/rackspace-monitoring-poller/check"
 )
 
 type Scheduler struct {
@@ -11,7 +12,7 @@ type Scheduler struct {
 	cancel context.CancelFunc
 
 	zoneId string
-	checks map[string]Check
+	checks map[string]check.Check
 	input  chan Frame
 
 	stream *ConnectionStream
@@ -19,7 +20,7 @@ type Scheduler struct {
 
 func NewScheduler(zoneId string, stream *ConnectionStream) *Scheduler {
 	s := &Scheduler{
-		checks: make(map[string]Check),
+		checks: make(map[string]check.Check),
 		input:  make(chan Frame, 1024),
 		stream: stream,
 		zoneId: zoneId,
@@ -36,7 +37,7 @@ func (s *Scheduler) Close() {
 	s.cancel()
 }
 
-func (s *Scheduler) runCheck(ch Check) {
+func (s *Scheduler) runCheck(ch check.Check) {
 	for {
 		select {
 		case <-time.After(ch.GetWaitPeriod()):
@@ -51,11 +52,11 @@ func (s *Scheduler) runCheck(ch Check) {
 	}
 }
 
-func (s *Scheduler) SendMetrics(crs *CheckResultSet) {
+func (s *Scheduler) SendMetrics(crs *check.CheckResultSet) {
 	s.stream.SendMetrics(crs)
 }
 
-func (s *Scheduler) Register(ch Check) {
+func (s *Scheduler) Register(ch check.Check) {
 	s.checks[ch.GetId()] = ch
 }
 
@@ -63,7 +64,7 @@ func (s *Scheduler) run() {
 	for {
 		select {
 		case f := <-s.input:
-			ch := NewCheck(f)
+			ch := check.NewCheck(*f.GetRawParams())
 			if ch == nil {
 				log.Printf("Invalid Check")
 				continue
