@@ -2,6 +2,7 @@ package check
 
 import (
 	"encoding/json"
+	"errors"
 	log "github.com/Sirupsen/logrus"
 	"time"
 )
@@ -21,18 +22,18 @@ type Check interface {
 }
 
 type CheckBase struct {
-	Id             string             `json:"id"`
-	CheckType      string             `json:"type"`
-	Period         uint64             `json:"period"`
-	Timeout        uint64             `json:"timeout"`
-	EntityId       string             `json:"entity_id"`
-	ZoneId         string             `json:"zone_id"`
-	Details        *json.RawMessage   `json:"details"`
-	Disabled       bool               `json:"disabled"`
-	IpAddresses    *map[string]string `json:"ip_addresses"`
-	TargetAlias    *string            `json:"target_alias"`
-	TargetHostname *string            `json:"target_hostname"`
-	TargetResolver *string            `json:"target_resolver"`
+	Id             string            `json:"id"`
+	CheckType      string            `json:"type"`
+	Period         uint64            `json:"period"`
+	Timeout        uint64            `json:"timeout"`
+	EntityId       string            `json:"entity_id"`
+	ZoneId         string            `json:"zone_id"`
+	Details        *json.RawMessage  `json:"details"`
+	Disabled       bool              `json:"disabled"`
+	IpAddresses    map[string]string `json:"ip_addresses"`
+	TargetAlias    *string           `json:"target_alias"`
+	TargetHostname *string           `json:"target_hostname"`
+	TargetResolver *string           `json:"target_resolver"`
 }
 
 func NewCheck(rawParams json.RawMessage) Check {
@@ -50,18 +51,45 @@ func NewCheck(rawParams json.RawMessage) Check {
 	case "remote.ping":
 		return NewPingCheck(checkBase)
 	default:
+
 		log.Printf("Invalid check type: %v", checkBase.CheckType)
 	}
 	return nil
 }
 
 func (ch *CheckBase) PrintDefaults() {
+	var targetAlias string
+	var targetHostname string
+	var targetResolver string
+	if ch.TargetAlias != nil {
+		targetAlias = *ch.TargetAlias
+	}
+	if ch.TargetHostname != nil {
+		targetHostname = *ch.TargetHostname
+	}
+	if ch.TargetResolver != nil {
+		targetResolver = *ch.TargetResolver
+	}
 	log.WithFields(log.Fields{
-		"type":    ch.GetCheckType(),
-		"period":  ch.GetPeriod(),
-		"timeout": ch.GetTimeout(),
-		"details": string(*ch.Details),
+		"type":            ch.CheckType,
+		"period":          ch.Period,
+		"timeout":         ch.Timeout,
+		"disabled":        ch.Disabled,
+		"ipaddresses":     ch.IpAddresses,
+		"target_alias":    targetAlias,
+		"target_hostname": targetHostname,
+		"target_resolver": targetResolver,
+		"details":         string(*ch.Details),
 	}).Infof("New check %v", ch.GetId())
+}
+
+func (ch *CheckBase) GetTargetIP() (string, error) {
+	ip, ok := ch.IpAddresses[*ch.TargetAlias]
+	if ok {
+		return ip, nil
+	}
+	return "", errors.New("Invalid Target IP")
+
 }
 
 func (ch *CheckBase) GetId() string {
@@ -97,7 +125,7 @@ func (ch *CheckBase) GetTimeout() uint64 {
 }
 
 func (ch *CheckBase) SetTimeout(timeout uint64) {
-	ch.Timeout = timeout
+
 }
 
 func (ch *CheckBase) GetWaitPeriod() time.Duration {

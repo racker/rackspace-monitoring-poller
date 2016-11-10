@@ -1,13 +1,13 @@
-package main
+package commands
 
 import (
-	"github.com/spf13/cobra"
 	"github.com/racker/rackspace-monitoring-poller/types"
+	"github.com/spf13/cobra"
 )
 
 var (
 	configFilePath string
-	serveCmd       = &cobra.Command{
+	ServeCmd       = &cobra.Command{
 		Use:   "serve",
 		Short: "Start the service",
 		Long:  "Start the service",
@@ -16,7 +16,7 @@ var (
 )
 
 func init() {
-	serveCmd.Flags().StringVar(&configFilePath, "config", "", "Path to a file containing the config, used in "+types.DefaultConfigPathLinux)
+	ServeCmd.Flags().StringVar(&configFilePath, "config", "", "Path to a file containing the config, used in "+types.DefaultConfigPathLinux)
 }
 
 func serveCmdRun(cmd *cobra.Command, args []string) {
