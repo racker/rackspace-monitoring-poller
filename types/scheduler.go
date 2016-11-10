@@ -8,6 +8,10 @@ import (
 	"time"
 )
 
+const (
+	CheckSpreadInMilliseconds = 30000
+)
+
 type Scheduler struct {
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -40,7 +44,7 @@ func (s *Scheduler) Close() {
 
 func (s *Scheduler) runCheck(ch check.Check) {
 	// Spread the checks out over 30 seconds
-	jitter := rand.Intn(30000) + 1
+	jitter := rand.Intn(CheckSpreadInMilliseconds) + 1
 	time.Sleep(time.Duration(jitter) * time.Millisecond)
 	for {
 		select {
