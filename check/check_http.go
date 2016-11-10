@@ -138,7 +138,7 @@ func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
 		"id":   ch.Id,
 	}).Info("Running HTTP Check")
 	starttime := utils.NowTimestampMillis()
-	timeout := time.Duration(ch.Timeout) * time.Second
+	timeout := time.Duration(ch.Timeout) * time.Millisecond
 	netTransport := &http.Transport{
 		Dial:                (&net.Dialer{Timeout: timeout}).Dial,
 		TLSHandshakeTimeout: timeout,
