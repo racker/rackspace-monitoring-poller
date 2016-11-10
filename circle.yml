@@ -2,6 +2,8 @@ machine:
   environment:
     GODIST: "go1.7.3.linux-amd64.tar.gz"
     IMPORT_PATH: "github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME"
+    FILE_PATH: "/home/ubuntu/.go_workspace/src/github.com/racker"
+    APP_PATH: "$FILE_PATH/rackspace-monitoring-poller"
 checkout:
   post:
     - mkdir -p download
@@ -15,7 +17,7 @@ dependencies:
     - sudo apt-get install glide -y
 test:
   pre:
-    - mkdir -p "$IMPORT_PATH"
+    - mkdir -p "$FILE_PATH"
     - ln -sf "$(pwd)" "$APP_PATH"
     - cd "$APP_PATH" && glide install
   override:
