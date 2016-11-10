@@ -163,9 +163,7 @@ func (s *Session) handleHostInfo(f *FrameMsg) {
 			cr, err := hinfo.Run()
 			if err != nil {
 			} else {
-				response := &HostInfoResponse{}
-				response.Result = hinfo.BuildResult(cr)
-				response.SetResponseFrameMsg(f)
+				response := NewHostInfoResponse(cr, f, hinfo)
 				s.Send(response)
 			}
 		}(s, hinfo, f)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/utils"
+	"github.com/racker/rackspace-monitoring-poller/hostinfo"
 )
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -132,6 +133,14 @@ type HostInfoResponse struct {
 	FrameMsgCommon
 
 	Result interface{} `json:"result"`
+}
+
+func NewHostInfoResponse(cr *check.CheckResult, f *FrameMsg, hinfo hostinfo.HostInfo) *HostInfoResponse {
+	resp := &HostInfoResponse{}
+	resp.Result = hinfo.BuildResult(cr)
+	resp.SetResponseFrameMsg(f)
+
+	return resp
 }
 
 func (r *HostInfoResponse) Encode() ([]byte, error) {
