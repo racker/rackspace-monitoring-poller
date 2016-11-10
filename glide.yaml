@@ -1,0 +1,9 @@
+package: github.com/racker/rackspace-monitoring-poller
+import:
+- package: github.com/Sirupsen/logrus
+  version: v0.11.0
+- package: github.com/shirou/gopsutil
+  version: v2.1
+  subpackages:
+  - mem
+- package: github.com/spf13/cobra
