@@ -14,8 +14,9 @@ import (
 	"time"
 )
 
-var (
+const (
 	MaxTCPBannerLength = int(80)
+	MaxTCPBodyLength   = int64(1024)
 )
 
 type TCPCheck struct {
@@ -128,7 +129,7 @@ func (ch *TCPCheck) Run() (*CheckResultSet, error) {
 
 	// Body Match
 	if len(ch.Details.BodyMatch) > 0 {
-		body, err := ch.readLimit(conn, 1024)
+		body, err := ch.readLimit(conn, MaxTCPBodyLength)
 		if err != nil {
 			return crs, nil
 		}
