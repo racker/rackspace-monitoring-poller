@@ -82,6 +82,7 @@ func (ch *TCPCheck) Run() (*CheckResultSet, error) {
 		"address": addr,
 		"ssl":     ch.Details.UseSSL,
 	}).Info("Running TCP Check")
+
 	// Connection
 	nd := &net.Dialer{Timeout: time.Duration(ch.GetTimeout()) * time.Second}
 	if ch.Details.UseSSL {
@@ -100,7 +101,7 @@ func (ch *TCPCheck) Run() (*CheckResultSet, error) {
 	conn.SetDeadline(time.Now().Add(time.Duration(ch.GetTimeout()) * time.Second))
 
 	// Send Body
-	if ch.Details.SendBody != "" {
+	if len(ch.Details.SendBody) > 0 {
 		io.WriteString(conn, ch.Details.SendBody)
 	}
 
