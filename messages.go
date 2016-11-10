@@ -23,7 +23,9 @@ type HandshakeRequest struct {
 	Params HandshakeParameters `json:"params"`
 }
 
-func NowTimestampMillis() int64 {
+type NowTimestampMillisFunc func() int64
+
+var NowTimestampMillis NowTimestampMillisFunc = func() int64 {
 	return time.Now().UnixNano() / int64(time.Millisecond)
 }
 
@@ -129,6 +131,15 @@ func (r PollerRegister) Encode() ([]byte, error) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+// HostInfo
+
+type HostInfoResponse struct {
+	FrameMsgCommon
+
+	Result interface{} `json:"result"`
+}
+
+///////////////////////////////////////////////////////////////////////////////
 // HostInfo Memory
 
 type HostInfoMemoryMetrics struct {
@@ -142,31 +153,9 @@ type HostInfoMemoryMetrics struct {
 	SwapUsedPercentage float64 `json:"swap_percentage"`
 }
 
-type HostInfoMemoryResponse struct {
-	FrameMsg
-	Result struct {
-		Metrics   HostInfoMemoryMetrics `json:"metrics"`
-		Timestamp int64                 `json:"timestamp"`
-	} `json:"result"`
-}
-
-func NewHostInfoResponse(frame *FrameMsg, hinfo HostInfo, cr *CheckResult) Frame {
-	resp := &HostInfoMemoryResponse{}
-	resp.SetResponseFrameMsg(frame)
-	resp.Result.Timestamp = NowTimestampMillis()
-	resp.Result.Metrics.UsedPercentage, _ = cr.GetMetric("UsedPercentage").ToFloat64()
-	resp.Result.Metrics.Free, _ = cr.GetMetric("Free").ToUint64()
-	resp.Result.Metrics.Total, _ = cr.GetMetric("Total").ToUint64()
-	resp.Result.Metrics.Used, _ = cr.GetMetric("Used").ToUint64()
-	resp.Result.Metrics.SwapFree, _ = cr.GetMetric("UsedPercentage").ToUint64()
-	resp.Result.Metrics.SwapTotal, _ = cr.GetMetric("SwapTotal").ToUint64()
-	resp.Result.Metrics.SwapUsed, _ = cr.GetMetric("SwapUsed").ToUint64()
-	resp.Result.Metrics.SwapUsedPercentage, _ = cr.GetMetric("SwapUsedPercentage").ToFloat64()
-	return resp
-}
-
-func (r HostInfoMemoryResponse) Encode() ([]byte, error) {
-	return json.Marshal(r)
+type HostInfoMemoryResult struct {
+	Metrics   HostInfoMemoryMetrics `json:"metrics"`
+	Timestamp int64                 `json:"timestamp"`
 }
 
 ///////////////////////////////////////////////////////////////////////////////

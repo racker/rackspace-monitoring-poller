@@ -6,6 +6,7 @@ import (
 
 type HostInfo interface {
 	Run() (*CheckResult, error)
+	BuildResult(cr *CheckResult) interface{}
 }
 
 type HostInfoBase struct {
@@ -26,4 +27,8 @@ func NewHostInfo(f Frame) HostInfo {
 	default:
 		return nil
 	}
+}
+
+func (r *HostInfoResponse) Encode() ([]byte, error) {
+	return json.Marshal(r)
 }

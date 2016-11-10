@@ -9,6 +9,10 @@ type HostInfoCpu struct {
 	HostInfoBase
 }
 
+type HostInfoCpuResult struct {
+
+}
+
 func NewHostInfoCpu(base *HostInfoBase) HostInfo {
 	return &HostInfoCpu{HostInfoBase: *base}
 }
@@ -28,4 +32,9 @@ func (*HostInfoCpu) Run() (*CheckResult, error) {
 	cr := NewCheckResult()
 	//TODO
 	return cr, nil
+}
+
+func (*HostInfoCpu) BuildResult(cr *CheckResult) interface{}  {
+	//TODO
+	return nil
 }
