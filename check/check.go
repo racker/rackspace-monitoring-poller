@@ -1,3 +1,36 @@
+// The check package contains an implementation file per check-type.
+//
+// A typical/starter check implementation file would contain something like:
+//
+//  type <TYPE>Check struct {
+//    CheckBase
+//    Details struct {
+//      ...
+//	  }
+//  }
+//
+//  func New<TYPE>Check(base *CheckBase) Check {
+//    check := &<TYPE>Check{CheckBase: *base}
+//    err := json.Unmarshal(*base.Details, &check.Details)
+//    if err != nil {
+//      log.Printf("Error unmarshalling checkbase")
+//      return nil
+//    }
+//    check.PrintDefaults()
+//    return check
+//  }
+//
+//  func (ch *<TYPE>Check) Run() (*CheckResultSet, error) {
+//    log.Printf("Running <TYPE> Check: %v", ch.GetId())
+//    ...do check specifics...
+//
+//    ...upon success:
+//    cr := NewCheckResult(
+//      metric.NewMetric(...)
+//      ...
+//    )
+//    return NewCheckResultSet(ch, cr), nil
+//  }
 package check
 
 import (
