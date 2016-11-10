@@ -1,4 +1,4 @@
-
+[![CircleCI](https://circleci.com/gh/racker/rackspace-monitoring-poller.svg?style=svg)](https://circleci.com/gh/racker/rackspace-monitoring-poller)
 
 ## Prepare your workspace
 
