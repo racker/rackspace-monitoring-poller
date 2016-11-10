@@ -1,6 +1,8 @@
-package main
+package check
 
-import ()
+import (
+	"github.com/racker/rackspace-monitoring-poller/metric"
+)
 
 var DefaultStatusLimit = 256
 var DefaultStatus = "success"
@@ -23,28 +25,28 @@ func (st *States) SetStatus(status string) {
 }
 
 type CheckResult struct {
-	Metrics map[string]*Metric
+	Metrics map[string]*metric.Metric
 }
 
-func NewCheckResult(metrics ...*Metric) *CheckResult {
+func NewCheckResult(metrics ...*metric.Metric) *CheckResult {
 	cr := &CheckResult{
-		Metrics: make(map[string]*Metric, len(metrics)+1),
+		Metrics: make(map[string]*metric.Metric, len(metrics)+1),
 	}
 	cr.AddMetrics(metrics...)
 	return cr
 }
 
-func (cr *CheckResult) AddMetric(metric *Metric) {
+func (cr *CheckResult) AddMetric(metric *metric.Metric) {
 	cr.Metrics[metric.Name] = metric
 }
 
-func (cr *CheckResult) AddMetrics(metrics ...*Metric) {
+func (cr *CheckResult) AddMetrics(metrics ...*metric.Metric) {
 	for _, metric := range metrics {
 		cr.AddMetric(metric)
 	}
 }
 
-func (cr *CheckResult) GetMetric(name string) *Metric {
+func (cr *CheckResult) GetMetric(name string) *metric.Metric {
 	return cr.Metrics[name]
 }
 

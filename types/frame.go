@@ -1,4 +1,4 @@
-package main
+package types
 
 import (
 	"encoding/json"
@@ -29,23 +29,36 @@ type Frame interface {
 	SetFromFrameMsg(*FrameMsg)
 }
 
-type FrameMsg struct {
+type FrameMsgCommon struct {
 	Version   string           `json:"v"`
 	Id        uint64           `json:"id"`
 	Target    string           `json:"target"`
 	Source    string           `json:"source"`
 	Method    string           `json:"method,omitempty"`
-	RawParams *json.RawMessage `json:"params,omitempty"`
-	RawResult *json.RawMessage `json:"result,omitempty"`
+
 	Error     *Error           `json:"error,omitempty"`
 }
 
-func (f *FrameMsg) SetRawId(id uint64) {
+type FrameMsg struct {
+	FrameMsgCommon
+	RawParams *json.RawMessage `json:"params,omitempty"`
+	RawResult *json.RawMessage `json:"result,omitempty"`
+}
+
+func (f *FrameMsgCommon) SetRawId(id uint64) {
 	f.Id = id
 }
 
-func (f *FrameMsg) SetResponseFrameMsg(source *FrameMsg) {
+func (f *FrameMsgCommon) SetResponseFrameMsg(source *FrameMsg) {
 	f.Id = source.Id
+	f.Source = source.Source
+	f.Target = source.Target
+	f.Version = source.Version
+}
+
+func (f *FrameMsgCommon) SetFromFrameMsg(source *FrameMsg) {
+	f.Id = source.Id
+	f.Method = source.Method
 	f.Source = source.Source
 	f.Target = source.Target
 	f.Version = source.Version
@@ -61,55 +74,63 @@ func (f *FrameMsg) SetFromFrameMsg(source *FrameMsg) {
 	f.RawParams = source.RawParams
 }
 
-func (r *FrameMsg) Encode() ([]byte, error) {
+func (r *FrameMsgCommon) Encode() ([]byte, error) {
 	return json.Marshal(r)
 }
 
-func (f *FrameMsg) GetError() *Error {
+func (f *FrameMsgCommon) GetError() *Error {
 	return f.Error
 }
 
-func (f *FrameMsg) SetSource(source string) {
+func (f *FrameMsgCommon) SetSource(source string) {
 	f.Source = source
 }
 
-func (f *FrameMsg) GetId() uint64 {
+func (f *FrameMsgCommon) GetId() uint64 {
 	return f.Id
 }
 
-func (f *FrameMsg) GetMethod() string {
+func (f *FrameMsgCommon) GetMethod() string {
 	return f.Method
 }
 
-func (f *FrameMsg) GetSource() string {
+func (f *FrameMsgCommon) GetSource() string {
 	return f.Source
 }
 
-func (f *FrameMsg) GetTarget() string {
+func (f *FrameMsgCommon) GetTarget() string {
 	return f.Target
 }
 
-func (f *FrameMsg) GetVersion() string {
+func (f *FrameMsgCommon) GetVersion() string {
 	return f.Version
 }
 
-func (f *FrameMsg) SetMethod(method string) {
+func (f *FrameMsgCommon) SetMethod(method string) {
 	f.Method = method
 }
 
-func (f *FrameMsg) SetVersion(version string) {
+func (f *FrameMsgCommon) SetVersion(version string) {
 	f.Version = version
+}
+
+func (f *FrameMsgCommon) GetRawParams() *json.RawMessage {
+	return nil
 }
 
 func (f *FrameMsg) GetRawParams() *json.RawMessage {
 	return f.RawParams
 }
 
+func (f *FrameMsgCommon) GetRawResult() *json.RawMessage {
+	return nil
+}
+
 func (f *FrameMsg) GetRawResult() *json.RawMessage {
 	return f.RawResult
 }
 
-func (f *FrameMsg) SetId(s *Session) {
+func (f *FrameMsgCommon) SetId(s *Session) {
 get_id:
 	f.Id = atomic.LoadUint64(&s.seq)
 	if !atomic.CompareAndSwapUint64(&s.seq, f.Id, f.Id+1) {
@@ -117,6 +138,6 @@ get_id:
 	}
 }
 
-func (f *FrameMsg) SetTarget(target string) {
+func (f *FrameMsgCommon) SetTarget(target string) {
 	f.Target = target
 }

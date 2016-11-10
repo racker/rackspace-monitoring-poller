@@ -1,4 +1,4 @@
-package main
+package check
 
 import (
 	"encoding/json"
@@ -35,9 +35,9 @@ type CheckBase struct {
 	TargetResolver *string            `json:"target_resolver"`
 }
 
-func NewCheck(f Frame) Check {
+func NewCheck(rawParams json.RawMessage) Check {
 	checkBase := &CheckBase{}
-	err := json.Unmarshal(*f.GetRawParams(), &checkBase)
+	err := json.Unmarshal(rawParams, &checkBase)
 	if err != nil {
 		log.Printf("Error unmarshalling checkbase")
 		return nil

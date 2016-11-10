@@ -1,9 +1,11 @@
-package main
+package types
 
 import (
 	"encoding/json"
 	"fmt"
-	"time"
+	"github.com/racker/rackspace-monitoring-poller/check"
+	"github.com/racker/rackspace-monitoring-poller/utils"
+	"github.com/racker/rackspace-monitoring-poller/hostinfo"
 )
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -21,10 +23,6 @@ type HandshakeParameters struct {
 type HandshakeRequest struct {
 	FrameMsg
 	Params HandshakeParameters `json:"params"`
-}
-
-func NowTimestampMillis() int64 {
-	return time.Now().UnixNano() / int64(time.Millisecond)
 }
 
 func NewHandshakeRequest(cfg *Config) Frame {
@@ -80,7 +78,7 @@ func NewHeartbeat() Frame {
 	f := &HeartbeatRequest{}
 	f.Version = "1"
 	f.Method = "heartbeat.post"
-	f.Params.Timestamp = NowTimestampMillis()
+	f.Params.Timestamp = utils.NowTimestampMillis()
 	return f
 }
 
@@ -129,43 +127,23 @@ func (r PollerRegister) Encode() ([]byte, error) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// HostInfo Memory
+// HostInfo
 
-type HostInfoMemoryMetrics struct {
-	UsedPercentage     float64 `json:"used_percentage"`
-	Free               uint64  `json:"free"`
-	Total              uint64  `json:"total"`
-	Used               uint64  `json:"used"`
-	SwapFree           uint64  `json:"swap_free"`
-	SwapTotal          uint64  `json:"swap_total"`
-	SwapUsed           uint64  `json:"swap_used"`
-	SwapUsedPercentage float64 `json:"swap_percentage"`
+type HostInfoResponse struct {
+	FrameMsgCommon
+
+	Result interface{} `json:"result"`
 }
 
-type HostInfoMemoryResponse struct {
-	FrameMsg
-	Result struct {
-		Metrics   HostInfoMemoryMetrics `json:"metrics"`
-		Timestamp int64                 `json:"timestamp"`
-	} `json:"result"`
-}
+func NewHostInfoResponse(cr *check.CheckResult, f *FrameMsg, hinfo hostinfo.HostInfo) *HostInfoResponse {
+	resp := &HostInfoResponse{}
+	resp.Result = hinfo.BuildResult(cr)
+	resp.SetResponseFrameMsg(f)
 
-func NewHostInfoResponse(frame *FrameMsg, hinfo HostInfo, cr *CheckResult) Frame {
-	resp := &HostInfoMemoryResponse{}
-	resp.SetResponseFrameMsg(frame)
-	resp.Result.Timestamp = NowTimestampMillis()
-	resp.Result.Metrics.UsedPercentage, _ = cr.GetMetric("UsedPercentage").ToFloat64()
-	resp.Result.Metrics.Free, _ = cr.GetMetric("Free").ToUint64()
-	resp.Result.Metrics.Total, _ = cr.GetMetric("Total").ToUint64()
-	resp.Result.Metrics.Used, _ = cr.GetMetric("Used").ToUint64()
-	resp.Result.Metrics.SwapFree, _ = cr.GetMetric("UsedPercentage").ToUint64()
-	resp.Result.Metrics.SwapTotal, _ = cr.GetMetric("SwapTotal").ToUint64()
-	resp.Result.Metrics.SwapUsed, _ = cr.GetMetric("SwapUsed").ToUint64()
-	resp.Result.Metrics.SwapUsedPercentage, _ = cr.GetMetric("SwapUsedPercentage").ToFloat64()
 	return resp
 }
 
-func (r HostInfoMemoryResponse) Encode() ([]byte, error) {
+func (r *HostInfoResponse) Encode() ([]byte, error) {
 	return json.Marshal(r)
 }
 
@@ -175,7 +153,7 @@ func (r HostInfoMemoryResponse) Encode() ([]byte, error) {
 type MetricWrap []map[string]*MetricTVU
 type MetricWrapper []MetricWrap
 
-func ConvertToMetricResults(crs *CheckResultSet) MetricWrap {
+func ConvertToMetricResults(crs *check.CheckResultSet) MetricWrap {
 	wrappers := make(MetricWrap, 0)
 	wrappers = append(wrappers, nil) // needed for the current protocol
 	for i := 0; i < crs.Length(); i++ {
@@ -215,7 +193,7 @@ type MetricsPostRequest struct {
 	Params MetricsPostRequestParams `json:"params"`
 }
 
-func NewMetricsPostRequest(crs *CheckResultSet) *MetricsPostRequest {
+func NewMetricsPostRequest(crs *check.CheckResultSet) *MetricsPostRequest {
 	req := &MetricsPostRequest{}
 	req.Version = "1"
 	req.Method = "check_metrics.post"
@@ -226,7 +204,7 @@ func NewMetricsPostRequest(crs *CheckResultSet) *MetricsPostRequest {
 	req.Params.MinCheckPeriod = crs.Check.GetPeriod() * 1000
 	req.Params.State = crs.State
 	req.Params.Status = crs.Status
-	req.Params.Timestamp = NowTimestampMillis()
+	req.Params.Timestamp = utils.NowTimestampMillis()
 	return req
 }
 

@@ -1,4 +1,4 @@
-package main
+package types
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"io"
 	"sync"
 	"time"
+	"github.com/racker/rackspace-monitoring-poller/hostinfo"
 )
 
 type CompletionFrame struct {
@@ -157,12 +158,13 @@ func (s *Session) handleFrame(f *FrameMsg) {
 }
 
 func (s *Session) handleHostInfo(f *FrameMsg) {
-	if hinfo := NewHostInfo(f); hinfo != nil {
-		go func(s *Session, hinfo HostInfo, f *FrameMsg) {
+	if hinfo := hostinfo.NewHostInfo(*f.GetRawParams()); hinfo != nil {
+		go func(s *Session, hinfo hostinfo.HostInfo, f *FrameMsg) {
 			cr, err := hinfo.Run()
 			if err != nil {
 			} else {
-				s.Send(NewHostInfoResponse(f, hinfo, cr))
+				response := NewHostInfoResponse(cr, f, hinfo)
+				s.Send(response)
 			}
 		}(s, hinfo, f)
 	}

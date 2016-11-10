@@ -1,4 +1,4 @@
-package main
+package types
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"net"
 	"sync"
 	"time"
+	"github.com/racker/rackspace-monitoring-poller/check"
 )
 
 type ConnectionStream struct {
@@ -41,7 +42,7 @@ func (cs *ConnectionStream) GetScheduler() *Scheduler {
 	return cs.scheduler
 }
 
-func (cs *ConnectionStream) SendMetrics(crs *CheckResultSet) {
+func (cs *ConnectionStream) SendMetrics(crs *check.CheckResultSet) {
 	for _, conn := range cs.conns {
 		// TODO make this better
 		conn.session.Send(NewMetricsPostRequest(crs))
