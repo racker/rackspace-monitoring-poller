@@ -1,0 +1,21 @@
+hash: f87e6c6d45026d006aa3bc5b942276cd1b54e5d45ddb3ebebcd2631cfe1f3da4
+updated: 2016-11-10T12:43:23.121981125-06:00
+imports:
+- name: github.com/inconshreveable/mousetrap
+  version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
+- name: github.com/shirou/gopsutil
+  version: 22a03b5be3f384f558742929065778aa26471033
+  subpackages:
+  - internal/common
+  - mem
+- name: github.com/Sirupsen/logrus
+  version: d26492970760ca5d33129d2d799e34be5c4782eb
+- name: github.com/spf13/cobra
+  version: 6e91dded25d73176bf7f60b40dd7aa1f0bf9be8d
+- name: github.com/spf13/pflag
+  version: 5ccb023bc27df288a957c5e994cd44fd19619465
+- name: golang.org/x/sys
+  version: b699b7032584f0953262cb2788a0ca19bb494703
+  subpackages:
+  - unix
+testImports: []
