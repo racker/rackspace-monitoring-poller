@@ -8,14 +8,14 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	log "github.com/Sirupsen/logrus"
+	"github.com/racker/rackspace-monitoring-poller/metric"
+	"github.com/racker/rackspace-monitoring-poller/utils"
 	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"strings"
 	"time"
-	"github.com/racker/rackspace-monitoring-poller/metric"
-	"github.com/racker/rackspace-monitoring-poller/utils"
 )
 
 var (
@@ -41,7 +41,7 @@ func NewHTTPCheck(base *CheckBase) Check {
 	check := &HTTPCheck{CheckBase: *base}
 	err := json.Unmarshal(*base.Details, &check.Details)
 	if err != nil {
-		log.Printf("Error unmarshalling checkbase")
+		log.Error("Error unmarshalling checkbase")
 		return nil
 	}
 	check.PrintDefaults()
@@ -133,7 +133,10 @@ func DisableRedirects(req *http.Request, via []*http.Request) error {
 }
 
 func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
-	log.Printf("Running HTTP Check: %v", ch.GetId())
+	log.WithFields(log.Fields{
+		"type": ch.CheckType,
+		"id":   ch.Id,
+	}).Info("Running HTTP Check")
 	starttime := utils.NowTimestampMillis()
 	timeout := time.Duration(ch.Timeout) * time.Second
 	netTransport := &http.Transport{
@@ -162,13 +165,13 @@ func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
 	// Perform Request
 	resp, err := netClient.Do(req)
 	if err != nil {
-		log.Printf("%s: HTTP: Got Error: %v", ch.GetId(), err)
+		log.Errorf("%s: HTTP: Got Error: %v", ch.GetId(), err)
 		return nil, err
 	}
 	limitReader := io.LimitReader(resp.Body, MaxHttpResponseBodyLength)
 	body, err := ioutil.ReadAll(limitReader)
 	if err != nil {
-		log.Printf("%s: Received error in body read: %v", ch.GetId(), err)
+		log.Errorf("%s: Received error in body read: %v", ch.GetId(), err)
 		return nil, err
 	}
 	endtime := utils.NowTimestampMillis()

@@ -2,7 +2,9 @@ package main
 
 import (
 	log "github.com/Sirupsen/logrus"
+	"github.com/racker/rackspace-monitoring-poller/commands"
 	"github.com/spf13/cobra"
+	"math/rand"
 	"os"
 	"time"
 )
@@ -20,6 +22,7 @@ var (
 )
 
 func init() {
+	rand.Seed(time.Now().UTC().UnixNano())
 	log.SetFormatter(&log.TextFormatter{
 		FullTimestamp:   true,
 		TimestampFormat: time.RFC1123,
@@ -35,6 +38,6 @@ func initEnv() {
 }
 
 func main() {
-	pollerCmd.AddCommand(serveCmd)
+	pollerCmd.AddCommand(commands.ServeCmd)
 	pollerCmd.Execute()
 }
