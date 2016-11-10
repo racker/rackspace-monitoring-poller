@@ -2,6 +2,7 @@ package main
 
 import (
 	log "github.com/Sirupsen/logrus"
+	"github.com/racker/rackspace-monitoring-poller/commands"
 	"github.com/spf13/cobra"
 	"math/rand"
 	"os"
@@ -37,6 +38,6 @@ func initEnv() {
 }
 
 func main() {
-	pollerCmd.AddCommand(serveCmd)
+	pollerCmd.AddCommand(commands.ServeCmd)
 	pollerCmd.Execute()
 }
