@@ -73,8 +73,11 @@ func (ch *TCPCheck) Run() (*CheckResultSet, error) {
 	var conn net.Conn
 	var err error
 	var endtime int64
+
 	cr := NewCheckResult()
 	crs := NewCheckResultSet(ch, cr)
+	crs.SetStateUnavailable()
+	crs.SetStatusUnknown()
 	starttime := utils.NowTimestampMillis()
 	addr, _ := ch.GenerateAddress()
 	log.WithFields(log.Fields{
@@ -150,5 +153,7 @@ func (ch *TCPCheck) Run() (*CheckResultSet, error) {
 	}
 	endtime = utils.NowTimestampMillis()
 	cr.AddMetric(metric.NewMetric("duration", "", metric.MetricNumber, endtime-starttime, "ms"))
+	crs.SetStateAvailable()
+	crs.SetStatusSuccess()
 	return crs, nil
 }

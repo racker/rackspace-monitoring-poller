@@ -4,13 +4,38 @@ import (
 	"github.com/racker/rackspace-monitoring-poller/metric"
 )
 
-var DefaultStatusLimit = 256
-var DefaultStatus = "success"
-var DefaultState = "available"
+const (
+	StateAvailable     = "available"
+	StateUnavailable   = "unavailable"
+	StatusSuccess      = "success"
+	StatusUnknownError = "unknown error"
+)
+
+var (
+	DefaultStatusLimit = 256
+	DefaultStatus      = StatusSuccess
+	DefaultState       = StateAvailable
+)
 
 type States struct {
 	State  string
 	Status string
+}
+
+func (crs *CheckResultSet) SetStateAvailable() {
+	crs.State = StateAvailable
+}
+
+func (crs *CheckResultSet) SetStateUnavailable() {
+	crs.State = StateUnavailable
+}
+
+func (crs *CheckResultSet) SetStatusUnknown() {
+	crs.Status = StatusUnknownError
+}
+
+func (crs *CheckResultSet) SetStatusSuccess() {
+	crs.Status = StatusSuccess
 }
 
 func (st *States) SetState(state string) {
