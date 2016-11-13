@@ -1,7 +1,9 @@
 package commands
 
 import (
+	log "github.com/Sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/types"
+	"github.com/satori/go.uuid"
 	"github.com/spf13/cobra"
 )
 
@@ -20,7 +22,9 @@ func init() {
 }
 
 func serveCmdRun(cmd *cobra.Command, args []string) {
-	cfg := types.NewConfig()
+	guid := uuid.NewV4()
+	log.Infof("Using GUID: %v", guid)
+	cfg := types.NewConfig(guid.String())
 	cfg.LoadFromFile(configFilePath)
 	for {
 		stream := types.NewConnectionStream(cfg)
