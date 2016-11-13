@@ -13,6 +13,7 @@ const (
 
 var (
 	DefaultStatusLimit = 256
+	DefaultStateLimit  = 256
 	DefaultStatus      = StatusSuccess
 	DefaultState       = StateAvailable
 )
@@ -22,23 +23,26 @@ type States struct {
 	Status string
 }
 
-func (crs *CheckResultSet) SetStateAvailable() {
+func (crs *States) SetStateAvailable() {
 	crs.State = StateAvailable
 }
 
-func (crs *CheckResultSet) SetStateUnavailable() {
+func (crs *States) SetStateUnavailable() {
 	crs.State = StateUnavailable
 }
 
-func (crs *CheckResultSet) SetStatusUnknown() {
+func (crs *States) SetStatusUnknown() {
 	crs.Status = StatusUnknownError
 }
 
-func (crs *CheckResultSet) SetStatusSuccess() {
+func (crs *States) SetStatusSuccess() {
 	crs.Status = StatusSuccess
 }
 
 func (st *States) SetState(state string) {
+	if len(state) > DefaultStatusLimit {
+		state = state[:DefaultStateLimit]
+	}
 	st.State = state
 }
 
@@ -92,6 +96,10 @@ func NewCheckResultSet(ch Check, cr *CheckResult) *CheckResultSet {
 		crs.Add(cr)
 	}
 	return crs
+}
+
+func (crs *CheckResultSet) ClearMetrics() {
+	crs.Metrics = make([]*CheckResult, 0)
 }
 
 func (crs *CheckResultSet) Add(cr *CheckResult) {

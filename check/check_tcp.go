@@ -96,7 +96,8 @@ func (ch *TCPCheck) Run() (*CheckResultSet, error) {
 		conn, err = nd.Dial("tcp", addr)
 	}
 	if err != nil {
-		log.Error(err)
+		crs.SetStatus(err.Error())
+		crs.SetStateUnavailable()
 		return crs, nil
 	}
 	defer conn.Close()
@@ -113,6 +114,8 @@ func (ch *TCPCheck) Run() (*CheckResultSet, error) {
 	if len(ch.Details.BannerMatch) > 0 {
 		line, err := ch.readLine(conn)
 		if err != nil {
+			crs.SetStatus(err.Error())
+			crs.SetStateUnavailable()
 			return crs, nil
 		}
 		firstbytetime := utils.NowTimestampMillis()
