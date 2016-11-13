@@ -90,12 +90,17 @@ func NewCheckResultSet(ch Check, cr *CheckResult) *CheckResultSet {
 		Check:   ch,
 		Metrics: make([]*CheckResult, 0),
 	}
-	crs.SetState(DefaultState)
-	crs.SetStatus(DefaultStatus)
+	crs.SetStateUnavailable()
+	crs.SetStatusUnknown()
 	if cr != nil {
 		crs.Add(cr)
 	}
 	return crs
+}
+
+func (crs *CheckResultSet) SetStateUnavailable() {
+	crs.States.SetStateUnavailable()
+	crs.ClearMetrics()
 }
 
 func (crs *CheckResultSet) ClearMetrics() {
