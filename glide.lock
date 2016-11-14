@@ -1,5 +1,5 @@
-hash: a9832b369660cca741dd91a809b232a263fc405c967d040878a2ec2d3bde6f70
-updated: 2016-11-13T13:05:38.982898912-06:00
+hash: c3eb06652b26ae4ae0935cb1d014b4f1376c28e8fd202bcdf285ae96ac4336f3
+updated: 2016-11-14T08:31:39.67275773-06:00
 imports:
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
@@ -12,10 +12,21 @@ imports:
   - mem
 - name: github.com/Sirupsen/logrus
   version: d26492970760ca5d33129d2d799e34be5c4782eb
+- name: github.com/sparrc/go-ping
+  version: 416e72114cd1edce2f287648f935a60dfe6cf40e
 - name: github.com/spf13/cobra
   version: 6e91dded25d73176bf7f60b40dd7aa1f0bf9be8d
 - name: github.com/spf13/pflag
   version: 5ccb023bc27df288a957c5e994cd44fd19619465
+- name: golang.org/x/net
+  version: 8566e9372a500d1344adb9fdfd943c4354ef4aa2
+  subpackages:
+  - bpf
+  - icmp
+  - internal/iana
+  - internal/netreflect
+  - ipv4
+  - ipv6
 - name: golang.org/x/sys
   version: b699b7032584f0953262cb2788a0ca19bb494703
   subpackages:
