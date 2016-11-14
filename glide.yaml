@@ -7,3 +7,5 @@ import:
   subpackages:
   - mem
 - package: github.com/spf13/cobra
+- package: github.com/satori/go.uuid
+  version: v1.1.0

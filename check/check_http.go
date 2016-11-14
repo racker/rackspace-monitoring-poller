@@ -115,7 +115,6 @@ func (ch *HTTPCheck) ParseTLS(cr *CheckResult, resp *http.Response) {
 	case tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:
 		cipherSuite = "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"
 	case tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256:
-
 		cipherSuite = "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256"
 	case tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384:
 		cipherSuite = "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"
@@ -137,8 +136,11 @@ func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
 		"type": ch.CheckType,
 		"id":   ch.Id,
 	}).Info("Running HTTP Check")
+
+	cr := NewCheckResult()
+	crs := NewCheckResultSet(ch, cr)
 	starttime := utils.NowTimestampMillis()
-	timeout := time.Duration(ch.Timeout) * time.Second
+	timeout := time.Duration(ch.Timeout) * time.Millisecond
 	netTransport := &http.Transport{
 		Dial:                (&net.Dialer{Timeout: timeout}).Dial,
 		TLSHandshakeTimeout: timeout,
@@ -147,49 +149,57 @@ func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
 		Timeout:   timeout,
 		Transport: netTransport,
 	}
+
 	// Setup Redirects
 	if !ch.Details.FollowRedirects {
 		netClient.CheckRedirect = DisableRedirects
 	}
+
 	// Setup Method
 	method := strings.ToUpper(ch.Details.Method)
+
 	// Setup Request
 	req, err := http.NewRequest(method, ch.Details.Url, nil)
 	if err != nil {
 		return nil, err
 	}
+
 	// Add Headers
 	for key, value := range ch.Details.Headers {
 		req.Header.Add(key, value)
 	}
+
 	// Perform Request
 	resp, err := netClient.Do(req)
 	if err != nil {
 		log.Errorf("%s: HTTP: Got Error: %v", ch.GetId(), err)
 		return nil, err
 	}
+	defer resp.Body.Close()
+
+	// Read Body
 	limitReader := io.LimitReader(resp.Body, MaxHttpResponseBodyLength)
 	body, err := ioutil.ReadAll(limitReader)
 	if err != nil {
-		log.Errorf("%s: Received error in body read: %v", ch.GetId(), err)
-		return nil, err
+		crs.SetStatus(err.Error())
+		crs.SetStateUnavailable()
+		return crs, nil
 	}
 	endtime := utils.NowTimestampMillis()
-	resp.Body.Close()
-	// METRICS
-	cr := NewCheckResult(
-		metric.NewMetric("code", "", metric.MetricNumber, resp.StatusCode, ""),
-		metric.NewMetric("duration", "", metric.MetricNumber, endtime-starttime, "milliseconds"),
-		metric.NewMetric("bytes", "", metric.MetricNumber, len(body), "bytes"),
-	)
-	// BODY MATCHES
-	// BODY
+
+	cr.AddMetric(metric.NewMetric("code", "", metric.MetricNumber, resp.StatusCode, ""))
+	cr.AddMetric(metric.NewMetric("duration", "", metric.MetricNumber, endtime-starttime, "milliseconds"))
+	cr.AddMetric(metric.NewMetric("bytes", "", metric.MetricNumber, len(body), "bytes"))
+
+	// TODO: BODY MATCHES
+
 	if ch.Details.IncludeBody {
 		cr.AddMetric(metric.NewMetric("body", "", metric.MetricNumber, string(body), ""))
 	}
+
 	// TLS
 	if resp.TLS != nil {
 		ch.ParseTLS(cr, resp)
 	}
-	return NewCheckResultSet(ch, cr), nil
+	return crs, nil
 }

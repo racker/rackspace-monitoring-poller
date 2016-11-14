@@ -4,16 +4,45 @@ import (
 	"github.com/racker/rackspace-monitoring-poller/metric"
 )
 
-var DefaultStatusLimit = 256
-var DefaultStatus = "success"
-var DefaultState = "available"
+const (
+	StateAvailable     = "available"
+	StateUnavailable   = "unavailable"
+	StatusSuccess      = "success"
+	StatusUnknownError = "unknown error"
+)
+
+var (
+	DefaultStatusLimit = 256
+	DefaultStateLimit  = 256
+	DefaultStatus      = StatusSuccess
+	DefaultState       = StateAvailable
+)
 
 type States struct {
 	State  string
 	Status string
 }
 
+func (crs *States) SetStateAvailable() {
+	crs.State = StateAvailable
+}
+
+func (crs *States) SetStateUnavailable() {
+	crs.State = StateUnavailable
+}
+
+func (crs *States) SetStatusUnknown() {
+	crs.Status = StatusUnknownError
+}
+
+func (crs *States) SetStatusSuccess() {
+	crs.Status = StatusSuccess
+}
+
 func (st *States) SetState(state string) {
+	if len(state) > DefaultStatusLimit {
+		state = state[:DefaultStateLimit]
+	}
 	st.State = state
 }
 
@@ -61,12 +90,21 @@ func NewCheckResultSet(ch Check, cr *CheckResult) *CheckResultSet {
 		Check:   ch,
 		Metrics: make([]*CheckResult, 0),
 	}
-	crs.SetState(DefaultState)
-	crs.SetStatus(DefaultStatus)
+	crs.SetStateUnavailable()
+	crs.SetStatusUnknown()
 	if cr != nil {
 		crs.Add(cr)
 	}
 	return crs
+}
+
+func (crs *CheckResultSet) SetStateUnavailable() {
+	crs.States.SetStateUnavailable()
+	crs.ClearMetrics()
+}
+
+func (crs *CheckResultSet) ClearMetrics() {
+	crs.Metrics = make([]*CheckResult, 0)
 }
 
 func (crs *CheckResultSet) Add(cr *CheckResult) {

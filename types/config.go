@@ -32,10 +32,10 @@ type Config struct {
 	TimeoutWrite time.Duration
 }
 
-func NewConfig() *Config {
+func NewConfig(guid string) *Config {
 	cfg := &Config{}
 	cfg.init()
-	cfg.Guid = "7A11A061-1A4D-4E61-AFED-8A5E2870F900" //TODO CHANGEME
+	cfg.Guid = guid
 	cfg.Token = os.Getenv("AGENT_TOKEN")
 	cfg.AgentId = os.Getenv("AGENT_ID")
 	cfg.AgentName = "remote_poller"
