@@ -5,15 +5,16 @@
 //  type <TYPE>Check struct {
 //    CheckBase
 //    Details struct {
+//      SomeField string|... `json:"some_field"`
 //      ...
-//	  }
+//    }
 //  }
 //
 //  func New<TYPE>Check(base *CheckBase) Check {
 //    check := &<TYPE>Check{CheckBase: *base}
 //    err := json.Unmarshal(*base.Details, &check.Details)
 //    if err != nil {
-//      log.Printf("Error unmarshalling checkbase")
+//      log.Printf("Error unmarshalling check details")
 //      return nil
 //    }
 //    check.PrintDefaults()
@@ -116,6 +117,8 @@ func (ch *CheckBase) PrintDefaults() {
 	}).Infof("New check %v", ch.GetId())
 }
 
+// GetTargetIP obtains the specific IP address selected for this check.
+// It returns the resolved IP address as dotted string.
 func (ch *CheckBase) GetTargetIP() (string, error) {
 	ip, ok := ch.IpAddresses[*ch.TargetAlias]
 	if ok {
