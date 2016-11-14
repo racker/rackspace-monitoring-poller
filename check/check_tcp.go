@@ -14,8 +14,9 @@ import (
 	"time"
 )
 
-var (
+const (
 	MaxTCPBannerLength = int(80)
+	MaxTCPBodyLength   = int64(1024)
 )
 
 type TCPCheck struct {
@@ -72,8 +73,11 @@ func (ch *TCPCheck) Run() (*CheckResultSet, error) {
 	var conn net.Conn
 	var err error
 	var endtime int64
+
 	cr := NewCheckResult()
 	crs := NewCheckResultSet(ch, cr)
+	crs.SetStateUnavailable()
+	crs.SetStatusUnknown()
 	starttime := utils.NowTimestampMillis()
 	addr, _ := ch.GenerateAddress()
 	log.WithFields(log.Fields{
@@ -82,8 +86,9 @@ func (ch *TCPCheck) Run() (*CheckResultSet, error) {
 		"address": addr,
 		"ssl":     ch.Details.UseSSL,
 	}).Info("Running TCP Check")
+
 	// Connection
-	nd := &net.Dialer{Timeout: time.Duration(ch.GetTimeout()) * time.Second}
+	nd := &net.Dialer{Timeout: time.Duration(ch.GetTimeout()) * time.Millisecond}
 	if ch.Details.UseSSL {
 		TLSconfig := &tls.Config{}
 		conn, err = tls.DialWithDialer(nd, "tcp", addr, TLSconfig)
@@ -91,16 +96,17 @@ func (ch *TCPCheck) Run() (*CheckResultSet, error) {
 		conn, err = nd.Dial("tcp", addr)
 	}
 	if err != nil {
-		log.Error(err)
+		crs.SetStatus(err.Error())
+		crs.SetStateUnavailable()
 		return crs, nil
 	}
 	defer conn.Close()
 
 	// Set read/write timeout
-	conn.SetDeadline(time.Now().Add(time.Duration(ch.GetTimeout()) * time.Second))
+	conn.SetDeadline(time.Now().Add(time.Duration(ch.GetTimeout()) * time.Millisecond))
 
 	// Send Body
-	if ch.Details.SendBody != "" {
+	if len(ch.Details.SendBody) > 0 {
 		io.WriteString(conn, ch.Details.SendBody)
 	}
 
@@ -108,6 +114,8 @@ func (ch *TCPCheck) Run() (*CheckResultSet, error) {
 	if len(ch.Details.BannerMatch) > 0 {
 		line, err := ch.readLine(conn)
 		if err != nil {
+			crs.SetStatus(err.Error())
+			crs.SetStateUnavailable()
 			return crs, nil
 		}
 		firstbytetime := utils.NowTimestampMillis()
@@ -127,7 +135,7 @@ func (ch *TCPCheck) Run() (*CheckResultSet, error) {
 
 	// Body Match
 	if len(ch.Details.BodyMatch) > 0 {
-		body, err := ch.readLimit(conn, 1024)
+		body, err := ch.readLimit(conn, MaxTCPBodyLength)
 		if err != nil {
 			return crs, nil
 		}
@@ -148,5 +156,7 @@ func (ch *TCPCheck) Run() (*CheckResultSet, error) {
 	}
 	endtime = utils.NowTimestampMillis()
 	cr.AddMetric(metric.NewMetric("duration", "", metric.MetricNumber, endtime-starttime, "ms"))
+	crs.SetStateAvailable()
+	crs.SetStatusSuccess()
 	return crs, nil
 }
