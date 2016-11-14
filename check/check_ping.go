@@ -1,12 +1,11 @@
 package check
 
 import (
-	"errors"
-	log "github.com/Sirupsen/logrus"
 	"encoding/json"
+	log "github.com/Sirupsen/logrus"
+	"github.com/racker/rackspace-monitoring-poller/metric"
 	ping "github.com/sparrc/go-ping"
 	"time"
-	"github.com/racker/rackspace-monitoring-poller/metric"
 )
 
 type PingCheck struct {
@@ -42,16 +41,24 @@ func (ch *PingCheck) Run() (*CheckResultSet, error) {
 		return nil, err
 	}
 
-	pinger.Count = ch.Details.Count
-	pinger.Timeout = ch.Timeout * time.Millisecond
+	pinger.Count = int(ch.Details.Count)
+	pinger.Timeout = time.Duration(ch.Timeout) * time.Second
 
 	pinger.OnRecv = func(pkt *ping.Packet) {
 		log.WithFields(log.Fields{
-				"bytes": pkt.Nbytes,
-				"seq": pkt.Seq,
-				"rtt": pkt.Rtt,
-			}).Debug("Received ping packet")
+			"id":    ch.GetId(),
+			"bytes": pkt.Nbytes,
+			"seq":   pkt.Seq,
+			"rtt":   pkt.Rtt,
+		}).Debug("Received ping packet")
 	}
+
+	log.WithFields(log.Fields{
+		"id":         ch.GetId(),
+		"count":      pinger.Count,
+		"timeoutSec":  ch.Timeout,
+		"timeoutDur": pinger.Timeout,
+	}).Debug("Starting pinger")
 
 	// blocking
 	pinger.Run()
@@ -60,11 +67,17 @@ func (ch *PingCheck) Run() (*CheckResultSet, error) {
 
 	cr := NewCheckResult(
 		metric.NewMetric("available", "", metric.MetricFloat, stats.PacketsRecv/stats.PacketsSent, ""),
-		metric.NewMetric("average", "", metric.MetricFloat, stats.AvgRtt / time.Millisecond, "ms"),
+		metric.NewMetric("average", "", metric.MetricFloat, float64(stats.AvgRtt/time.Millisecond), "ms"),
 		metric.NewMetric("count", "", metric.MetricNumber, stats.PacketsSent, ""),
-		metric.NewMetric("maximum", "", metric.MetricFloat, stats.MaxRtt / time.Millisecond, "ms"),
-		metric.NewMetric("minimum", "", metric.MetricFloat, stats.MinRtt / time.Millisecond, "ms"),
+		metric.NewMetric("maximum", "", metric.MetricFloat, float64(stats.MaxRtt/time.Millisecond), "ms"),
+		metric.NewMetric("minimum", "", metric.MetricFloat, float64(stats.MinRtt/time.Millisecond), "ms"),
 	)
+
+	log.WithFields(log.Fields{
+		"id":     ch.GetId(),
+		"stats":  stats,
+		"result": cr,
+	}).Debug("Finished remote.ping check")
 
 	return NewCheckResultSet(ch, cr), nil
 }
