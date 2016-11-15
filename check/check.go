@@ -30,7 +30,9 @@
 //      metric.NewMetric(...)
 //      ...
 //    )
-//    return NewCheckResultSet(ch, cr), nil
+//    crs := NewCheckResultSet(ch, cr)
+//    crs.SetStateAvailable()
+//    return crs, nil
 //  }
 package check
 
