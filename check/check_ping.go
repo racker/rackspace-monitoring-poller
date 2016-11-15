@@ -56,7 +56,7 @@ func (ch *PingCheck) Run() (*CheckResultSet, error) {
 	log.WithFields(log.Fields{
 		"id":         ch.GetId(),
 		"count":      pinger.Count,
-		"timeoutSec":  ch.Timeout,
+		"timeoutSec": ch.Timeout,
 		"timeoutDur": pinger.Timeout,
 	}).Debug("Starting pinger")
 
@@ -72,6 +72,8 @@ func (ch *PingCheck) Run() (*CheckResultSet, error) {
 		metric.NewMetric("maximum", "", metric.MetricFloat, float64(stats.MaxRtt/time.Millisecond), "ms"),
 		metric.NewMetric("minimum", "", metric.MetricFloat, float64(stats.MinRtt/time.Millisecond), "ms"),
 	)
+	crs := NewCheckResultSet(ch, cr)
+	crs.SetStateAvailable()
 
 	log.WithFields(log.Fields{
 		"id":     ch.GetId(),
@@ -79,5 +81,5 @@ func (ch *PingCheck) Run() (*CheckResultSet, error) {
 		"result": cr,
 	}).Debug("Finished remote.ping check")
 
-	return NewCheckResultSet(ch, cr), nil
+	return crs, nil
 }
