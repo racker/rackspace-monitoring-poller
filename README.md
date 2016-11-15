@@ -11,3 +11,13 @@ Get external dependencies before building/running:
 glide install
 go build
 ```
+
+## Documentation
+
+If you are adding new checks or hostinfo queries, viewing the godoc's will be helpful. 
+The [main documentation](https://godoc.org/golang.org/x/tools/cmd/godoc) shows several ways to
+run it, but the easiest is to run
+
+    godoc -http=:6060
+    
+With that running, open your browser to http://localhost:6060/pkg/github.com/racker/rackspace-monitoring-poller/
