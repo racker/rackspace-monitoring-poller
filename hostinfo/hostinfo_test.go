@@ -1,18 +1,33 @@
+//
+// Copyright 2016 Rackspace
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS-IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
 package hostinfo_test
 
 import (
-	"testing"
 	"bytes"
-	"github.com/racker/rackspace-monitoring-poller/hostinfo"
-	"github.com/racker/rackspace-monitoring-poller/types"
 	"github.com/racker/rackspace-monitoring-poller/check"
+	"github.com/racker/rackspace-monitoring-poller/hostinfo"
 	"github.com/racker/rackspace-monitoring-poller/metric"
+	"github.com/racker/rackspace-monitoring-poller/types"
 	"github.com/racker/rackspace-monitoring-poller/utils"
 	"log"
+	"testing"
 )
 
 func TestHostInfoMemory_PopulateResult(t *testing.T) {
-	hinfo := &hostinfo.HostInfoBase{Type:"MEMORY"}
+	hinfo := &hostinfo.HostInfoBase{Type: "MEMORY"}
 	hostInfoMemory := hostinfo.NewHostInfoMemory(hinfo)
 
 	cr := check.NewCheckResult()
@@ -27,9 +42,7 @@ func TestHostInfoMemory_PopulateResult(t *testing.T) {
 		metric.NewMetric("SwapUsedPercentage", "", metric.MetricFloat, 0.75, ""),
 	)
 
-	sourceFrame := &types.FrameMsg{
-
-	}
+	sourceFrame := &types.FrameMsg{}
 
 	utils.NowTimestampMillis = func() int64 { return 100 }
 
@@ -37,7 +50,7 @@ func TestHostInfoMemory_PopulateResult(t *testing.T) {
 	response.Result = hostInfoMemory.BuildResult(cr)
 	response.SetResponseFrameMsg(sourceFrame)
 
-	encoded,err := response.Encode()
+	encoded, err := response.Encode()
 	if err != nil {
 		t.Error(err)
 	}

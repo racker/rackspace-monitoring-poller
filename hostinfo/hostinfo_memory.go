@@ -1,11 +1,26 @@
+//
+// Copyright 2016 Rackspace
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS-IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
 package hostinfo
 
 import (
 	log "github.com/Sirupsen/logrus"
-	"github.com/shirou/gopsutil/mem"
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/metric"
 	"github.com/racker/rackspace-monitoring-poller/utils"
+	"github.com/shirou/gopsutil/mem"
 )
 
 type HostInfoMemory struct {
@@ -59,9 +74,9 @@ func (*HostInfoMemory) Run() (*check.CheckResult, error) {
 	return cr, nil
 }
 
-func (*HostInfoMemory) BuildResult(cr *check.CheckResult) interface{}  {
+func (*HostInfoMemory) BuildResult(cr *check.CheckResult) interface{} {
 	result := &HostInfoMemoryResult{}
-	
+
 	result.Timestamp = utils.NowTimestampMillis()
 	result.Metrics.UsedPercentage, _ = cr.GetMetric("UsedPercentage").ToFloat64()
 	result.Metrics.Free, _ = cr.GetMetric("Free").ToUint64()
