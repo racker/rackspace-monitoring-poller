@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	log "github.com/Sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/hostinfo"
+	"github.com/racker/rackspace-monitoring-poller/protocol"
 	"io"
 	"sync"
 	"time"
@@ -112,14 +113,14 @@ func (s *Session) getCompletionRequest(resp Frame) *CompletionFrame {
 func (s *Session) handleResponse(resp *FrameMsg) {
 	if req := s.getCompletionRequest(resp); req != nil {
 		switch req.Method {
-		case "handshake.hello":
+		case protocol.MethodHandshakeHello:
 			resp := NewHandshakeResponse(resp)
 			s.SetHeartbeatInterval(resp.Result.HandshakeInterval)
 			s.Send(NewPollerRegister([]string{"pzA"}))
-		case "check_schedule.get":
-		case "poller.register":
-		case "heartbeat.post":
-		case "check_metrics.post":
+		case protocol.MethodCheckScheduleGet:
+		case protocol.MethodPollerRegister:
+		case protocol.MethodHeartbeatPost:
+		case protocol.MethodCheckMetricsPost:
 		default:
 			log.Errorf("Unexpected method: %s", req.Method)
 		}
@@ -162,13 +163,13 @@ func (s *Session) handleFrame(f *FrameMsg) {
 	js, _ := f.Encode()
 	log.Debugf("RECV: %s", js)
 	switch f.GetMethod() {
-	case "": // Responses do not have a method name
+	case protocol.MethodEmpty: // Responses do not have a method name
 		s.handleResponse(f)
-	case "poller.checks.add":
+	case protocol.MethodPollerChecksAdd:
 		s.connection.GetStream().GetScheduler().Input() <- f
-	case "host_info.get":
+	case protocol.MethodHostInfoGet:
 		go s.handleHostInfo(f)
-	case "poller.checks.end":
+	case protocol.MethodPollerChecksEnd:
 	default:
 		log.Errorf("  Need to handle method: %v", f.GetMethod())
 	}
