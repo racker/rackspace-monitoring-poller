@@ -1,4 +1,5 @@
 [![CircleCI](https://circleci.com/gh/racker/rackspace-monitoring-poller.svg?style=svg)](https://circleci.com/gh/racker/rackspace-monitoring-poller)
+[![Go Documentation](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](https://godoc.org/github.com/racker/rackspace-monitoring-poller)
 
 ## Prepare your workspace
 
