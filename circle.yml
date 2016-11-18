@@ -5,6 +5,7 @@ machine:
     GOPATH: /home/ubuntu/.go_workspace
     FILE_PATH: "$GOPATH/src/github.com/racker"
     APP_PATH: "$FILE_PATH/rackspace-monitoring-poller"
+    GOX_OS_ARCH: darwin/amd64 linux/amd64
 checkout:
   post:
     - mkdir -p download
