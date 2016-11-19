@@ -4,7 +4,7 @@ machine:
     IMPORT_PATH: "github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME"
     FILE_PATH: "/home/ubuntu/.go_workspace/src/github.com/racker"
     APP_PATH: "$FILE_PATH/rackspace-monitoring-poller"
-    GOX_OS_ARCH: darwin/amd64 linux/amd64
+    GOX_OS_ARCH: darwin/amd64 linux/amd64 linux/386
 checkout:
   post:
     - mkdir -p download
