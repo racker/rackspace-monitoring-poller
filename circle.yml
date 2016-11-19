@@ -4,6 +4,7 @@ machine:
     IMPORT_PATH: "github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME"
     FILE_PATH: "/home/ubuntu/.go_workspace/src/github.com/racker"
     APP_PATH: "$FILE_PATH/rackspace-monitoring-poller"
+    GOX_OS_ARCH: darwin/amd64 linux/amd64 linux/386
 checkout:
   post:
     - mkdir -p download
@@ -30,5 +31,9 @@ deployment:
   commands:
    - go get github.com/mitchellh/gox
    - go get github.com/tcnksm/ghr
-   - gox -ldflags "-X main.Version=$BUILD_VERSION -X main.BuildDate=$BUILD_DATE" -output "dist/${CIRCLE_PROJECT_REPONAME}_{{.OS}}_{{.Arch}}" -os="linux darwin"
-   - ghr -u $CIRCLE_PROJECT_USERNAME -r $CIRCLE_PROJECT_REPONAME --replace `git describe --tags` dist/
+   - cd "$APP_PATH" &&
+     gox -ldflags "-X main.Version=$CIRCLE_TAG"
+     -osarch="$GOX_OS_ARCH"
+     -output="dist/{{.Dir}}_{{.OS}}_{{.Arch}}"
+   - cd "$APP_PATH" &&
+     ghr -u $CIRCLE_PROJECT_USERNAME -r $CIRCLE_PROJECT_REPONAME $CIRCLE_TAG dist/
