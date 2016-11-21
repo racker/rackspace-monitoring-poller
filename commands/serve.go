@@ -19,6 +19,7 @@ package commands
 
 import (
 	log "github.com/Sirupsen/logrus"
+	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/types"
 	"github.com/satori/go.uuid"
 	"github.com/spf13/cobra"
@@ -35,13 +36,13 @@ var (
 )
 
 func init() {
-	ServeCmd.Flags().StringVar(&configFilePath, "config", "", "Path to a file containing the config, used in "+types.DefaultConfigPathLinux)
+	ServeCmd.Flags().StringVar(&configFilePath, "config", "", "Path to a file containing the config, used in "+config.DefaultConfigPathLinux)
 }
 
 func serveCmdRun(cmd *cobra.Command, args []string) {
 	guid := uuid.NewV4()
 	log.Infof("Using GUID: %v", guid)
-	cfg := types.NewConfig(guid.String())
+	cfg := config.NewConfig(guid.String())
 	cfg.LoadFromFile(configFilePath)
 	for {
 		stream := types.NewConnectionStream(cfg)

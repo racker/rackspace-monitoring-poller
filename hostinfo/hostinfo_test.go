@@ -22,7 +22,7 @@ import (
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/hostinfo"
 	"github.com/racker/rackspace-monitoring-poller/metric"
-	"github.com/racker/rackspace-monitoring-poller/types"
+	"github.com/racker/rackspace-monitoring-poller/protocol"
 	"github.com/racker/rackspace-monitoring-poller/utils"
 	"log"
 	"testing"
@@ -44,13 +44,11 @@ func TestHostInfoMemory_PopulateResult(t *testing.T) {
 		metric.NewMetric("SwapUsedPercentage", "", metric.MetricFloat, 0.75, ""),
 	)
 
-	sourceFrame := &types.FrameMsg{}
+	sourceFrame := &protocol.FrameMsg{}
 
 	utils.NowTimestampMillis = func() int64 { return 100 }
 
-	response := &types.HostInfoResponse{}
-	response.Result = hostInfoMemory.BuildResult(cr)
-	response.SetResponseFrameMsg(sourceFrame)
+	response := hostinfo.NewHostInfoResponse(cr, sourceFrame, hostInfoMemory)
 
 	encoded, err := response.Encode()
 	if err != nil {

@@ -21,6 +21,7 @@ import (
 	"context"
 	log "github.com/Sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/check"
+	"github.com/racker/rackspace-monitoring-poller/protocol"
 	"math/rand"
 	"time"
 )
@@ -35,7 +36,7 @@ type Scheduler struct {
 
 	zoneId string
 	checks map[string]check.Check
-	input  chan Frame
+	input  chan protocol.Frame
 
 	stream *ConnectionStream
 }
@@ -43,7 +44,7 @@ type Scheduler struct {
 func NewScheduler(zoneId string, stream *ConnectionStream) *Scheduler {
 	s := &Scheduler{
 		checks: make(map[string]check.Check),
-		input:  make(chan Frame, 1024),
+		input:  make(chan protocol.Frame, 1024),
 		stream: stream,
 		zoneId: zoneId,
 	}
@@ -51,7 +52,7 @@ func NewScheduler(zoneId string, stream *ConnectionStream) *Scheduler {
 	return s
 }
 
-func (s *Scheduler) Input() chan Frame {
+func (s *Scheduler) Input() chan protocol.Frame {
 	return s.input
 }
 
