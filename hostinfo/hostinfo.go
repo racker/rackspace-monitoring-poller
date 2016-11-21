@@ -34,3 +34,11 @@ func NewHostInfoResponse(cr *check.CheckResult, f *protocol.FrameMsg, hinfo Host
 
 	return resp
 }
+
+func NewHostInfoResponse(cr *check.CheckResult, f *protocol.FrameMsg, hinfo HostInfo) *protocol.HostInfoResponse {
+	resp := &protocol.HostInfoResponse{}
+	resp.Result = hinfo.BuildResult(cr)
+	resp.SetResponseFrameMsg(f)
+
+	return resp
+}
