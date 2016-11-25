@@ -202,7 +202,9 @@ func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
 	}
 	endtime := utils.NowTimestampMillis()
 
-	timer.Stop()
+	if !timer.Stop() {
+		<-timer.C
+	}
 
 	cr.AddMetric(metric.NewMetric("code", "", metric.MetricNumber, resp.StatusCode, ""))
 	cr.AddMetric(metric.NewMetric("duration", "", metric.MetricNumber, endtime-starttime, "milliseconds"))
