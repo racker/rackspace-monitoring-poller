@@ -19,6 +19,7 @@ package check
 
 import (
 	"bufio"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	log "github.com/Sirupsen/logrus"
@@ -86,6 +87,70 @@ func (ch *TCPCheck) readLimit(conn io.Reader, limit int64) ([]byte, error) {
 	return bytes[:count], nil
 }
 
+func dialContextWithDialerTLS(ctx context.Context, dialer *net.Dialer, network, addr string, config *tls.Config) (*tls.Conn, error) {
+	timeout := dialer.Timeout
+
+	if !dialer.Deadline.IsZero() {
+		deadlineTimeout := dialer.Deadline.Sub(time.Now())
+		if timeout == 0 || deadlineTimeout < timeout {
+			timeout = deadlineTimeout
+		}
+	}
+
+	if timeout != 0 {
+		var cancel context.CancelFunc
+
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
+	}
+
+	rawConn, err := dialer.DialContext(ctx, network, addr)
+	if err != nil {
+		return nil, err
+	}
+
+	conn := tls.Client(rawConn, config)
+
+	errChannel := make(chan error, 1)
+
+	go func() {
+		errChannel <- conn.Handshake()
+	}()
+
+	select {
+	case err := <-errChannel:
+		if err != nil {
+			rawConn.Close()
+			return nil, err
+		}
+
+		return conn, nil
+
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
+func dialContextWithDialer(ctx context.Context, dialer *net.Dialer, network, addr string) (net.Conn, error) {
+	timeout := dialer.Timeout
+
+	if !dialer.Deadline.IsZero() {
+		deadlineTimeout := dialer.Deadline.Sub(time.Now())
+		if timeout == 0 || deadlineTimeout < timeout {
+			timeout = deadlineTimeout
+		}
+	}
+
+	if timeout != 0 {
+		var cancel context.CancelFunc
+
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
+	}
+
+	return dialer.DialContext(ctx, network, addr)
+}
+
 func (ch *TCPCheck) Run() (*CheckResultSet, error) {
 	var conn net.Conn
 	var err error
@@ -104,13 +169,18 @@ func (ch *TCPCheck) Run() (*CheckResultSet, error) {
 		"ssl":     ch.Details.UseSSL,
 	}).Info("Running TCP Check")
 
+	ctx := context.Background()
+	timeout := time.Duration(ch.GetTimeout()) * time.Second
+	nd := &net.Dialer{
+		Timeout: timeout,
+	}
+
 	// Connection
-	nd := &net.Dialer{Timeout: time.Duration(ch.GetTimeout()) * time.Millisecond}
 	if ch.Details.UseSSL {
 		TLSconfig := &tls.Config{}
-		conn, err = tls.DialWithDialer(nd, "tcp", addr, TLSconfig)
+		conn, err = dialContextWithDialerTLS(ctx, nd, "tcp", addr, TLSconfig)
 	} else {
-		conn, err = nd.Dial("tcp", addr)
+		conn, err = dialContextWithDialer(ctx, nd, "tcp", addr)
 	}
 	if err != nil {
 		crs.SetStatus(err.Error())

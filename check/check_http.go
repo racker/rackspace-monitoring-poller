@@ -154,7 +154,7 @@ func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
 		"id":   ch.Id,
 	}).Info("Running HTTP Check")
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(ch.Timeout)*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(ch.Timeout)*time.Second)
 	defer cancel()
 
 	cr := NewCheckResult()
