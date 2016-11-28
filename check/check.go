@@ -69,6 +69,7 @@ type Check interface {
 	GetWaitPeriod() time.Duration
 	SetPeriod(period uint64)
 	GetTimeout() uint64
+	GetTimeoutDuration() time.Duration
 	SetTimeout(timeout uint64)
 	Run() (*CheckResultSet, error)
 }
@@ -176,6 +177,10 @@ func (ch *CheckBase) SetPeriod(period uint64) {
 
 func (ch *CheckBase) GetTimeout() uint64 {
 	return ch.Timeout
+}
+
+func (ch *CheckBase) GetTimeoutDuration() time.Duration {
+	return time.Duration(ch.Timeout) * time.Second
 }
 
 func (ch *CheckBase) SetTimeout(timeout uint64) {
