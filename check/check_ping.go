@@ -21,20 +21,19 @@ import (
 	"encoding/json"
 	log "github.com/Sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/metric"
+	protocol "github.com/racker/rackspace-monitoring-poller/protocol/check"
 	ping "github.com/sparrc/go-ping"
 	"time"
 )
 
 type PingCheck struct {
 	CheckBase
-	Details struct {
-		Count uint8 `json:"count"`
-	}
+	protocol.PingCheckDetails
 }
 
 func NewPingCheck(base *CheckBase) Check {
 	check := &PingCheck{CheckBase: *base}
-	err := json.Unmarshal(*base.Details, &check.Details)
+	err := json.Unmarshal(*base.RawDetails, &check.Details)
 	if err != nil {
 		log.Printf("Error unmarshalling check details")
 		return nil

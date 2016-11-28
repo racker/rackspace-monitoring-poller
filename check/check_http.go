@@ -27,6 +27,7 @@ import (
 	"encoding/json"
 	log "github.com/Sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/metric"
+	protocol "github.com/racker/rackspace-monitoring-poller/protocol/check"
 	"github.com/racker/rackspace-monitoring-poller/utils"
 	"io"
 	"io/ioutil"
@@ -41,22 +42,12 @@ var (
 
 type HTTPCheck struct {
 	CheckBase
-	Details struct {
-		AuthPassword    string              `json:"auth_password"`
-		AuthUser        string              `json:"auth_user"`
-		Body            string              `json:"body"`
-		BodyMatches     []map[string]string `json:"body_matches"`
-		FollowRedirects bool                `json:"follow_redirects"`
-		Headers         map[string]string   `json:"headers"`
-		IncludeBody     bool                `json:"include_body"`
-		Method          string              `json:"method"`
-		Url             string              `json:"url"`
-	}
+	protocol.HTTPCheckDetails
 }
 
 func NewHTTPCheck(base *CheckBase) Check {
 	check := &HTTPCheck{CheckBase: *base}
-	err := json.Unmarshal(*base.Details, &check.Details)
+	err := json.Unmarshal(*base.RawDetails, &check.Details)
 	if err != nil {
 		log.Error("Error unmarshalling checkbase")
 		return nil

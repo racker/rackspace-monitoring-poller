@@ -53,15 +53,14 @@
 package check
 
 import (
-	"encoding/json"
 	"errors"
-	"fmt"
 	log "github.com/Sirupsen/logrus"
-	"github.com/racker/rackspace-monitoring-poller/protocol"
-	"github.com/racker/rackspace-monitoring-poller/utils"
+	protocheck "github.com/racker/rackspace-monitoring-poller/protocol/check"
 	"time"
 )
 
+// Check is an interface required to be implemented by all checks.
+// Implementations of this interface should extend CheckBase, which leaves only the Run method to be implemented.
 type Check interface {
 	GetId() string
 	SetId(id string)
@@ -76,99 +75,9 @@ type Check interface {
 	Run() (*CheckResultSet, error)
 }
 
+// CheckBase provides an abstract implementation of the Check interface leaving Run to be implemented.
 type CheckBase struct {
-	Id             string            `json:"id"`
-	CheckType      string            `json:"type"`
-	Period         uint64            `json:"period"`
-	Timeout        uint64            `json:"timeout"`
-	EntityId       string            `json:"entity_id"`
-	ZoneId         string            `json:"zone_id"`
-	Details        *json.RawMessage  `json:"details"`
-	Disabled       bool              `json:"disabled"`
-	IpAddresses    map[string]string `json:"ip_addresses"`
-	TargetAlias    *string           `json:"target_alias"`
-	TargetHostname *string           `json:"target_hostname"`
-	TargetResolver *string           `json:"target_resolver"`
-}
-
-func NewCheck(rawParams json.RawMessage) Check {
-	checkBase := &CheckBase{}
-	err := json.Unmarshal(rawParams, &checkBase)
-	if err != nil {
-		log.Printf("Error unmarshalling checkbase")
-		return nil
-	}
-	switch checkBase.CheckType {
-	case "remote.tcp":
-		return NewTCPCheck(checkBase)
-	case "remote.http":
-		return NewHTTPCheck(checkBase)
-	case "remote.ping":
-		return NewPingCheck(checkBase)
-	default:
-
-		log.Printf("Invalid check type: %v", checkBase.CheckType)
-	}
-	return nil
-}
-
-func NewMetricsPostRequest(crs *CheckResultSet) *protocol.MetricsPostRequest {
-	req := &protocol.MetricsPostRequest{}
-	req.Version = "1"
-	req.Method = "check_metrics.post"
-	req.Params.EntityId = crs.Check.GetEntityId()
-	req.Params.CheckId = crs.Check.GetId()
-	req.Params.CheckType = crs.Check.GetCheckType()
-	req.Params.Metrics = []protocol.MetricWrap{ConvertToMetricResults(crs)}
-	req.Params.MinCheckPeriod = crs.Check.GetPeriod() * 1000
-	req.Params.State = crs.State
-	req.Params.Status = crs.Status
-	req.Params.Timestamp = utils.NowTimestampMillis()
-	return req
-}
-
-func ConvertToMetricResults(crs *CheckResultSet) protocol.MetricWrap {
-	wrappers := make(protocol.MetricWrap, 0)
-	wrappers = append(wrappers, nil) // needed for the current protocol
-	for i := 0; i < crs.Length(); i++ {
-		cr := crs.Get(i)
-		mapper := make(map[string]*protocol.MetricTVU)
-		for key, m := range cr.Metrics {
-			mapper[key] = &protocol.MetricTVU{
-				Type:  m.TypeString,
-				Value: fmt.Sprintf("%v", m.Value),
-				Unit:  m.Unit,
-			}
-		}
-		wrappers = append(wrappers, mapper)
-	}
-	return wrappers
-}
-
-func (ch *CheckBase) PrintDefaults() {
-	var targetAlias string
-	var targetHostname string
-	var targetResolver string
-	if ch.TargetAlias != nil {
-		targetAlias = *ch.TargetAlias
-	}
-	if ch.TargetHostname != nil {
-		targetHostname = *ch.TargetHostname
-	}
-	if ch.TargetResolver != nil {
-		targetResolver = *ch.TargetResolver
-	}
-	log.WithFields(log.Fields{
-		"type":            ch.CheckType,
-		"period":          ch.Period,
-		"timeout":         ch.Timeout,
-		"disabled":        ch.Disabled,
-		"ipaddresses":     ch.IpAddresses,
-		"target_alias":    targetAlias,
-		"target_hostname": targetHostname,
-		"target_resolver": targetResolver,
-		"details":         string(*ch.Details),
-	}).Infof("New check %v", ch.GetId())
+	protocheck.CheckIn
 }
 
 // GetTargetIP obtains the specific IP address selected for this check.
@@ -220,4 +129,30 @@ func (ch *CheckBase) SetTimeout(timeout uint64) {
 
 func (ch *CheckBase) GetWaitPeriod() time.Duration {
 	return time.Duration(ch.Period) * time.Second
+}
+
+func (ch *CheckBase) PrintDefaults() {
+	var targetAlias string
+	var targetHostname string
+	var targetResolver string
+	if ch.TargetAlias != nil {
+		targetAlias = *ch.TargetAlias
+	}
+	if ch.TargetHostname != nil {
+		targetHostname = *ch.TargetHostname
+	}
+	if ch.TargetResolver != nil {
+		targetResolver = *ch.TargetResolver
+	}
+	log.WithFields(log.Fields{
+		"type":            ch.CheckType,
+		"period":          ch.Period,
+		"timeout":         ch.Timeout,
+		"disabled":        ch.Disabled,
+		"ipaddresses":     ch.IpAddresses,
+		"target_alias":    targetAlias,
+		"target_hostname": targetHostname,
+		"target_resolver": targetResolver,
+		"details":         string(*ch.RawDetails),
+	}).Infof("New check %v", ch.GetId())
 }
