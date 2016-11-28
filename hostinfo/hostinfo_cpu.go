@@ -21,16 +21,14 @@ import (
 	//"github.com/shirou/gopsutil/cpu"
 	log "github.com/Sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/check"
+	"github.com/racker/rackspace-monitoring-poller/protocol/hostinfo"
 )
 
 type HostInfoCpu struct {
-	HostInfoBase
+	hostinfo.HostInfoBase
 }
 
-type HostInfoCpuResult struct {
-}
-
-func NewHostInfoCpu(base *HostInfoBase) HostInfo {
+func NewHostInfoCpu(base *hostinfo.HostInfoBase) HostInfo {
 	return &HostInfoCpu{HostInfoBase: *base}
 }
 

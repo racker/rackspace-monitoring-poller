@@ -23,13 +23,14 @@ import (
 	"github.com/racker/rackspace-monitoring-poller/hostinfo"
 	"github.com/racker/rackspace-monitoring-poller/metric"
 	"github.com/racker/rackspace-monitoring-poller/protocol"
+	hostinfo_proto "github.com/racker/rackspace-monitoring-poller/protocol/hostinfo"
 	"github.com/racker/rackspace-monitoring-poller/utils"
 	"log"
 	"testing"
 )
 
 func TestHostInfoMemory_PopulateResult(t *testing.T) {
-	hinfo := &hostinfo.HostInfoBase{Type: "MEMORY"}
+	hinfo := &hostinfo_proto.HostInfoBase{Type: "MEMORY"}
 	hostInfoMemory := hostinfo.NewHostInfoMemory(hinfo)
 
 	cr := check.NewCheckResult()
