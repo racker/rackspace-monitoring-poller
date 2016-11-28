@@ -154,10 +154,8 @@ func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
 		"id":   ch.Id,
 	}).Info("Running HTTP Check")
 
-	ctx, cancel := context.WithCancel(context.Background())
-	timer := time.AfterFunc(time.Duration(ch.Timeout)*time.Millisecond, func() {
-		cancel()
-	})
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(ch.Timeout)*time.Millisecond)
+	defer cancel()
 
 	cr := NewCheckResult()
 	crs := NewCheckResultSet(ch, cr)
@@ -201,10 +199,6 @@ func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
 		return crs, nil
 	}
 	endtime := utils.NowTimestampMillis()
-
-	if !timer.Stop() {
-		<-timer.C
-	}
 
 	cr.AddMetric(metric.NewMetric("code", "", metric.MetricNumber, resp.StatusCode, ""))
 	cr.AddMetric(metric.NewMetric("duration", "", metric.MetricNumber, endtime-starttime, "milliseconds"))
