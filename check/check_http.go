@@ -18,6 +18,7 @@
 package check
 
 import (
+	"context"
 	"crypto/dsa"
 	"crypto/ecdsa"
 	"crypto/rsa"
@@ -29,7 +30,6 @@ import (
 	"github.com/racker/rackspace-monitoring-poller/utils"
 	"io"
 	"io/ioutil"
-	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -154,18 +154,13 @@ func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
 		"id":   ch.Id,
 	}).Info("Running HTTP Check")
 
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(ch.Timeout)*time.Millisecond)
+	defer cancel()
+
 	cr := NewCheckResult()
 	crs := NewCheckResultSet(ch, cr)
 	starttime := utils.NowTimestampMillis()
-	timeout := time.Duration(ch.Timeout) * time.Millisecond
-	netTransport := &http.Transport{
-		Dial:                (&net.Dialer{Timeout: timeout}).Dial,
-		TLSHandshakeTimeout: timeout,
-	}
-	netClient := &http.Client{
-		Timeout:   timeout,
-		Transport: netTransport,
-	}
+	netClient := &http.Client{}
 
 	// Setup Redirects
 	if !ch.Details.FollowRedirects {
@@ -180,6 +175,7 @@ func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
 	if err != nil {
 		return nil, err
 	}
+	req = req.WithContext(ctx)
 
 	// Add Headers
 	for key, value := range ch.Details.Headers {
