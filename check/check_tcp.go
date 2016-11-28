@@ -170,7 +170,7 @@ func (ch *TCPCheck) Run() (*CheckResultSet, error) {
 	}).Info("Running TCP Check")
 
 	ctx := context.Background()
-	timeout := time.Duration(ch.GetTimeout()) * time.Second
+	timeout := ch.GetTimeoutDuration()
 	nd := &net.Dialer{
 		Timeout: timeout,
 	}

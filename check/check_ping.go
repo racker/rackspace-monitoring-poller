@@ -59,7 +59,7 @@ func (ch *PingCheck) Run() (*CheckResultSet, error) {
 	}
 
 	pinger.Count = int(ch.Details.Count)
-	pinger.Timeout = time.Duration(ch.Timeout) * time.Second
+	pinger.Timeout = ch.GetTimeoutDuration()
 
 	pinger.OnRecv = func(pkt *ping.Packet) {
 		log.WithFields(log.Fields{
