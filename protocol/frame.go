@@ -14,8 +14,7 @@
 // limitations under the License.
 //
 
-// Frame Type
-package types
+package protocol
 
 import (
 	"encoding/json"
@@ -32,7 +31,7 @@ type Frame interface {
 	GetVersion() string
 	SetVersion(string)
 	GetId() uint64
-	SetId(session *Session)
+	SetId(msgSeqId *uint64)
 	SetRawId(uint64)
 	GetTarget() string
 	SetTarget(string)
@@ -147,10 +146,10 @@ func (f *FrameMsg) GetRawResult() *json.RawMessage {
 	return f.RawResult
 }
 
-func (f *FrameMsgCommon) SetId(s *Session) {
+func (f *FrameMsgCommon) SetId(msgSeqId *uint64) {
 get_id:
-	f.Id = atomic.LoadUint64(&s.seq)
-	if !atomic.CompareAndSwapUint64(&s.seq, f.Id, f.Id+1) {
+	f.Id = atomic.LoadUint64(msgSeqId)
+	if !atomic.CompareAndSwapUint64(msgSeqId, f.Id, f.Id+1) {
 		goto get_id
 	}
 }

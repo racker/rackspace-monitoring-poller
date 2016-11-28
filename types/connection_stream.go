@@ -22,13 +22,14 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/check"
+	"github.com/racker/rackspace-monitoring-poller/config"
 	"net"
 	"sync"
 	"time"
 )
 
 type ConnectionStream struct {
-	config *Config
+	config *config.Config
 
 	connsMu sync.Mutex
 	conns   map[string]*Connection
@@ -37,7 +38,7 @@ type ConnectionStream struct {
 	scheduler *Scheduler
 }
 
-func NewConnectionStream(config *Config) *ConnectionStream {
+func NewConnectionStream(config *config.Config) *ConnectionStream {
 	stream := &ConnectionStream{config: config}
 	stream.conns = make(map[string]*Connection)
 	stream.scheduler = NewScheduler("pzA", stream)
@@ -45,7 +46,7 @@ func NewConnectionStream(config *Config) *ConnectionStream {
 	return stream
 }
 
-func (cs *ConnectionStream) GetConfig() *Config {
+func (cs *ConnectionStream) GetConfig() *config.Config {
 	return cs.config
 }
 
@@ -62,7 +63,7 @@ func (cs *ConnectionStream) GetScheduler() *Scheduler {
 func (cs *ConnectionStream) SendMetrics(crs *check.CheckResultSet) {
 	for _, conn := range cs.conns {
 		// TODO make this better
-		conn.session.Send(NewMetricsPostRequest(crs))
+		conn.session.Send(check.NewMetricsPostRequest(crs))
 		break
 	}
 }

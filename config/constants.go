@@ -15,7 +15,7 @@
 //
 
 // Constants
-package types
+package config
 
 var (
 	DefaultProdSrvEndpoints = []string{

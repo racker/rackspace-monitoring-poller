@@ -55,7 +55,7 @@ type Session struct {
 	completionsMu sync.Mutex
 	completions   map[uint64]*CompletionFrame
 
-	sendCh chan Frame
+	sendCh chan protocol.Frame
 
 	heartbeatInterval time.Duration
 }
@@ -66,7 +66,7 @@ func newSession(ctx context.Context, connection *Connection) *Session {
 		enc:               json.NewEncoder(connection.conn),
 		dec:               json.NewDecoder(connection.conn),
 		seq:               1,
-		sendCh:            make(chan Frame, 128),
+		sendCh:            make(chan protocol.Frame, 128),
 		heartbeatInterval: time.Duration(40 * time.Second),
 		completions:       make(map[uint64]*CompletionFrame),
 	}
@@ -82,11 +82,11 @@ func newSession(ctx context.Context, connection *Connection) *Session {
 
 func (s *Session) Auth() {
 	cfg := s.connection.GetStream().GetConfig()
-	s.Send(NewHandshakeRequest(cfg))
+	s.Send(protocol.NewHandshakeRequest(cfg))
 }
 
-func (s *Session) Send(msg Frame) {
-	msg.SetId(s)
+func (s *Session) Send(msg protocol.Frame) {
+	msg.SetId(&s.seq)
 	msg.SetTarget("endpoint")
 	msg.SetSource(s.connection.guid)
 	s.sendCh <- msg
@@ -98,7 +98,7 @@ func (s *Session) SetHeartbeatInterval(timeout uint64) {
 	s.heartbeatInterval = time.Duration(duration)
 }
 
-func (s *Session) getCompletionRequest(resp Frame) *CompletionFrame {
+func (s *Session) getCompletionRequest(resp protocol.Frame) *CompletionFrame {
 	s.completionsMu.Lock()
 	req, ok := s.completions[resp.GetId()]
 	if !ok {
@@ -110,13 +110,13 @@ func (s *Session) getCompletionRequest(resp Frame) *CompletionFrame {
 	return req
 }
 
-func (s *Session) handleResponse(resp *FrameMsg) {
+func (s *Session) handleResponse(resp *protocol.FrameMsg) {
 	if req := s.getCompletionRequest(resp); req != nil {
 		switch req.Method {
 		case protocol.MethodHandshakeHello:
-			resp := NewHandshakeResponse(resp)
+			resp := protocol.NewHandshakeResponse(resp)
 			s.SetHeartbeatInterval(resp.Result.HandshakeInterval)
-			s.Send(NewPollerRegister([]string{"pzA"}))
+			s.Send(protocol.NewPollerRegister([]string{"pzA"}))
 		case protocol.MethodCheckScheduleGet:
 		case protocol.MethodPollerRegister:
 		case protocol.MethodHeartbeatPost:
@@ -142,7 +142,7 @@ func (s *Session) read(ctx context.Context) {
 		case <-ctx.Done():
 			goto done
 		default:
-			f := new(FrameMsg)
+			f := new(protocol.FrameMsg)
 			s.connection.SetReadDeadline(s.GetReadDeadline())
 			if err := s.dec.Decode(f); err == io.EOF {
 				goto done
@@ -159,7 +159,7 @@ done:
 }
 
 // runs it it's own go routine
-func (s *Session) handleFrame(f *FrameMsg) {
+func (s *Session) handleFrame(f *protocol.FrameMsg) {
 	js, _ := f.Encode()
 	log.Debugf("RECV: %s", js)
 	switch f.GetMethod() {
@@ -175,13 +175,13 @@ func (s *Session) handleFrame(f *FrameMsg) {
 	}
 }
 
-func (s *Session) handleHostInfo(f *FrameMsg) {
+func (s *Session) handleHostInfo(f *protocol.FrameMsg) {
 	if hinfo := hostinfo.NewHostInfo(*f.GetRawParams()); hinfo != nil {
-		go func(s *Session, hinfo hostinfo.HostInfo, f *FrameMsg) {
+		go func(s *Session, hinfo hostinfo.HostInfo, f *protocol.FrameMsg) {
 			cr, err := hinfo.Run()
 			if err != nil {
 			} else {
-				response := NewHostInfoResponse(cr, f, hinfo)
+				response := hostinfo.NewHostInfoResponse(cr, f, hinfo)
 				s.Send(response)
 			}
 		}(s, hinfo, f)
@@ -196,14 +196,14 @@ func (s *Session) heartbeat(ctx context.Context) {
 		case <-ctx.Done():
 			goto done
 		case <-time.After(s.heartbeatInterval):
-			s.Send(NewHeartbeat())
+			s.Send(protocol.NewHeartbeat())
 		}
 	}
 done:
 	log.Debug("heartbeat exiting")
 }
 
-func (s *Session) addCompletion(frame Frame) {
+func (s *Session) addCompletion(frame protocol.Frame) {
 	cFrame := &CompletionFrame{Id: frame.GetId(), Method: frame.GetMethod()}
 	s.completionsMu.Lock()
 	defer s.completionsMu.Unlock()

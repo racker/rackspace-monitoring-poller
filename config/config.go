@@ -15,7 +15,7 @@
 //
 
 // Config
-package types
+package config
 
 import (
 	"bufio"

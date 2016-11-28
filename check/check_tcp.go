@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	log "github.com/Sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/metric"
+	protocol "github.com/racker/rackspace-monitoring-poller/protocol/check"
 	"github.com/racker/rackspace-monitoring-poller/utils"
 	"io"
 	"net"
@@ -39,18 +40,12 @@ const (
 
 type TCPCheck struct {
 	CheckBase
-	Details struct {
-		BannerMatch string `json:"banner_match"`
-		BodyMatch   string `json:"body_match"`
-		Port        uint64 `json:"port"`
-		SendBody    string `json:"send_body"`
-		UseSSL      bool   `json:"ssl"`
-	}
+	protocol.TCPCheckDetails
 }
 
 func NewTCPCheck(base *CheckBase) Check {
 	check := &TCPCheck{CheckBase: *base}
-	err := json.Unmarshal(*base.Details, &check.Details)
+	err := json.Unmarshal(*base.RawDetails, &check.Details)
 	if err != nil {
 		log.Error("Error unmarshalling TCPCheck")
 		return nil

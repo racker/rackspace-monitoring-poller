@@ -14,14 +14,11 @@
 // limitations under the License.
 //
 
-// Messages
-package types
+package protocol
 
 import (
 	"encoding/json"
-	"fmt"
-	"github.com/racker/rackspace-monitoring-poller/check"
-	"github.com/racker/rackspace-monitoring-poller/hostinfo"
+	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/utils"
 )
 
@@ -42,7 +39,7 @@ type HandshakeRequest struct {
 	Params HandshakeParameters `json:"params"`
 }
 
-func NewHandshakeRequest(cfg *Config) Frame {
+func NewHandshakeRequest(cfg *config.Config) Frame {
 	f := &HandshakeRequest{}
 	f.Version = "1"
 	f.Method = "handshake.hello"
@@ -152,14 +149,6 @@ type HostInfoResponse struct {
 	Result interface{} `json:"result"`
 }
 
-func NewHostInfoResponse(cr *check.CheckResult, f *FrameMsg, hinfo hostinfo.HostInfo) *HostInfoResponse {
-	resp := &HostInfoResponse{}
-	resp.Result = hinfo.BuildResult(cr)
-	resp.SetResponseFrameMsg(f)
-
-	return resp
-}
-
 func (r *HostInfoResponse) Encode() ([]byte, error) {
 	return json.Marshal(r)
 }
@@ -169,24 +158,6 @@ func (r *HostInfoResponse) Encode() ([]byte, error) {
 
 type MetricWrap []map[string]*MetricTVU
 type MetricWrapper []MetricWrap
-
-func ConvertToMetricResults(crs *check.CheckResultSet) MetricWrap {
-	wrappers := make(MetricWrap, 0)
-	wrappers = append(wrappers, nil) // needed for the current protocol
-	for i := 0; i < crs.Length(); i++ {
-		cr := crs.Get(i)
-		mapper := make(map[string]*MetricTVU)
-		for key, m := range cr.Metrics {
-			mapper[key] = &MetricTVU{
-				Type:  m.TypeString,
-				Value: fmt.Sprintf("%v", m.Value),
-				Unit:  m.Unit,
-			}
-		}
-		wrappers = append(wrappers, mapper)
-	}
-	return wrappers
-}
 
 type MetricTVU struct {
 	Type  string `json:"t"`
@@ -208,21 +179,6 @@ type MetricsPostRequestParams struct {
 type MetricsPostRequest struct {
 	FrameMsg
 	Params MetricsPostRequestParams `json:"params"`
-}
-
-func NewMetricsPostRequest(crs *check.CheckResultSet) *MetricsPostRequest {
-	req := &MetricsPostRequest{}
-	req.Version = "1"
-	req.Method = "check_metrics.post"
-	req.Params.EntityId = crs.Check.GetEntityId()
-	req.Params.CheckId = crs.Check.GetId()
-	req.Params.CheckType = crs.Check.GetCheckType()
-	req.Params.Metrics = []MetricWrap{ConvertToMetricResults(crs)}
-	req.Params.MinCheckPeriod = crs.Check.GetPeriod() * 1000
-	req.Params.State = crs.State
-	req.Params.Status = crs.Status
-	req.Params.Timestamp = utils.NowTimestampMillis()
-	return req
 }
 
 func (r MetricsPostRequest) Encode() ([]byte, error) {
