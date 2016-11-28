@@ -87,7 +87,7 @@ func (ch *TCPCheck) readLimit(conn io.Reader, limit int64) ([]byte, error) {
 	return bytes[:count], nil
 }
 
-func dialContextWithDialerTLS(ctx context.Context, dialer *net.Dialer, network, addr string, config *tls.Config) (*tls.Conn, error) {
+func calculateTimeout(dialer *net.Dialer) time.Duration {
 	timeout := dialer.Timeout
 
 	if !dialer.Deadline.IsZero() {
@@ -97,9 +97,13 @@ func dialContextWithDialerTLS(ctx context.Context, dialer *net.Dialer, network, 
 		}
 	}
 
+	return timeout
+}
+
+func dialContextWithDialer(ctx context.Context, dialer *net.Dialer, network, addr string, config *tls.Config) (net.Conn, error) {
+	timeout := calculateTimeout(dialer)
 	if timeout != 0 {
 		var cancel context.CancelFunc
-
 		ctx, cancel = context.WithTimeout(ctx, timeout)
 		defer cancel()
 	}
@@ -107,6 +111,10 @@ func dialContextWithDialerTLS(ctx context.Context, dialer *net.Dialer, network, 
 	rawConn, err := dialer.DialContext(ctx, network, addr)
 	if err != nil {
 		return nil, err
+	}
+	// tls disabled
+	if config == nil {
+		return rawConn, nil
 	}
 
 	conn := tls.Client(rawConn, config)
@@ -129,26 +137,6 @@ func dialContextWithDialerTLS(ctx context.Context, dialer *net.Dialer, network, 
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
-}
-
-func dialContextWithDialer(ctx context.Context, dialer *net.Dialer, network, addr string) (net.Conn, error) {
-	timeout := dialer.Timeout
-
-	if !dialer.Deadline.IsZero() {
-		deadlineTimeout := dialer.Deadline.Sub(time.Now())
-		if timeout == 0 || deadlineTimeout < timeout {
-			timeout = deadlineTimeout
-		}
-	}
-
-	if timeout != 0 {
-		var cancel context.CancelFunc
-
-		ctx, cancel = context.WithTimeout(ctx, timeout)
-		defer cancel()
-	}
-
-	return dialer.DialContext(ctx, network, addr)
 }
 
 func (ch *TCPCheck) Run() (*CheckResultSet, error) {
@@ -178,9 +166,9 @@ func (ch *TCPCheck) Run() (*CheckResultSet, error) {
 	// Connection
 	if ch.Details.UseSSL {
 		TLSconfig := &tls.Config{}
-		conn, err = dialContextWithDialerTLS(ctx, nd, "tcp", addr, TLSconfig)
+		conn, err = dialContextWithDialer(ctx, nd, "tcp", addr, TLSconfig)
 	} else {
-		conn, err = dialContextWithDialer(ctx, nd, "tcp", addr)
+		conn, err = dialContextWithDialer(ctx, nd, "tcp", addr, nil)
 	}
 	if err != nil {
 		crs.SetStatus(err.Error())
