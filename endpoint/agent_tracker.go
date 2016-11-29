@@ -25,10 +25,14 @@ import (
 	"encoding/json"
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"sync/atomic"
+	"path"
+	"os"
+	"strings"
+	"io/ioutil"
 )
 
 type agent struct {
-	responder      json.Encoder
+	responder      *json.Encoder
 	outMsgId       uint64
 	sourceId       string
 	errors         chan <- error
@@ -50,26 +54,48 @@ type registration struct {
 	zones    []string
 }
 
+type metricsToStore struct {
+	agent  *agent
+	params protocol.MetricsPostRequestParams
+}
+
 type AgentTracker struct {
 	cfg           config.EndpointConfig
-	// key is FrameMsgCommon.Source
+	// key is FrameMsgCommon.Source. All access to this map must be performed in the AgentTracker.start go routine
 	agents        map[string]*agent
 
 	greeter       chan *agent
-	registrations chan *registration
+	registrations chan registration
+	metricReqs    chan *protocol.MetricsPostRequest
+	metrics chan *metricsToStore
+
+	metricsRouter *MetricsRouter
 }
 
-type AgentTrackingError struct {
-	Message  string
-	SourceId string
+func (at *AgentTracker) Start(cfg config.EndpointConfig) {
+	at.cfg = cfg;
+
+	// channels
+	at.greeter = make(chan *agent, 10)
+	at.registrations = make(chan registration, 10)
+	at.metricReqs = make(chan *protocol.MetricsPostRequest, 50)
+	at.metrics = make(chan *metricsToStore, 50)
+
+	// LUTs
+	at.agents = make(map[string]*agent)
+
+	go at.start()
+	go at.startMetricsDecomposer()
 }
 
-func (e *AgentTrackingError) Error() string {
-	return fmt.Sprintf("An error occurred while tracking an agent %s: %s", e.SourceId, e.Message)
+func (at *AgentTracker) UseMetricsRouter(mr *MetricsRouter) {
+	at.metricsRouter = mr
 }
 
 // Returns a channel where errors observed about this agent are conveyed
-func (at *AgentTracker) ProcessHello(req protocol.HandshakeRequest) <-chan error {
+func (at *AgentTracker) ProcessHello(req *protocol.HandshakeRequest, responder *json.Encoder) <-chan error {
+	errors := make(chan error)
+
 	newAgent := &agent{
 		sourceId: req.Source,
 		observedToken: req.Params.Token,
@@ -78,15 +104,16 @@ func (at *AgentTracker) ProcessHello(req protocol.HandshakeRequest) <-chan error
 		processVersion: req.Params.ProcessVersion,
 		bundleVersion: req.Params.BundleVersion,
 		features: req.Params.Features,
+		errors: errors,
+		responder: responder,
 	}
 
-	at.greeter = make(chan *agent)
 	at.greeter <- newAgent
 
-	return newAgent.errors
+	return errors
 }
 
-func (at *AgentTracker) ProcessPollerRegister(req protocol.PollerRegister) {
+func (at *AgentTracker) ProcessPollerRegister(req *protocol.PollerRegister) {
 	reg := registration{
 		sourceId: req.Source,
 		zones: req.Params[protocol.PollerZones],
@@ -95,9 +122,8 @@ func (at *AgentTracker) ProcessPollerRegister(req protocol.PollerRegister) {
 	at.registrations <- reg
 }
 
-func (at *AgentTracker) Start(cfg config.EndpointConfig) {
-	at.cfg = cfg;
-	go at.start()
+func (at *AgentTracker) ProcessCheckMetricsPost(req *protocol.MetricsPostRequest) {
+	at.metricReqs <- req
 }
 
 func (at *AgentTracker) start() {
@@ -110,11 +136,69 @@ func (at *AgentTracker) start() {
 
 		case reg := <-at.registrations:
 			at.handlePollerRegistration(reg)
+
+		case req := <-at.metricReqs:
+			at.handleMetricsPostReq(req)
 		}
 	}
 }
 
-func (at *AgentTracker) handlePollerRegistration(reg *registration) {
+func (at *AgentTracker) startMetricsDecomposer() {
+	log.Infoln("Starting metrics decomposer")
+
+	for {
+		metric := <-at.metrics
+		log.WithFields(log.Fields{
+			"agentId": metric.agent.id,
+			"params": metric.params,
+		}).Info("Decomposing metric")
+
+		//TODO do something with failed metrics that only contain state and status
+
+		for _, outerWraps := range metric.params.Metrics {
+
+			for _, metricWrap := range outerWraps {
+				for field, entry := range metricWrap {
+					metricName := BuildMetricName(metric.params.EntityId,
+						metric.agent.id,
+						metric.params.CheckType,
+						metric.params.CheckId,
+						field,
+					)
+
+					m := Metric{
+						Name: metricName,
+						Value: entry.Value,
+						MetricType: entry.Type,
+					}
+
+					at.metricsRouter.Route(m)
+				}
+
+			}
+
+		}
+
+	}
+}
+
+func (at *AgentTracker) handleMetricsPostReq(req *protocol.MetricsPostRequest) {
+	a, ok := at.agents[req.Source]
+	if !ok {
+		log.WithField("sourceId", req.Source).Warn("Trying to handle metrics from unknown source")
+		return
+	}
+
+	metric := &metricsToStore{
+		agent: a,
+		params: req.Params,
+	}
+
+	at.metrics <- metric
+}
+
+func (at *AgentTracker) handlePollerRegistration(reg registration) {
+	log.Debugln("Handling poller registration", registration{})
 	a, ok := at.agents[reg.sourceId]
 	if !ok {
 		log.WithField("sourceId", reg.sourceId).Warn("Trying to register poller for unknown source")
@@ -127,11 +211,40 @@ func (at *AgentTracker) handlePollerRegistration(reg *registration) {
 }
 
 func (at *AgentTracker) lookupChecks(a *agent) {
+	log.WithField("agent", a).Debug("Looking up checks to apply to agent")
 
+	pathToChecks := path.Join(at.cfg.AgentsConfigDir, a.zones[0], a.id, "checks")
+
+	checksDir, err := os.Open(pathToChecks)
+	if err != nil {
+		log.WithField("pathToChecks", pathToChecks).Warn("Unable to access agent checks directory")
+		return
+	}
+
+	contents, err := checksDir.Readdir(0)
+	if err != nil {
+		log.WithField("pathToChecks", pathToChecks).Warn("Unable to read agent checks directory")
+		return
+	}
+
+	for _, fileInfo := range contents {
+		if !fileInfo.IsDir() && strings.HasSuffix(fileInfo.Name(), ".json") {
+			jsonContent, err := ioutil.ReadFile(path.Join(pathToChecks, fileInfo.Name()))
+			if err != nil {
+				log.WithFields(log.Fields{
+					"checksDir": checksDir,
+					"file": fileInfo,
+				}).Warn("Unable to read checks file")
+				continue
+			}
+
+			go a.sendTo(protocol.MethodPollerChecksAdd, jsonContent)
+		}
+	}
 }
 
 func (at *AgentTracker) handleGreetedAgent(greetedAgent *agent) {
-	log.WithField("agent", greetedAgent).Debug("RX greeted agent")
+	log.WithField("agent", greetedAgent).Debug("Handling greeted agent")
 
 	sourceId := greetedAgent.sourceId
 	if _, exists := at.agents[sourceId]; exists {
@@ -149,15 +262,50 @@ func (at *AgentTracker) handleGreetedAgent(greetedAgent *agent) {
 }
 
 func (a *agent) sendTo(method string, params interface{}) {
-	a.outMsgId++
+	msgId := atomic.AddUint64(&a.outMsgId, 1)
+
+	var rawParams json.RawMessage
+
+	switch params.(type) {
+	case []byte:
+		// already marshalled
+		rawParams = params.([]byte)
+
+	default:
+		// needs marshalling
+		var err error
+		rawParams, err = json.Marshal(params)
+		if err != nil {
+			log.WithField("params", params).Warn("Unable to marshal params")
+			return
+		}
+	}
+
 	frameOut := protocol.FrameMsg{
 		FrameMsgCommon: protocol.FrameMsgCommon{
 			Version: "1",
-			Id: a.outMsgId,
+			Id: msgId,
+			Source: "endpoint",
+			Target: "endpoint",
 			Method: method,
 		},
-		RawParams: json.Marshal(params),
+		RawParams: rawParams,
 	}
 
-	a.responder.Encode(frameOut)
+	log.WithFields(log.Fields{
+		"msgId": frameOut.Id,
+		"method": frameOut.Method,
+		"agentId": a.id,
+	}).Debug("SENDing frame to agent")
+
+	a.responder.Encode(&frameOut)
+}
+
+type AgentTrackingError struct {
+	Message  string
+	SourceId string
+}
+
+func (e AgentTrackingError) Error() string {
+	return fmt.Sprintf("An error occurred while tracking an agent %s: %s", e.SourceId, e.Message)
 }

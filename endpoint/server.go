@@ -25,11 +25,13 @@ import (
 type EndpointServer interface {
 	ApplyConfig(cfg *config.EndpointConfig) error
 
+	UseMetricsRouter(mr *MetricsRouter)
+
 	ListenAndServe() error
 }
 
 
-func LoadCertificateFromConfig(cfg config.EndpointConfig) (*tls.Certificate, error) {
+func LoadCertificateFromConfig(cfg *config.EndpointConfig) (*tls.Certificate, error) {
 	if cfg.CertFile == "" {
 		return nil, config.BadConfig{Details: "Missing CertFile"}
 	}

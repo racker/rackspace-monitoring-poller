@@ -46,5 +46,7 @@ func NewEndpointServer(configFilePath string) (EndpointServer, error) {
 		return nil, err
 	}
 
+	server.UseMetricsRouter(NewMetricsRouter(config))
+
 	return server, nil
 }

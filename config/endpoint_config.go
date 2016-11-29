@@ -23,5 +23,13 @@ type EndpointConfig struct {
 	// In the form of "IP:port" or just ":port" to bind to all interfaces
 	BindAddr string
 
+	// StatsDAddr specifies the UDP host:port of a StatsD backend
+	StatsDAddr string
+
+	// AgentsConfigDir references a directory that is structured as
+	//   <ZONE>/
+	//     <AGENT ID>/
+	//       checks/
+	//         *.json
 	AgentsConfigDir string
 }
