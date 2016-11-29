@@ -71,7 +71,7 @@ func NewHandshakeResponse(frame *FrameMsg) *HandshakeResponse {
 	resp := &HandshakeResponse{}
 	resp.SetFromFrameMsg(frame)
 	if frame.GetRawResult() != nil {
-		json.Unmarshal(*frame.GetRawResult(), &resp.Result)
+		json.Unmarshal(frame.GetRawResult(), &resp.Result)
 	}
 	return resp
 }

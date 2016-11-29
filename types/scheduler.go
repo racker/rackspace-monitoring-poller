@@ -90,7 +90,7 @@ func (s *Scheduler) run() {
 	for {
 		select {
 		case f := <-s.input:
-			ch := check.NewCheck(*f.GetRawParams())
+			ch := check.NewCheck(f.GetRawParams())
 			if ch == nil {
 				log.Printf("Invalid Check")
 				continue
