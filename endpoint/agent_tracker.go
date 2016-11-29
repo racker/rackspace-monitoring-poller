@@ -76,6 +76,7 @@ func (at *AgentTracker) Start(cfg config.EndpointConfig) {
 	at.cfg = cfg;
 
 	// channels
+	//TODO make channel buffer sizes configurable
 	at.greeter = make(chan *agent, 10)
 	at.registrations = make(chan registration, 10)
 	at.metricReqs = make(chan *protocol.MetricsPostRequest, 50)
@@ -213,6 +214,7 @@ func (at *AgentTracker) handlePollerRegistration(reg registration) {
 func (at *AgentTracker) lookupChecks(a *agent) {
 	log.WithField("agent", a).Debug("Looking up checks to apply to agent")
 
+	//TODO iterate through zones in poller registration
 	pathToChecks := path.Join(at.cfg.AgentsConfigDir, a.zones[0], a.id, "checks")
 
 	checksDir, err := os.Open(pathToChecks)
@@ -220,6 +222,7 @@ func (at *AgentTracker) lookupChecks(a *agent) {
 		log.WithField("pathToChecks", pathToChecks).Warn("Unable to access agent checks directory")
 		return
 	}
+	defer checksDir.Close()
 
 	contents, err := checksDir.Readdir(0)
 	if err != nil {
@@ -227,6 +230,8 @@ func (at *AgentTracker) lookupChecks(a *agent) {
 		return
 	}
 
+	// Look for all .json files in the checks directory...and assume they are valid check details
+	//TODO validate check details
 	for _, fileInfo := range contents {
 		if !fileInfo.IsDir() && strings.HasSuffix(fileInfo.Name(), ".json") {
 			jsonContent, err := ioutil.ReadFile(path.Join(pathToChecks, fileInfo.Name()))
