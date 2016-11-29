@@ -176,7 +176,7 @@ func (s *Session) handleFrame(f *protocol.FrameMsg) {
 }
 
 func (s *Session) handleHostInfo(f *protocol.FrameMsg) {
-	if hinfo := hostinfo.NewHostInfo(*f.GetRawParams()); hinfo != nil {
+	if hinfo := hostinfo.NewHostInfo(f.GetRawParams()); hinfo != nil {
 		go func(s *Session, hinfo hostinfo.HostInfo, f *protocol.FrameMsg) {
 			cr, err := hinfo.Run()
 			if err != nil {
@@ -256,6 +256,7 @@ func (s *Session) exitError(err error) {
 func (s *Session) Close() {
 	s.shutdownLock.Lock()
 	if s.shutdown {
+		s.shutdownLock.Unlock()
 		return
 	}
 	s.shutdown = true

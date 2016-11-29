@@ -56,8 +56,8 @@ func NewConfig(guid string) *Config {
 	cfg.Token = os.Getenv("AGENT_TOKEN")
 	cfg.AgentId = os.Getenv("AGENT_ID")
 	cfg.AgentName = "remote_poller"
-	cfg.ProcessVersion = "0.0.1"
-	cfg.BundleVersion = "0.0.1"
+	cfg.ProcessVersion = "0.0.1" //TODO
+	cfg.BundleVersion = "0.0.1"  //TODO
 	cfg.TimeoutRead = time.Duration(10 * time.Second)
 	cfg.TimeoutWrite = time.Duration(10 * time.Second)
 	cfg.SrvQueries = DefaultProdSrvEndpoints

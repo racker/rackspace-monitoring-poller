@@ -39,8 +39,8 @@ type Frame interface {
 	SetSource(string)
 	GetMethod() string
 	SetMethod(string)
-	GetRawParams() *json.RawMessage
-	GetRawResult() *json.RawMessage
+	GetRawParams() json.RawMessage
+	GetRawResult() json.RawMessage
 	GetError() *Error
 	SetFromFrameMsg(*FrameMsg)
 }
@@ -57,8 +57,8 @@ type FrameMsgCommon struct {
 
 type FrameMsg struct {
 	FrameMsgCommon
-	RawParams *json.RawMessage `json:"params,omitempty"`
-	RawResult *json.RawMessage `json:"result,omitempty"`
+	RawParams json.RawMessage `json:"params,omitempty"`
+	RawResult json.RawMessage `json:"result,omitempty"`
 }
 
 func (f *FrameMsgCommon) SetRawId(id uint64) {
@@ -91,6 +91,10 @@ func (f *FrameMsg) SetFromFrameMsg(source *FrameMsg) {
 }
 
 func (r *FrameMsgCommon) Encode() ([]byte, error) {
+	return json.Marshal(r)
+}
+
+func (r *FrameMsg) Encode() ([]byte, error) {
 	return json.Marshal(r)
 }
 
@@ -130,19 +134,19 @@ func (f *FrameMsgCommon) SetVersion(version string) {
 	f.Version = version
 }
 
-func (f *FrameMsgCommon) GetRawParams() *json.RawMessage {
+func (f *FrameMsgCommon) GetRawParams() json.RawMessage {
 	return nil
 }
 
-func (f *FrameMsg) GetRawParams() *json.RawMessage {
+func (f *FrameMsg) GetRawParams() json.RawMessage {
 	return f.RawParams
 }
 
-func (f *FrameMsgCommon) GetRawResult() *json.RawMessage {
+func (f *FrameMsgCommon) GetRawResult() json.RawMessage {
 	return nil
 }
 
-func (f *FrameMsg) GetRawResult() *json.RawMessage {
+func (f *FrameMsg) GetRawResult() json.RawMessage {
 	return f.RawResult
 }
 
