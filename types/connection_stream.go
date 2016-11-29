@@ -29,6 +29,9 @@ import (
 )
 
 type ConnectionStream struct {
+	ctx context.Context
+
+	stopCh chan struct{}
 	config *config.Config
 
 	connsMu sync.Mutex
@@ -38,9 +41,15 @@ type ConnectionStream struct {
 	scheduler *Scheduler
 }
 
+var (
+	ReconnectTimeout = 25 * time.Second
+)
+
 func NewConnectionStream(config *config.Config) *ConnectionStream {
 	stream := &ConnectionStream{config: config}
+	stream.ctx = context.Background()
 	stream.conns = make(map[string]*Connection)
+	stream.stopCh = make(chan struct{}, 1)
 	stream.scheduler = NewScheduler("pzA", stream)
 	go stream.scheduler.run()
 	return stream
@@ -54,6 +63,17 @@ func (cs *ConnectionStream) RegisterConnection(qry string, conn *Connection) {
 	cs.connsMu.Lock()
 	defer cs.connsMu.Unlock()
 	cs.conns[qry] = conn
+}
+
+func (cs *ConnectionStream) Stop() {
+	for _, conn := range cs.conns {
+		conn.Close()
+	}
+	cs.stopCh <- struct{}{}
+}
+
+func (cs *ConnectionStream) StopNotify() chan struct{} {
+	return cs.stopCh
 }
 
 func (cs *ConnectionStream) GetScheduler() *Scheduler {
@@ -89,7 +109,7 @@ func (cs *ConnectionStream) Wait() {
 func (cs *ConnectionStream) connectBySrv(qry string) {
 	_, addrs, err := net.LookupSRV("", "", qry)
 	if err != nil {
-		log.Errorf("SRV Lookup Failure", err)
+		log.Errorf("SRV Lookup Failure : %v", err)
 		return
 	}
 	if len(addrs) == 0 {
@@ -102,10 +122,9 @@ func (cs *ConnectionStream) connectBySrv(qry string) {
 
 func (cs *ConnectionStream) connectByHost(addr string) {
 	defer cs.wg.Done()
-	reconnectTimeout := time.Duration(25 * time.Second)
 	for {
 		conn := NewConnection(addr, cs.GetConfig().Guid, cs)
-		err := conn.Connect(context.Background())
+		err := conn.Connect(cs.ctx)
 		if err != nil {
 			goto error
 		}
@@ -115,7 +134,15 @@ func (cs *ConnectionStream) connectByHost(addr string) {
 	error:
 		log.Errorf("Error: %v", err)
 	new_connection:
-		log.Infof("  connection sleeping %v", reconnectTimeout)
-		time.Sleep(reconnectTimeout)
+		log.Debugf("  connection sleeping %v", ReconnectTimeout)
+		for {
+			select {
+			case <-cs.ctx.Done():
+				log.Infof("connection close")
+				return
+			case <-time.After(ReconnectTimeout):
+				break
+			}
+		}
 	}
 }
