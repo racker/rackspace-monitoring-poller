@@ -43,7 +43,7 @@ var (
 	UserAgent = "Rackspace Monitoring Poller/1.0 (https://monitoring.api.rackspacecloud.com/)"
 )
 
-// The HTTP Check
+// HTTPCheck conveys HTTP checks
 type HTTPCheck struct {
 	CheckBase
 	protocol.HTTPCheckDetails
