@@ -32,18 +32,24 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
 var (
+	// MaxHttpResponseBodyLength Maxiumum Allowed Body Length
 	MaxHttpResponseBodyLength = int64(512 * 1024)
+	// UserAgent the header value to send for the user agent
+	UserAgent = "Rackspace Monitoring Poller/1.0 (https://monitoring.api.rackspacecloud.com/)"
 )
 
+// HTTPCheck conveys HTTP checks
 type HTTPCheck struct {
 	CheckBase
 	protocol.HTTPCheckDetails
 }
 
+// Constructor for an HTTP Check
 func NewHTTPCheck(base *CheckBase) Check {
 	check := &HTTPCheck{CheckBase: *base}
 	err := json.Unmarshal(*base.RawDetails, &check.Details)
@@ -55,7 +61,7 @@ func NewHTTPCheck(base *CheckBase) Check {
 	return check
 }
 
-func (ch *HTTPCheck) ParseTLS(cr *CheckResult, resp *http.Response) {
+func (ch *HTTPCheck) parseTLS(cr *CheckResult, resp *http.Response) {
 	cert := resp.TLS.PeerCertificates[0]
 	cr.AddMetric(metric.NewMetric("cert_serial", "", metric.MetricNumber, cert.SerialNumber, ""))
 	if len(cert.OCSPServer) > 0 {
@@ -93,6 +99,7 @@ func (ch *HTTPCheck) ParseTLS(cr *CheckResult, resp *http.Response) {
 	cr.AddMetric(metric.NewMetric("ssl_session_version", "", metric.MetricNumber, sslVersion, ""))
 	var cipherSuite string
 	switch resp.TLS.CipherSuite {
+
 	case tls.TLS_RSA_WITH_RC4_128_SHA:
 		cipherSuite = "TLS_RSA_WITH_RC4_128_SHA"
 	case tls.TLS_RSA_WITH_3DES_EDE_CBC_SHA:
@@ -134,7 +141,7 @@ func (ch *HTTPCheck) ParseTLS(cr *CheckResult, resp *http.Response) {
 	//TODO Fill in the rest of the SSL info
 }
 
-func DisableRedirects(req *http.Request, via []*http.Request) error {
+func disableRedirects(req *http.Request, via []*http.Request) error {
 	return http.ErrUseLastResponse
 }
 
@@ -147,6 +154,7 @@ func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), ch.GetTimeoutDuration())
 	defer cancel()
 
+	sl := utils.NewStatusLine()
 	cr := NewCheckResult()
 	crs := NewCheckResultSet(ch, cr)
 	starttime := utils.NowTimestampMillis()
@@ -154,20 +162,37 @@ func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
 
 	// Setup Redirects
 	if !ch.Details.FollowRedirects {
-		netClient.CheckRedirect = DisableRedirects
+		netClient.CheckRedirect = disableRedirects
 	}
 
 	// Setup Method
 	method := strings.ToUpper(ch.Details.Method)
 
+	// Parse URL and Replace Host with IP
+	parsed, err := url.Parse(ch.Details.Url)
+	if err != nil {
+		return nil, err
+	}
+
+	host := parsed.Host
+	ip, err := ch.GetTargetIP()
+	if err != nil {
+		return nil, err
+	}
+	parsed.Host = ip
+	url := parsed.String()
+
 	// Setup Request
-	req, err := http.NewRequest(method, ch.Details.Url, nil)
+	req, err := http.NewRequest(method, url, nil)
 	if err != nil {
 		return nil, err
 	}
 	req = req.WithContext(ctx)
 
 	// Add Headers
+	req.Header.Add("Accept-Encoding", "gzip, deflate")
+	req.Header.Add("User-Agent", UserAgent)
+	req.Header.Add("Host", host)
 	for key, value := range ch.Details.Headers {
 		req.Header.Add(key, value)
 	}
@@ -175,8 +200,9 @@ func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
 	// Perform Request
 	resp, err := netClient.Do(req)
 	if err != nil {
-		log.Errorf("%s: HTTP: Got Error: %v", ch.GetId(), err)
-		return nil, err
+		crs.SetStatus("connection refused")
+		crs.SetStateUnavailable()
+		return crs, nil
 	}
 	defer resp.Body.Close()
 
@@ -202,7 +228,16 @@ func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
 
 	// TLS
 	if resp.TLS != nil {
-		ch.ParseTLS(cr, resp)
+		ch.parseTLS(cr, resp)
 	}
+
+	// Status Line
+	sl.Add("code", resp.StatusCode)
+	sl.Add("duration", endtime-starttime)
+	sl.Add("bytes", len(body))
+	sl.Add("truncated", int64(len(body)) < resp.ContentLength)
+
+	crs.SetStateAvailable()
+	crs.SetStatus(sl.String())
 	return crs, nil
 }

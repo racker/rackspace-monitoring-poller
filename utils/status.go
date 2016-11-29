@@ -17,10 +17,38 @@
 // Package utils Utility Functions
 package utils
 
-import "time"
+import (
+	"fmt"
+	"strings"
+)
 
-type NowTimestampMillisFunc func() int64
+// StatusLine structure
+type StatusLine struct {
+	strings []string
+}
 
-var NowTimestampMillis NowTimestampMillisFunc = func() int64 {
-	return time.Now().UnixNano() / int64(time.Millisecond)
+// NewStatusLine constructor
+func NewStatusLine() *StatusLine {
+	sl := &StatusLine{}
+	sl.init()
+	return sl
+}
+
+// Clear the lines within the statusline
+func (sl *StatusLine) Clear() {
+	sl.init()
+}
+
+func (sl *StatusLine) init() {
+	sl.strings = make([]string, 0)
+}
+
+// Add adds a key/value to the statusline
+func (sl *StatusLine) Add(key string, value interface{}) {
+	sl.strings = append(sl.strings, fmt.Sprintf("%s=%v", key, value))
+}
+
+// String stringifies the object
+func (sl *StatusLine) String() string {
+	return strings.Join(sl.strings, ",")
 }

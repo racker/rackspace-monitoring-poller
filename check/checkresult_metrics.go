@@ -29,11 +29,15 @@ func NewMetricsPostRequest(crs *CheckResultSet) *protocol.MetricsPostRequest {
 	req.Params.EntityId = crs.Check.GetEntityId()
 	req.Params.CheckId = crs.Check.GetId()
 	req.Params.CheckType = crs.Check.GetCheckType()
-	req.Params.Metrics = []protocol.MetricWrap{ConvertToMetricResults(crs)}
 	req.Params.MinCheckPeriod = crs.Check.GetPeriod() * 1000
 	req.Params.State = crs.State
 	req.Params.Status = crs.Status
 	req.Params.Timestamp = utils.NowTimestampMillis()
+	if crs.Length() == 0 {
+		req.Params.Metrics = nil
+	} else {
+		req.Params.Metrics = []protocol.MetricWrap{ConvertToMetricResults(crs)}
+	}
 	return req
 }
 

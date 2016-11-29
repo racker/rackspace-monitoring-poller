@@ -25,7 +25,6 @@ import (
 // This method needs to be updated to add to the known types.
 func NewCheck(rawParams json.RawMessage) Check {
 	checkBase := &CheckBase{}
-
 	err := json.Unmarshal(rawParams, &checkBase)
 	if err != nil {
 		log.Printf("Error unmarshalling checkbase")
@@ -39,7 +38,6 @@ func NewCheck(rawParams json.RawMessage) Check {
 	case "remote.ping":
 		return NewPingCheck(checkBase)
 	default:
-
 		log.Printf("Invalid check type: %v", checkBase.CheckType)
 	}
 	return nil
