@@ -158,15 +158,6 @@ func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
 	cr := NewCheckResult()
 	crs := NewCheckResultSet(ch, cr)
 	starttime := utils.NowTimestampMillis()
-	netClient := &http.Client{}
-
-	// Setup Redirects
-	if !ch.Details.FollowRedirects {
-		netClient.CheckRedirect = disableRedirects
-	}
-
-	// Setup Method
-	method := strings.ToUpper(ch.Details.Method)
 
 	// Parse URL and Replace Host with IP
 	parsed, err := url.Parse(ch.Details.Url)
@@ -181,6 +172,24 @@ func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
 	}
 	parsed.Host = ip
 	url := parsed.String()
+
+	// Setup HTTP or HTTPS Client
+	var netClient *http.Client
+	if parsed.Scheme == "http" {
+		netClient = &http.Client{}
+	} else {
+		tlsConfig := &tls.Config{InsecureSkipVerify: true, ServerName: host}
+		transport := &http.Transport{TLSClientConfig: tlsConfig}
+		netClient = &http.Client{Transport: transport}
+	}
+
+	// Setup Redirects
+	if !ch.Details.FollowRedirects {
+		netClient.CheckRedirect = disableRedirects
+	}
+
+	// Setup Method
+	method := strings.ToUpper(ch.Details.Method)
 
 	// Setup Request
 	req, err := http.NewRequest(method, url, nil)
