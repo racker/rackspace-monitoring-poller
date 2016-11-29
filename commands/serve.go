@@ -23,6 +23,9 @@ import (
 	"github.com/racker/rackspace-monitoring-poller/types"
 	"github.com/satori/go.uuid"
 	"github.com/spf13/cobra"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 var (
@@ -39,14 +42,32 @@ func init() {
 	ServeCmd.Flags().StringVar(&configFilePath, "config", "", "Path to a file containing the config, used in "+config.DefaultConfigPathLinux)
 }
 
+func HandleInterrupts() chan os.Signal {
+	c := make(chan os.Signal, 2)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	return c
+}
+
 func serveCmdRun(cmd *cobra.Command, args []string) {
 	guid := uuid.NewV4()
 	log.Infof("Using GUID: %v", guid)
 	cfg := config.NewConfig(guid.String())
 	cfg.LoadFromFile(configFilePath)
+	signalNotify := HandleInterrupts()
 	for {
 		stream := types.NewConnectionStream(cfg)
 		stream.Connect()
-		stream.Wait()
+		waitCh := stream.WaitCh()
+		for {
+			select {
+			case <-waitCh:
+				break
+			case <-signalNotify:
+				log.Info("Shutdown...")
+				stream.Stop()
+			case <-stream.StopNotify():
+				return
+			}
+		}
 	}
 }

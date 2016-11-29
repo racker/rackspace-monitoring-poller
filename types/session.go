@@ -256,6 +256,7 @@ func (s *Session) exitError(err error) {
 func (s *Session) Close() {
 	s.shutdownLock.Lock()
 	if s.shutdown {
+		s.shutdownLock.Unlock()
 		return
 	}
 	s.shutdown = true
