@@ -102,8 +102,13 @@ func (cs *ConnectionStream) Connect() {
 	}
 }
 
-func (cs *ConnectionStream) Wait() {
-	cs.wg.Wait()
+func (cs *ConnectionStream) WaitCh() <-chan struct{} {
+	c := make(chan struct{}, 1)
+	go func() {
+		cs.wg.Wait()
+		c <- struct{}{}
+	}()
+	return c
 }
 
 func (cs *ConnectionStream) connectBySrv(qry string) {

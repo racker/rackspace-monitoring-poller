@@ -57,8 +57,11 @@ func serveCmdRun(cmd *cobra.Command, args []string) {
 	for {
 		stream := types.NewConnectionStream(cfg)
 		stream.Connect()
+		waitCh := stream.WaitCh()
 		for {
 			select {
+			case <-waitCh:
+				break
 			case <-signalNotify:
 				log.Info("Shutdown...")
 				stream.Stop()
