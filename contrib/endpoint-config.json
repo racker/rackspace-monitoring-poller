@@ -1,0 +1,5 @@
+{
+  "CertFile": "data/cert.pem",
+  "KeyFile": "data/key.pem",
+  "BindAddr": "localhost:55000"
+}

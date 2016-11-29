@@ -14,19 +14,37 @@
 // limitations under the License.
 //
 
-// Constants
-package config
 
-var (
-	DefaultProdSrvEndpoints = []string{
-		"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
-		"_monitoringagent._tcp.ord1.prod.monitoring.api.rackspacecloud.com",
-		"_monitoringagent._tcp.lon3.prod.monitoring.api.rackspacecloud.com",
+package endpoint
+
+import (
+	"encoding/json"
+	"github.com/racker/rackspace-monitoring-poller/config"
+	"os"
+	"io/ioutil"
+)
+
+func NewEndpointServer(configFilePath string) (EndpointServer, error) {
+	server := &BasicServer{}
+
+	configFile, err := os.Open(configFilePath)
+	defer configFile.Close()
+	if err != nil {
+		return nil, err
 	}
-)
 
-const (
-	DefaultConfigPathLinux = "/etc/rackspace-monitoring-agent.cfg"
+	content, err := ioutil.ReadAll(configFile)
+	if err != nil {
+		return nil, err
+	}
 
-	DefaultPort = 50041
-)
+	config := &config.EndpointConfig{}
+	json.Unmarshal(content, config)
+
+	err = server.ApplyConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	return server, nil
+}

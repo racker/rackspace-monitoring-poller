@@ -19,14 +19,12 @@ package commands
 
 import (
 	log "github.com/Sirupsen/logrus"
-	"github.com/racker/rackspace-monitoring-poller/config"
-	"github.com/racker/rackspace-monitoring-poller/types"
-	"github.com/satori/go.uuid"
 	"github.com/spf13/cobra"
+	"github.com/racker/rackspace-monitoring-poller/endpoint"
 )
 
 var (
-	configFilePath string
+	endpointConfigFilePath string
 	EndpointCmd       = &cobra.Command{
 		Use:   "endpoint",
 		Short: "Start the endpoint service",
@@ -36,17 +34,19 @@ var (
 )
 
 func init() {
-	ServeCmd.Flags().StringVar(&configFilePath, "config", "", "Path to a file containing the config, used in "+config.DefaultConfigPathLinux)
+	EndpointCmd.Flags().StringVar(&endpointConfigFilePath, "config", "", "Path to a file containing the endpoint config")
 }
 
 func endpointCmdRun(cmd *cobra.Command, args []string) {
-	guid := uuid.NewV4()
-	log.Infof("Using GUID: %v", guid)
-	cfg := config.NewConfig(guid.String())
-	cfg.LoadFromFile(configFilePath)
-	for {
-		stream := types.NewConnectionStream(cfg)
-		stream.Connect()
-		stream.Wait()
+	s, err := endpoint.NewEndpointServer(endpointConfigFilePath)
+
+	if err != nil {
+		log.Errorln("Invalid endpoint setup", err)
+		return
+	}
+
+	err = s.ListenAndServe()
+	if err != nil {
+		log.Errorln("Endpoint serving failed", err)
 	}
 }

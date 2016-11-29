@@ -14,19 +14,33 @@
 // limitations under the License.
 //
 
-// Constants
-package config
 
-var (
-	DefaultProdSrvEndpoints = []string{
-		"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
-		"_monitoringagent._tcp.ord1.prod.monitoring.api.rackspacecloud.com",
-		"_monitoringagent._tcp.lon3.prod.monitoring.api.rackspacecloud.com",
+package endpoint
+
+import (
+	"github.com/racker/rackspace-monitoring-poller/config"
+	"crypto/tls"
+)
+
+type EndpointServer interface {
+	ApplyConfig(cfg *config.EndpointConfig) error
+
+	ListenAndServe() error
+}
+
+
+func LoadCertificateFromConfig(cfg config.EndpointConfig) (*tls.Certificate, error) {
+	if cfg.CertFile == "" {
+		return nil, config.BadConfig{Details: "Missing CertFile"}
 	}
-)
+	if cfg.KeyFile == "" {
+		return nil, config.BadConfig{Details: "Missing KeyFile"}
+	}
 
-const (
-	DefaultConfigPathLinux = "/etc/rackspace-monitoring-agent.cfg"
+	cert, err := tls.LoadX509KeyPair(cfg.CertFile, cfg.KeyFile)
+	if err != nil {
+		return nil, err
+	}
 
-	DefaultPort = 50041
-)
+	return &cert, nil
+}

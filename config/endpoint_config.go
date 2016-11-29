@@ -22,4 +22,6 @@ type EndpointConfig struct {
 
 	// In the form of "IP:port" or just ":port" to bind to all interfaces
 	BindAddr string
+
+	AgentsConfigDir string
 }

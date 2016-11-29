@@ -123,6 +123,10 @@ func (r CheckScheduleGet) Encode() ([]byte, error) {
 ///////////////////////////////////////////////////////////////////////////////
 // Poller Register
 
+const (
+	PollerZones = "zones"
+)
+
 type PollerRegister struct {
 	FrameMsg
 	Params map[string][]string `json:"params"`
@@ -132,7 +136,7 @@ func NewPollerRegister(zones []string) Frame {
 	f := &PollerRegister{}
 	f.Version = "1"
 	f.Method = "poller.register"
-	f.Params = map[string][]string{"zones": zones}
+	f.Params = map[string][]string{PollerZones: zones}
 	return f
 }
 
