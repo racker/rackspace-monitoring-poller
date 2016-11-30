@@ -13,16 +13,6 @@ glide install
 go build
 ```
 
-## Documentation
-
-If you are adding new checks or hostinfo queries, viewing the godoc's will be helpful. 
-The [main documentation](https://godoc.org/golang.org/x/tools/cmd/godoc) shows several ways to
-run it, but the easiest is to run
-
-    godoc -http=:6060
-    
-With that running, open your browser to http://localhost:6060/pkg/github.com/racker/rackspace-monitoring-poller/
-
 ## Running Simple Endpoint Server for development
 
 In the workspace, generate self signed certificate and private key:
@@ -39,3 +29,15 @@ In window #2:
 
     ./rackspce-monitoring-poller serve --config contrib/local-endpoint.cfg  --debug
     
+## Development-time Documentation
+
+If you are adding or modifying documentation comments, viewing the godoc's locally will be very helpful. 
+The [godoc tool documentation](https://godoc.org/golang.org/x/tools/cmd/godoc) shows several ways to
+run it, but the easiest is to run
+
+    godoc -http=:6060
+    
+With that running, open your browser to [http://localhost:6060/pkg/github.com/racker/rackspace-monitoring-poller/]().
+
+As you save file changes, just refresh the browser page to pick up the documentation changes.
+
