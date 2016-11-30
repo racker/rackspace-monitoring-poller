@@ -18,14 +18,14 @@
 package commands
 
 import (
-	log "github.com/Sirupsen/logrus"
-	"github.com/spf13/cobra"
 	"github.com/racker/rackspace-monitoring-poller/endpoint"
+	"github.com/racker/rackspace-monitoring-poller/utils"
+	"github.com/spf13/cobra"
 )
 
 var (
 	endpointConfigFilePath string
-	EndpointCmd       = &cobra.Command{
+	EndpointCmd            = &cobra.Command{
 		Use:   "endpoint",
 		Short: "Start the endpoint service",
 		Long:  "Start the endpoint service",
@@ -41,12 +41,11 @@ func endpointCmdRun(cmd *cobra.Command, args []string) {
 	s, err := endpoint.NewEndpointServer(endpointConfigFilePath)
 
 	if err != nil {
-		log.Errorln("Invalid endpoint setup", err)
-		return
+		utils.Die(err, "Invalid endpoint setup")
 	}
 
 	err = s.ListenAndServe()
 	if err != nil {
-		log.Errorln("Endpoint serving failed", err)
+		utils.Die(err, "Endpoint serving failed")
 	}
 }

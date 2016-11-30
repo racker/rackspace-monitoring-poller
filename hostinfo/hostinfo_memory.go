@@ -21,9 +21,9 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/metric"
+	"github.com/racker/rackspace-monitoring-poller/protocol/hostinfo"
 	"github.com/racker/rackspace-monitoring-poller/utils"
 	"github.com/shirou/gopsutil/mem"
-	"github.com/racker/rackspace-monitoring-poller/protocol/hostinfo"
 )
 
 type HostInfoMemory struct {

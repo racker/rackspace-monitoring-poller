@@ -14,12 +14,11 @@
 // limitations under the License.
 //
 
-
 package endpoint
 
 import (
-	"github.com/racker/rackspace-monitoring-poller/config"
 	"crypto/tls"
+	"github.com/racker/rackspace-monitoring-poller/config"
 )
 
 type EndpointServer interface {
@@ -29,7 +28,6 @@ type EndpointServer interface {
 
 	ListenAndServe() error
 }
-
 
 func LoadCertificateFromConfig(cfg *config.EndpointConfig) (*tls.Certificate, error) {
 	if cfg.CertFile == "" {

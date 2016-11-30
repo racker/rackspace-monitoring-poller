@@ -14,27 +14,21 @@
 // limitations under the License.
 //
 
-package endpoint
+package utils
 
 import (
-	"github.com/racker/rackspace-monitoring-poller/config"
+	"fmt"
+	"os"
 )
 
-func NewEndpointServer(configFilePath string) (EndpointServer, error) {
-	server := &BasicServer{}
-
-	config := config.NewEndpointConfig()
-	err := config.LoadFromFile(configFilePath)
-	if err != nil {
-		return nil, err
+// Die prints messages and an error to stderr and then exit the process with status code 1.
+// It is intended for failures early in startup that need to be reported to a human.
+//
+// messages is zero or many messages that will each be printed on a line before the err
+func Die(err error, messages ...string) {
+	for _, msg := range messages {
+		fmt.Fprintf(os.Stderr, "%s\n", msg)
 	}
-
-	err = server.ApplyConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
-	server.UseMetricsRouter(NewMetricsRouter(config))
-
-	return server, nil
+	fmt.Fprintf(os.Stderr, "Reason: %s\n", err.Error())
+	os.Exit(1)
 }

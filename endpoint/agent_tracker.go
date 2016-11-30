@@ -14,31 +14,30 @@
 // limitations under the License.
 //
 
-
 package endpoint
 
 import (
-	"github.com/racker/rackspace-monitoring-poller/protocol"
 	log "github.com/Sirupsen/logrus"
+	"github.com/racker/rackspace-monitoring-poller/protocol"
 
-	"fmt"
 	"encoding/json"
+	"fmt"
 	"github.com/racker/rackspace-monitoring-poller/config"
-	"sync/atomic"
-	"path"
-	"os"
-	"strings"
 	"io/ioutil"
+	"os"
+	"path"
+	"strings"
+	"sync/atomic"
 )
 
 type agent struct {
-	responder      *json.Encoder
-	outMsgId       uint64
-	sourceId       string
-	errors         chan <- error
+	responder *json.Encoder
+	outMsgId  uint64
+	sourceId  string
+	errors    chan<- error
 
 	// observedToken is the token that was provided by the poller during hello handshake. It may not necessarily be valid.
-	observedToken  string
+	observedToken string
 
 	id             string
 	name           string
@@ -46,7 +45,7 @@ type agent struct {
 	bundleVersion  string
 	features       []map[string]string
 
-	zones          []string
+	zones []string
 }
 
 type registration struct {
@@ -60,20 +59,20 @@ type metricsToStore struct {
 }
 
 type AgentTracker struct {
-	cfg           config.EndpointConfig
+	cfg config.EndpointConfig
 	// key is FrameMsgCommon.Source. All access to this map must be performed in the AgentTracker.start go routine
-	agents        map[string]*agent
+	agents map[string]*agent
 
 	greeter       chan *agent
 	registrations chan registration
 	metricReqs    chan *protocol.MetricsPostRequest
-	metrics chan *metricsToStore
+	metrics       chan *metricsToStore
 
 	metricsRouter *MetricsRouter
 }
 
 func (at *AgentTracker) Start(cfg config.EndpointConfig) {
-	at.cfg = cfg;
+	at.cfg = cfg
 
 	// channels
 	//TODO make channel buffer sizes configurable
@@ -98,15 +97,15 @@ func (at *AgentTracker) ProcessHello(req *protocol.HandshakeRequest, responder *
 	errors := make(chan error)
 
 	newAgent := &agent{
-		sourceId: req.Source,
-		observedToken: req.Params.Token,
-		id: req.Params.AgentId,
-		name: req.Params.AgentName,
+		sourceId:       req.Source,
+		observedToken:  req.Params.Token,
+		id:             req.Params.AgentId,
+		name:           req.Params.AgentName,
 		processVersion: req.Params.ProcessVersion,
-		bundleVersion: req.Params.BundleVersion,
-		features: req.Params.Features,
-		errors: errors,
-		responder: responder,
+		bundleVersion:  req.Params.BundleVersion,
+		features:       req.Params.Features,
+		errors:         errors,
+		responder:      responder,
 	}
 
 	at.greeter <- newAgent
@@ -117,7 +116,7 @@ func (at *AgentTracker) ProcessHello(req *protocol.HandshakeRequest, responder *
 func (at *AgentTracker) ProcessPollerRegister(req *protocol.PollerRegister) {
 	reg := registration{
 		sourceId: req.Source,
-		zones: req.Params[protocol.PollerZones],
+		zones:    req.Params[protocol.PollerZones],
 	}
 
 	at.registrations <- reg
@@ -151,7 +150,7 @@ func (at *AgentTracker) startMetricsDecomposer() {
 		metric := <-at.metrics
 		log.WithFields(log.Fields{
 			"agentId": metric.agent.id,
-			"params": metric.params,
+			"params":  metric.params,
 		}).Info("Decomposing metric")
 
 		//TODO do something with failed metrics that only contain state and status
@@ -168,8 +167,8 @@ func (at *AgentTracker) startMetricsDecomposer() {
 					)
 
 					m := Metric{
-						Name: metricName,
-						Value: entry.Value,
+						Name:       metricName,
+						Value:      entry.Value,
 						MetricType: entry.Type,
 					}
 
@@ -191,7 +190,7 @@ func (at *AgentTracker) handleMetricsPostReq(req *protocol.MetricsPostRequest) {
 	}
 
 	metric := &metricsToStore{
-		agent: a,
+		agent:  a,
 		params: req.Params,
 	}
 
@@ -238,7 +237,7 @@ func (at *AgentTracker) lookupChecks(a *agent) {
 			if err != nil {
 				log.WithFields(log.Fields{
 					"checksDir": checksDir,
-					"file": fileInfo,
+					"file":      fileInfo,
 				}).Warn("Unable to read checks file")
 				continue
 			}
@@ -258,7 +257,7 @@ func (at *AgentTracker) handleGreetedAgent(greetedAgent *agent) {
 		}).Warn("Agent greeting already observed")
 		greetedAgent.errors <- AgentTrackingError{
 			SourceId: sourceId,
-			Message: "already observed",
+			Message:  "already observed",
 		}
 		return
 	}
@@ -289,17 +288,17 @@ func (a *agent) sendTo(method string, params interface{}) {
 	frameOut := protocol.FrameMsg{
 		FrameMsgCommon: protocol.FrameMsgCommon{
 			Version: "1",
-			Id: msgId,
-			Source: "endpoint",
-			Target: "endpoint",
-			Method: method,
+			Id:      msgId,
+			Source:  "endpoint",
+			Target:  "endpoint",
+			Method:  method,
 		},
 		RawParams: rawParams,
 	}
 
 	log.WithFields(log.Fields{
-		"msgId": frameOut.Id,
-		"method": frameOut.Method,
+		"msgId":   frameOut.Id,
+		"method":  frameOut.Method,
 		"agentId": a.id,
 	}).Debug("SENDing frame to agent")
 

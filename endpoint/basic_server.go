@@ -116,7 +116,7 @@ func (s *BasicServer) frameDecoder(c net.Conn, frames chan<- *protocol.FrameMsg)
 	decoder := json.NewDecoder(c)
 
 	for decoder.More() {
-		var frame protocol.FrameMsg;
+		var frame protocol.FrameMsg
 		err := decoder.Decode(&frame)
 		if err != nil {
 			log.WithField("remoteAddr", c.RemoteAddr()).Warn("Failed to decode frame")
@@ -131,9 +131,9 @@ func (s *BasicServer) frameDecoder(c net.Conn, frames chan<- *protocol.FrameMsg)
 func (s *BasicServer) consumeFrame(ctx context.Context, c net.Conn, frame *protocol.FrameMsg, encoder *json.Encoder) error {
 	log.WithFields(log.Fields{
 		"remoteAddr": c.RemoteAddr(),
-		"msgId": frame.Id,
-		"source": frame.Source,
-		"method": frame.Method,
+		"msgId":      frame.Id,
+		"source":     frame.Source,
+		"method":     frame.Method,
 	}).Debug("Consuming frame")
 
 	switch frame.Method {

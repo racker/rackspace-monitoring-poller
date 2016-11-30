@@ -70,7 +70,6 @@ func (cfg *Config) init() {
 }
 
 func (cfg *Config) LoadFromFile(filepath string) error {
-	log.Printf("Using config file: %s", filepath)
 	_, err := os.Stat(filepath)
 	if err != nil {
 		return err
@@ -92,6 +91,7 @@ func (cfg *Config) LoadFromFile(filepath string) error {
 		}
 		cfg.ParseFields(fields)
 	}
+	log.WithField("file", filepath).Info("Loaded configuration")
 	return nil
 }
 

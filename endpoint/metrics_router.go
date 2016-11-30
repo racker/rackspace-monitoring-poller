@@ -14,13 +14,12 @@
 // limitations under the License.
 //
 
-
 package endpoint
 
 import (
-	"github.com/racker/rackspace-monitoring-poller/config"
-	log "github.com/Sirupsen/logrus"
 	"fmt"
+	log "github.com/Sirupsen/logrus"
+	"github.com/racker/rackspace-monitoring-poller/config"
 )
 
 type Metric struct {
@@ -33,13 +32,13 @@ type Metric struct {
 type MetricsRouter struct {
 	metrics chan *Metric
 
-	cfg     config.EndpointConfig
+	cfg config.EndpointConfig
 }
 
 func NewMetricsRouter(cfg *config.EndpointConfig) *MetricsRouter {
 	mr := &MetricsRouter{
 		metrics: make(chan *Metric, 100),
-		cfg: *cfg,
+		cfg:     *cfg,
 	}
 
 	go mr.start()

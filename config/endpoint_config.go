@@ -16,9 +16,16 @@
 
 package config
 
+import (
+	"encoding/json"
+	log "github.com/Sirupsen/logrus"
+	"io/ioutil"
+	"os"
+)
+
 type EndpointConfig struct {
 	CertFile string
-	KeyFile string
+	KeyFile  string
 
 	// In the form of "IP:port" or just ":port" to bind to all interfaces
 	BindAddr string
@@ -32,4 +39,27 @@ type EndpointConfig struct {
 	//       checks/
 	//         *.json
 	AgentsConfigDir string
+}
+
+func NewEndpointConfig() *EndpointConfig {
+	return &EndpointConfig{}
+}
+
+func (cfg *EndpointConfig) LoadFromFile(filepath string) error {
+	configFile, err := os.Open(filepath)
+	if err != nil {
+		return err
+	}
+	defer configFile.Close()
+
+	content, err := ioutil.ReadAll(configFile)
+	if err != nil {
+		return err
+	}
+
+	json.Unmarshal(content, cfg)
+
+	log.WithField("file", filepath).Info("Loaded configuration")
+
+	return nil
 }
