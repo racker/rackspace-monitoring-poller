@@ -69,6 +69,7 @@ func (s *Scheduler) runCheck(ch check.Check) {
 		case <-time.After(ch.GetWaitPeriod()):
 			crs, err := ch.Run()
 			if err != nil {
+				log.Errorf("Error running check: %v", err)
 			} else {
 				s.SendMetrics(crs)
 			}
