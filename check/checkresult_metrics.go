@@ -25,7 +25,7 @@ import (
 func NewMetricsPostRequest(crs *CheckResultSet) *protocol.MetricsPostRequest {
 	req := &protocol.MetricsPostRequest{}
 	req.Version = "1"
-	req.Method = "check_metrics.post"
+	req.Method = "check_metrics.post_multi"
 	req.Params.EntityId = crs.Check.GetEntityId()
 	req.Params.CheckId = crs.Check.GetId()
 	req.Params.CheckType = crs.Check.GetCheckType()
