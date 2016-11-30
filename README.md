@@ -15,6 +15,8 @@ go build
 
 ## Documentation
 
+[Online Docs](https://godoc.org/github.com/racker/rackspace-monitoring-poller)
+
 If you are adding new checks or hostinfo queries, viewing the godoc's will be helpful. 
 The [main documentation](https://godoc.org/golang.org/x/tools/cmd/godoc) shows several ways to
 run it, but the easiest is to run
