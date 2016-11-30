@@ -8,6 +8,6 @@ const (
 	MethodPollerChecksAdd  = "poller.checks.add"
 	MethodPollerChecksEnd  = "poller.checks.end"
 	MethodHeartbeatPost    = "heartbeat.post"
-	MethodCheckMetricsPost = "check_metrics.post"
+	MethodCheckMetricsPost = "check_metrics.post_multi"
 	MethodHostInfoGet      = "host_info.get"
 )
