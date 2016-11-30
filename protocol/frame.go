@@ -151,11 +151,7 @@ func (f *FrameMsg) GetRawResult() json.RawMessage {
 }
 
 func (f *FrameMsgCommon) SetId(msgSeqId *uint64) {
-get_id:
-	f.Id = atomic.LoadUint64(msgSeqId)
-	if !atomic.CompareAndSwapUint64(msgSeqId, f.Id, f.Id+1) {
-		goto get_id
-	}
+	f.Id = atomic.AddUint64(msgSeqId, 1)
 }
 
 func (f *FrameMsgCommon) SetTarget(target string) {
