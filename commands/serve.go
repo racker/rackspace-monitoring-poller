@@ -21,6 +21,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/types"
+	"github.com/racker/rackspace-monitoring-poller/utils"
 	"github.com/satori/go.uuid"
 	"github.com/spf13/cobra"
 	"os"
@@ -50,9 +51,13 @@ func HandleInterrupts() chan os.Signal {
 
 func serveCmdRun(cmd *cobra.Command, args []string) {
 	guid := uuid.NewV4()
-	log.Infof("Using GUID: %v", guid)
 	cfg := config.NewConfig(guid.String())
-	cfg.LoadFromFile(configFilePath)
+	err := cfg.LoadFromFile(configFilePath)
+	if err != nil {
+		utils.Die(err, "Failed to load configuration")
+	}
+	log.WithField("guid", guid).Info("Assigned unique identifier")
+
 	signalNotify := HandleInterrupts()
 	for {
 		stream := types.NewConnectionStream(cfg)

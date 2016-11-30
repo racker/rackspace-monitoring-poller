@@ -14,19 +14,12 @@
 // limitations under the License.
 //
 
-// Constants
 package config
 
-var (
-	DefaultProdSrvEndpoints = []string{
-		"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
-		"_monitoringagent._tcp.ord1.prod.monitoring.api.rackspacecloud.com",
-		"_monitoringagent._tcp.lon3.prod.monitoring.api.rackspacecloud.com",
-	}
-)
+type BadConfig struct {
+	Details string
+}
 
-const (
-	DefaultConfigPathLinux = "/etc/rackspace-monitoring-agent.cfg"
-
-	DefaultPort = "50041"
-)
+func (e BadConfig) Error() string {
+	return "Bad configuration: " + e.Details
+}

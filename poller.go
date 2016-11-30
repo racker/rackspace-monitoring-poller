@@ -56,5 +56,6 @@ func initEnv() {
 
 func main() {
 	pollerCmd.AddCommand(commands.ServeCmd)
+	pollerCmd.AddCommand(commands.EndpointCmd)
 	pollerCmd.Execute()
 }

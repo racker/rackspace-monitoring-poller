@@ -31,4 +31,3 @@ type HostInfoMemoryResult struct {
 	Metrics   HostInfoMemoryMetrics `json:"metrics"`
 	Timestamp int64                 `json:"timestamp"`
 }
-

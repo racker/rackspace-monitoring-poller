@@ -14,19 +14,21 @@
 // limitations under the License.
 //
 
-// Constants
-package config
+package utils
 
-var (
-	DefaultProdSrvEndpoints = []string{
-		"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
-		"_monitoringagent._tcp.ord1.prod.monitoring.api.rackspacecloud.com",
-		"_monitoringagent._tcp.lon3.prod.monitoring.api.rackspacecloud.com",
+import (
+	"fmt"
+	"os"
+)
+
+// Die prints messages and an error to stderr and then exit the process with status code 1.
+// It is intended for failures early in startup that need to be reported to a human.
+//
+// messages is zero or many messages that will each be printed on a line before the err
+func Die(err error, messages ...string) {
+	for _, msg := range messages {
+		fmt.Fprintf(os.Stderr, "%s\n", msg)
 	}
-)
-
-const (
-	DefaultConfigPathLinux = "/etc/rackspace-monitoring-agent.cfg"
-
-	DefaultPort = "50041"
-)
+	fmt.Fprintf(os.Stderr, "Reason: %s\n", err.Error())
+	os.Exit(1)
+}

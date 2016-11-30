@@ -21,6 +21,10 @@ import (
 	"sync/atomic"
 )
 
+const (
+	ProtocolVersion = "1"
+)
+
 type Error struct {
 	Code    uint64 `json:"code"`
 	Message string `json:"message"`
