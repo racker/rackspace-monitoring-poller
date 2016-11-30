@@ -21,13 +21,16 @@ In the workspace, generate self signed certificate and private key:
 openssl req -newkey rsa:2048 -nodes -keyout key.pem -x509 -days 365 -out cert.pem
 ```
 
+First, place any additional zones->agents->checks under `contrib/endpoint-agents` (if using the example config), then
+start the Endpoint server and Poller server.
+
 In window #1:
 
-    ./rackspce-monitoring-poller endpoint --config contrib/endpoint-config.json  --debug
+    ./rackspace-monitoring-poller endpoint --config contrib/endpoint-config.json  --debug
     
 In window #2:
 
-    ./rackspce-monitoring-poller serve --config contrib/local-endpoint.cfg  --debug
+    ./rackspace-monitoring-poller serve --config contrib/local-endpoint.cfg  --debug
     
 ## Development-time Documentation
 
