@@ -18,7 +18,7 @@
 package check
 
 import (
-	"github.com/racker/rackspace-monitoring-poller/metric"
+	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 )
 
 const (

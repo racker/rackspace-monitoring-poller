@@ -14,6 +14,7 @@
 // limitations under the License.
 //
 
+// Package check provides the messaging structures specific to poller checks
 package check
 
 import (

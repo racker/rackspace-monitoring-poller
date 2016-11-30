@@ -21,7 +21,7 @@ import (
 	"bytes"
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/hostinfo"
-	"github.com/racker/rackspace-monitoring-poller/metric"
+	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	"github.com/racker/rackspace-monitoring-poller/protocol"
 	hostinfo_proto "github.com/racker/rackspace-monitoring-poller/protocol/hostinfo"
 	"github.com/racker/rackspace-monitoring-poller/utils"

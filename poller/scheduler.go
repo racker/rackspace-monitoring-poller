@@ -14,8 +14,7 @@
 // limitations under the License.
 //
 
-// Scheduler
-package types
+package poller
 
 import (
 	"context"

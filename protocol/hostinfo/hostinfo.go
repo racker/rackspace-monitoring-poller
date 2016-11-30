@@ -14,6 +14,7 @@
 // limitations under the License.
 //
 
+// Package hostinfo provides the messaging structures specific to host info queries
 package hostinfo
 
 type HostInfoBase struct {

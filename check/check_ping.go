@@ -20,7 +20,7 @@ package check
 import (
 	"encoding/json"
 	log "github.com/Sirupsen/logrus"
-	"github.com/racker/rackspace-monitoring-poller/metric"
+	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	protocol "github.com/racker/rackspace-monitoring-poller/protocol/check"
 	ping "github.com/sparrc/go-ping"
 	"time"

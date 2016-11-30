@@ -14,6 +14,7 @@
 // limitations under the License.
 //
 
+// Package endpoint contains a service that is sufficient for pollers to receive their configuration and reception of metrics
 package endpoint
 
 import (

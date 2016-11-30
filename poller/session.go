@@ -14,8 +14,7 @@
 // limitations under the License.
 //
 
-// Sessions
-package types
+package poller
 
 import (
 	"context"

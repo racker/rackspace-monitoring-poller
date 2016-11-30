@@ -14,8 +14,7 @@
 // limitations under the License.
 //
 
-// ConnectionStream
-package types
+package poller
 
 import (
 	"context"

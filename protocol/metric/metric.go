@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-// Metric
+// Package metric provides the messaging structures specific to metric reporting
 package metric
 
 import (

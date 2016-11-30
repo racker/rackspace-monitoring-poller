@@ -14,23 +14,5 @@
 // limitations under the License.
 //
 
-// Package hostinfo contains a file for each supported host info query
-package hostinfo
-
-import (
-	"github.com/racker/rackspace-monitoring-poller/check"
-	"github.com/racker/rackspace-monitoring-poller/protocol"
-)
-
-type HostInfo interface {
-	Run() (*check.CheckResult, error)
-	BuildResult(cr *check.CheckResult) interface{}
-}
-
-func NewHostInfoResponse(cr *check.CheckResult, f *protocol.FrameMsg, hinfo HostInfo) *protocol.HostInfoResponse {
-	resp := &protocol.HostInfoResponse{}
-	resp.Result = hinfo.BuildResult(cr)
-	resp.SetResponseFrameMsg(f)
-
-	return resp
-}
+// Package commands declares the top-level entry points of the poller executable
+package commands

@@ -14,7 +14,11 @@
 // limitations under the License.
 //
 
-// Main Entry
+// Main entry point for the Rackspace Monitoring Poller application.
+//
+// Sub-entry points are declared in the commands package, such as
+//
+//   rackspace-monitoring-poller serve ...
 package main
 
 import (

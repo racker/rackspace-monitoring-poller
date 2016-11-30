@@ -14,8 +14,7 @@
 // limitations under the License.
 //
 
-// Connection
-package types
+package poller
 
 import (
 	"context"

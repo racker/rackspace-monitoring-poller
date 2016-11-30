@@ -14,13 +14,12 @@
 // limitations under the License.
 //
 
-// serve
 package commands
 
 import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/config"
-	"github.com/racker/rackspace-monitoring-poller/types"
+	"github.com/racker/rackspace-monitoring-poller/poller"
 	"github.com/racker/rackspace-monitoring-poller/utils"
 	"github.com/satori/go.uuid"
 	"github.com/spf13/cobra"
@@ -60,7 +59,7 @@ func serveCmdRun(cmd *cobra.Command, args []string) {
 
 	signalNotify := HandleInterrupts()
 	for {
-		stream := types.NewConnectionStream(cfg)
+		stream := poller.NewConnectionStream(cfg)
 		stream.Connect()
 		waitCh := stream.WaitCh()
 		for {
