@@ -14,7 +14,6 @@
 // limitations under the License.
 //
 
-// serve
 package commands
 
 import (

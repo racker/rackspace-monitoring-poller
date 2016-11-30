@@ -14,7 +14,6 @@
 // limitations under the License.
 //
 
-// Hostinfo CPU
 package hostinfo
 
 import (

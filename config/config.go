@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-// Config
+// Package config declares the data structures used for all execution entry points
 package config
 
 import (
