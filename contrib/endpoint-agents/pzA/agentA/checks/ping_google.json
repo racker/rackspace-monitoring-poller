@@ -1,0 +1,18 @@
+{
+  "id": "chPzAPingGoogle",
+  "zone_id": "pzA",
+  "entity_id": "enAAAAIPV4",
+  "details": {
+    "count": 3
+  },
+  "type": "remote.ping",
+  "timeout": 5,
+  "period": 15,
+  "ip_addresses": {
+    "default": "google.com"
+  },
+  "target_alias": "default",
+  "target_hostname": null,
+  "target_resolver": null,
+  "disabled": false
+}

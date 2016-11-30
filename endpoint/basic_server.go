@@ -22,17 +22,24 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/protocol"
+	"github.com/racker/rackspace-monitoring-poller/utils"
 	"go/types"
 	"golang.org/x/net/context"
 	"net"
 	"strconv"
+	"time"
+)
+
+const (
+	ExpectedAgentHeartbeatSec = 60
+	ConnectionWriteAllowance  = 60 * time.Second
 )
 
 type BasicServer struct {
 	Certificate *tls.Certificate
 	BindAddr    string
 
-	AgentTracker
+	*AgentTracker
 }
 
 func (s *BasicServer) ApplyConfig(cfg *config.EndpointConfig) error {
@@ -49,7 +56,7 @@ func (s *BasicServer) ApplyConfig(cfg *config.EndpointConfig) error {
 	}
 	s.BindAddr = bindAddr
 
-	s.AgentTracker.Start(*cfg)
+	s.AgentTracker = NewAgentTracker(cfg)
 
 	return nil
 }
@@ -58,19 +65,22 @@ func (s *BasicServer) UseMetricsRouter(mr *MetricsRouter) {
 }
 
 func (s *BasicServer) ListenAndServe() error {
-	tlsConfig := tls.Config{
+
+	rootContext := context.Background()
+
+	s.AgentTracker.Start(rootContext)
+
+	tlsConfig := &tls.Config{
 		Certificates: []tls.Certificate{*s.Certificate},
 	}
 
-	listener, err := tls.Listen("tcp", s.BindAddr, &tlsConfig)
+	listener, err := tls.Listen("tcp", s.BindAddr, tlsConfig)
 	if err != nil {
 		return err
 	}
 	defer listener.Close()
 
 	log.WithField("boundAddr", listener.Addr()).Info("Endpoint is accepting connections from pollers")
-
-	rootContext, _ := context.WithCancel(context.Background())
 
 	for {
 		conn, err := listener.Accept()
@@ -85,10 +95,19 @@ func (s *BasicServer) handleConnection(ctx context.Context, c net.Conn) {
 	defer c.Close()
 	log.WithField("remoteAddr", c.RemoteAddr()).Info("Handling connection")
 
-	encoder := json.NewEncoder(c)
+	smartC := utils.NewSmartConn(c)
+	// the agent doesn't know it yet, but we're imposing the keepalive duration upon them to send us a handshake, etc
+	smartC.ReadKeepalive = ExpectedAgentHeartbeatSec * time.Second
+	smartC.WriteAllowance = ConnectionWriteAllowance
+	// this is also where we could setup endpoint->agent heartbeats
+	err := smartC.Start()
+	if err != nil {
+		log.WithField("remoteAddr", c.RemoteAddr()).Errorln("Failed to setup read keepalives", err)
+		return
+	}
 
 	var frames = make(chan *protocol.FrameMsg, 10)
-	go s.frameDecoder(c, frames)
+	go s.frameDecoder(smartC, frames)
 
 	for {
 		select {
@@ -97,7 +116,7 @@ func (s *BasicServer) handleConnection(ctx context.Context, c net.Conn) {
 			return
 
 		case frame := <-frames:
-			err := s.consumeFrame(ctx, c, frame, encoder)
+			err := s.consumeFrame(ctx, smartC, frame)
 			if err != nil {
 				log.Warnln("Failed to consume frame", err)
 				// assume the worst, get out, and close the connection
@@ -109,7 +128,7 @@ func (s *BasicServer) handleConnection(ctx context.Context, c net.Conn) {
 	}
 }
 
-func (s *BasicServer) frameDecoder(c net.Conn, frames chan<- *protocol.FrameMsg) {
+func (s *BasicServer) frameDecoder(c *utils.SmartConn, frames chan<- *protocol.FrameMsg) {
 	log.WithField("remoteAddr", c.RemoteAddr()).Debug("Frame decoder starting")
 	defer log.WithField("remoteAddr", c.RemoteAddr()).Debug("Frame decoder stopped")
 
@@ -128,7 +147,7 @@ func (s *BasicServer) frameDecoder(c net.Conn, frames chan<- *protocol.FrameMsg)
 	}
 }
 
-func (s *BasicServer) consumeFrame(ctx context.Context, c net.Conn, frame *protocol.FrameMsg, encoder *json.Encoder) error {
+func (s *BasicServer) consumeFrame(ctx context.Context, c *utils.SmartConn, frame *protocol.FrameMsg) error {
 	log.WithFields(log.Fields{
 		"remoteAddr": c.RemoteAddr(),
 		"msgId":      frame.Id,
@@ -141,29 +160,29 @@ func (s *BasicServer) consumeFrame(ctx context.Context, c net.Conn, frame *proto
 		handshakeReq := &protocol.HandshakeRequest{FrameMsg: *frame}
 		json.Unmarshal(frame.RawParams, &handshakeReq.Params)
 
-		agentErrors := s.AgentTracker.ProcessHello(handshakeReq, encoder)
-		go watchForAgentErrors(ctx, agentErrors, c)
-
 		resp := &protocol.HandshakeResponse{}
 		resp.Method = protocol.MethodEmpty
 		resp.Id = frame.Id
-		resp.Result.HandshakeInterval = 60000
+		resp.Result.HandshakeInterval = ExpectedAgentHeartbeatSec * 1000
 
 		log.Debug("SEND handshake resp", resp)
-		encoder.Encode(resp)
+		c.WriteJSON(resp)
+
+		agentErrors := s.AgentTracker.ProcessHello(*handshakeReq, c)
+		go watchForAgentErrors(ctx, agentErrors, c)
 
 	case protocol.MethodPollerRegister:
 		pollerRegisterReq := &protocol.PollerRegister{FrameMsg: *frame}
 		json.Unmarshal(frame.RawParams, &pollerRegisterReq.Params)
 
-		s.AgentTracker.ProcessPollerRegister(pollerRegisterReq)
+		s.AgentTracker.ProcessPollerRegister(*pollerRegisterReq)
 
 	case protocol.MethodCheckMetricsPost:
 		metricsPostReq := &protocol.MetricsPostRequest{FrameMsg: *frame}
 		json.Unmarshal(frame.RawParams, &metricsPostReq.Params)
 		json.Unmarshal(frame.RawParams, &metricsPostReq.Params)
 
-		s.AgentTracker.ProcessCheckMetricsPost(metricsPostReq)
+		s.AgentTracker.ProcessCheckMetricsPost(*metricsPostReq)
 
 	case protocol.MethodHeartbeatPost:
 		log.WithField("remoteAddr", c.RemoteAddr()).Debug("Is alive")
@@ -175,7 +194,7 @@ func (s *BasicServer) consumeFrame(ctx context.Context, c net.Conn, frame *proto
 	return nil
 }
 
-func watchForAgentErrors(ctx context.Context, agentErrors <-chan error, c net.Conn) {
+func watchForAgentErrors(ctx context.Context, agentErrors <-chan error, c *utils.SmartConn) {
 	select {
 	case err := <-agentErrors:
 		log.WithField("remoteAddr", c.RemoteAddr()).Warn("Agent registration problem. Closing channel.", err)

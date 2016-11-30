@@ -28,16 +28,26 @@ import (
 	"path"
 	"strings"
 	"sync/atomic"
+	"context"
+	"github.com/racker/rackspace-monitoring-poller/utils"
+)
+
+const (
+	AgentErrorChanSize = 1
+	GreeterChanSize = 10
+	RegistrationsChanSize = 10
+	MetricsReqChanSize = 50
+	MetricsStoreChanSize = 50
 )
 
 type agent struct {
-	responder *json.Encoder
-	outMsgId  uint64
-	sourceId  string
-	errors    chan<- error
+	responder      *utils.SmartConn
+	outMsgId       uint64
+	sourceId       string
+	errors         chan <- error
 
 	// observedToken is the token that was provided by the poller during hello handshake. It may not necessarily be valid.
-	observedToken string
+	observedToken  string
 
 	id             string
 	name           string
@@ -45,7 +55,7 @@ type agent struct {
 	bundleVersion  string
 	features       []map[string]string
 
-	zones []string
+	zones          []string
 }
 
 type registration struct {
@@ -59,9 +69,9 @@ type metricsToStore struct {
 }
 
 type AgentTracker struct {
-	cfg config.EndpointConfig
+	cfg           *config.EndpointConfig
 	// key is FrameMsgCommon.Source. All access to this map must be performed in the AgentTracker.start go routine
-	agents map[string]*agent
+	agents        map[string]*agent
 
 	greeter       chan *agent
 	registrations chan registration
@@ -71,21 +81,22 @@ type AgentTracker struct {
 	metricsRouter *MetricsRouter
 }
 
-func (at *AgentTracker) Start(cfg config.EndpointConfig) {
-	at.cfg = cfg
+func NewAgentTracker(cfg *config.EndpointConfig) *AgentTracker {
+	return &AgentTracker{
+		cfg: cfg,
 
-	// channels
-	//TODO make channel buffer sizes configurable
-	at.greeter = make(chan *agent, 10)
-	at.registrations = make(chan registration, 10)
-	at.metricReqs = make(chan *protocol.MetricsPostRequest, 50)
-	at.metrics = make(chan *metricsToStore, 50)
+		agents: make(map[string]*agent),
 
-	// LUTs
-	at.agents = make(map[string]*agent)
+		greeter: make(chan *agent, GreeterChanSize),
+		registrations: make(chan registration, RegistrationsChanSize),
+		metricReqs: make(chan *protocol.MetricsPostRequest, MetricsReqChanSize),
+		metrics: make(chan *metricsToStore, MetricsStoreChanSize),
+	}
+}
 
-	go at.start()
-	go at.startMetricsDecomposer()
+func (at *AgentTracker) Start(ctx context.Context, ) {
+	go at.start(ctx)
+	go at.startMetricsDecomposer(ctx)
 }
 
 func (at *AgentTracker) UseMetricsRouter(mr *MetricsRouter) {
@@ -93,8 +104,8 @@ func (at *AgentTracker) UseMetricsRouter(mr *MetricsRouter) {
 }
 
 // Returns a channel where errors observed about this agent are conveyed
-func (at *AgentTracker) ProcessHello(req *protocol.HandshakeRequest, responder *json.Encoder) <-chan error {
-	errors := make(chan error)
+func (at *AgentTracker) ProcessHello(req protocol.HandshakeRequest, responder *utils.SmartConn) <-chan error {
+	errors := make(chan error, AgentErrorChanSize)
 
 	newAgent := &agent{
 		sourceId:       req.Source,
@@ -113,7 +124,7 @@ func (at *AgentTracker) ProcessHello(req *protocol.HandshakeRequest, responder *
 	return errors
 }
 
-func (at *AgentTracker) ProcessPollerRegister(req *protocol.PollerRegister) {
+func (at *AgentTracker) ProcessPollerRegister(req protocol.PollerRegister) {
 	reg := registration{
 		sourceId: req.Source,
 		zones:    req.Params[protocol.PollerZones],
@@ -122,12 +133,13 @@ func (at *AgentTracker) ProcessPollerRegister(req *protocol.PollerRegister) {
 	at.registrations <- reg
 }
 
-func (at *AgentTracker) ProcessCheckMetricsPost(req *protocol.MetricsPostRequest) {
-	at.metricReqs <- req
+func (at *AgentTracker) ProcessCheckMetricsPost(req protocol.MetricsPostRequest) {
+	at.metricReqs <- &req
 }
 
-func (at *AgentTracker) start() {
+func (at *AgentTracker) start(ctx context.Context) {
 	log.Infoln("Starting agent tracker")
+	defer log.Infoln("Stopping agent tracker")
 
 	for {
 		select {
@@ -139,44 +151,53 @@ func (at *AgentTracker) start() {
 
 		case req := <-at.metricReqs:
 			at.handleMetricsPostReq(req)
+
+		case <-ctx.Done():
+			return
 		}
 	}
 }
 
-func (at *AgentTracker) startMetricsDecomposer() {
+func (at *AgentTracker) startMetricsDecomposer(ctx context.Context) {
 	log.Infoln("Starting metrics decomposer")
+	defer log.Infoln("Stopping metrics decomposer")
 
 	for {
-		metric := <-at.metrics
-		log.WithFields(log.Fields{
-			"agentId": metric.agent.id,
-			"params":  metric.params,
-		}).Info("Decomposing metric")
+		select {
+		case metric := <-at.metrics:
+			log.WithFields(log.Fields{
+				"agentId": metric.agent.id,
+				"params":  metric.params,
+			}).Info("Decomposing metric")
 
 		//TODO do something with failed metrics that only contain state and status
 
-		for _, outerWraps := range metric.params.Metrics {
+			for _, outerWraps := range metric.params.Metrics {
 
-			for _, metricWrap := range outerWraps {
-				for field, entry := range metricWrap {
-					metricName := BuildMetricName(metric.params.EntityId,
-						metric.agent.id,
-						metric.params.CheckType,
-						metric.params.CheckId,
-						field,
-					)
+				for _, metricWrap := range outerWraps {
+					for field, entry := range metricWrap {
+						metricName := BuildMetricName(metric.params.EntityId,
+							metric.agent.id,
+							metric.params.CheckType,
+							metric.params.CheckId,
+							field,
+						)
 
-					m := Metric{
-						Name:       metricName,
-						Value:      entry.Value,
-						MetricType: entry.Type,
+						m := Metric{
+							Name:       metricName,
+							Value:      entry.Value,
+							MetricType: entry.Type,
+						}
+
+						at.metricsRouter.Route(m)
 					}
 
-					at.metricsRouter.Route(m)
 				}
 
 			}
 
+		case <-ctx.Done():
+			return
 		}
 
 	}
@@ -285,7 +306,7 @@ func (a *agent) sendTo(method string, params interface{}) {
 		}
 	}
 
-	frameOut := protocol.FrameMsg{
+	frameOut := &protocol.FrameMsg{
 		FrameMsgCommon: protocol.FrameMsgCommon{
 			Version: "1",
 			Id:      msgId,
@@ -302,7 +323,7 @@ func (a *agent) sendTo(method string, params interface{}) {
 		"agentId": a.id,
 	}).Debug("SENDing frame to agent")
 
-	a.responder.Encode(&frameOut)
+	a.responder.WriteJSON(frameOut)
 }
 
 type AgentTrackingError struct {

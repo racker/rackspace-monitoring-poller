@@ -57,7 +57,7 @@ func (mr *MetricsRouter) Route(metric Metric) {
 func (mr *MetricsRouter) start() {
 	for {
 		metric := <-mr.metrics
-		log.Debug("Routing", metric)
+		log.WithField("metric", metric).Debug("Routing to bit bucket...for now")
 		//TODO
 	}
 }
