@@ -26,7 +26,6 @@ import (
 	"go/types"
 	"golang.org/x/net/context"
 	"net"
-	"strconv"
 	"time"
 )
 
@@ -52,7 +51,7 @@ func (s *BasicServer) ApplyConfig(cfg *config.EndpointConfig) error {
 
 	bindAddr := cfg.BindAddr
 	if bindAddr == "" {
-		bindAddr = ":" + strconv.Itoa(config.DefaultPort)
+		bindAddr = net.JoinHostPort("", config.DefaultPort)
 	}
 	s.BindAddr = bindAddr
 
@@ -85,7 +84,7 @@ func (s *BasicServer) ListenAndServe() error {
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			log.Errorln("Failed to accept connection", err.Error())
+			log.Fatal("Failed to accept connection", err.Error())
 		}
 		go s.handleConnection(rootContext, conn)
 	}
@@ -158,7 +157,11 @@ func (s *BasicServer) consumeFrame(ctx context.Context, c *utils.SmartConn, fram
 	switch frame.Method {
 	case protocol.MethodHandshakeHello:
 		handshakeReq := &protocol.HandshakeRequest{FrameMsg: *frame}
-		json.Unmarshal(frame.RawParams, &handshakeReq.Params)
+		err := json.Unmarshal(frame.RawParams, &handshakeReq.Params)
+		if err != nil {
+			logUnmarshalError(frame, c)
+			return err
+		}
 
 		resp := &protocol.HandshakeResponse{}
 		resp.Method = protocol.MethodEmpty
@@ -173,25 +176,40 @@ func (s *BasicServer) consumeFrame(ctx context.Context, c *utils.SmartConn, fram
 
 	case protocol.MethodPollerRegister:
 		pollerRegisterReq := &protocol.PollerRegister{FrameMsg: *frame}
-		json.Unmarshal(frame.RawParams, &pollerRegisterReq.Params)
+		err := json.Unmarshal(frame.RawParams, &pollerRegisterReq.Params)
+		if err != nil {
+			logUnmarshalError(frame, c)
+			return err
+		}
 
 		s.AgentTracker.ProcessPollerRegister(*pollerRegisterReq)
 
 	case protocol.MethodCheckMetricsPost:
 		metricsPostReq := &protocol.MetricsPostRequest{FrameMsg: *frame}
-		json.Unmarshal(frame.RawParams, &metricsPostReq.Params)
-		json.Unmarshal(frame.RawParams, &metricsPostReq.Params)
+		err := json.Unmarshal(frame.RawParams, &metricsPostReq.Params)
+		if err != nil {
+			logUnmarshalError(frame, c)
+			return err
+		}
 
 		s.AgentTracker.ProcessCheckMetricsPost(*metricsPostReq)
 
 	case protocol.MethodHeartbeatPost:
-		log.WithField("remoteAddr", c.RemoteAddr()).Debug("Is alive")
+		log.WithField("remoteAddr", c.RemoteAddr()).Debug("It's alive")
 
 	default:
 		return types.Error{Msg: "Unsupported method: " + frame.Method}
 	}
 
 	return nil
+}
+
+func logUnmarshalError(frame *protocol.FrameMsg, c *utils.SmartConn) {
+	log.WithFields(log.Fields{
+		"rawParams":  frame.RawParams,
+		"method":     frame.Method,
+		"remoteAddr": c.RemoteAddr(),
+	}).Warn("Failed to unmarshal raw params")
 }
 
 func watchForAgentErrors(ctx context.Context, agentErrors <-chan error, c *utils.SmartConn) {

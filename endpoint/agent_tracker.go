@@ -20,34 +20,36 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/protocol"
 
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/racker/rackspace-monitoring-poller/config"
+	"github.com/racker/rackspace-monitoring-poller/utils"
 	"io/ioutil"
 	"os"
 	"path"
 	"strings"
 	"sync/atomic"
-	"context"
-	"github.com/racker/rackspace-monitoring-poller/utils"
 )
 
 const (
-	AgentErrorChanSize = 1
-	GreeterChanSize = 10
+	AgentErrorChanSize    = 1
+	GreeterChanSize       = 10
 	RegistrationsChanSize = 10
-	MetricsReqChanSize = 50
-	MetricsStoreChanSize = 50
+	MetricsReqChanSize    = 50
+	MetricsStoreChanSize  = 50
+	CheckId               = "id"
+	CheckFileSuffix       = ".json"
 )
 
 type agent struct {
-	responder      *utils.SmartConn
-	outMsgId       uint64
-	sourceId       string
-	errors         chan <- error
+	responder *utils.SmartConn
+	outMsgId  uint64
+	sourceId  string
+	errors    chan<- error
 
 	// observedToken is the token that was provided by the poller during hello handshake. It may not necessarily be valid.
-	observedToken  string
+	observedToken string
 
 	id             string
 	name           string
@@ -55,7 +57,7 @@ type agent struct {
 	bundleVersion  string
 	features       []map[string]string
 
-	zones          []string
+	zones []string
 }
 
 type registration struct {
@@ -69,9 +71,9 @@ type metricsToStore struct {
 }
 
 type AgentTracker struct {
-	cfg           *config.EndpointConfig
+	cfg *config.EndpointConfig
 	// key is FrameMsgCommon.Source. All access to this map must be performed in the AgentTracker.start go routine
-	agents        map[string]*agent
+	agents map[string]*agent
 
 	greeter       chan *agent
 	registrations chan registration
@@ -87,14 +89,14 @@ func NewAgentTracker(cfg *config.EndpointConfig) *AgentTracker {
 
 		agents: make(map[string]*agent),
 
-		greeter: make(chan *agent, GreeterChanSize),
+		greeter:       make(chan *agent, GreeterChanSize),
 		registrations: make(chan registration, RegistrationsChanSize),
-		metricReqs: make(chan *protocol.MetricsPostRequest, MetricsReqChanSize),
-		metrics: make(chan *metricsToStore, MetricsStoreChanSize),
+		metricReqs:    make(chan *protocol.MetricsPostRequest, MetricsReqChanSize),
+		metrics:       make(chan *metricsToStore, MetricsStoreChanSize),
 	}
 }
 
-func (at *AgentTracker) Start(ctx context.Context, ) {
+func (at *AgentTracker) Start(ctx context.Context) {
 	go at.start(ctx)
 	go at.startMetricsDecomposer(ctx)
 }
@@ -170,7 +172,7 @@ func (at *AgentTracker) startMetricsDecomposer(ctx context.Context) {
 				"params":  metric.params,
 			}).Info("Decomposing metric")
 
-		//TODO do something with failed metrics that only contain state and status
+			//TODO do something with failed metrics that only contain state and status
 
 			for _, outerWraps := range metric.params.Metrics {
 
@@ -235,7 +237,8 @@ func (at *AgentTracker) lookupChecks(a *agent) {
 	log.WithField("agent", a).Debug("Looking up checks to apply to agent")
 
 	//TODO iterate through zones in poller registration
-	pathToChecks := path.Join(at.cfg.AgentsConfigDir, a.zones[0], a.id, "checks")
+	zone := a.zones[0]
+	pathToChecks := path.Join(at.cfg.AgentsConfigDir, zone, a.id, "checks")
 
 	checksDir, err := os.Open(pathToChecks)
 	if err != nil {
@@ -251,10 +254,13 @@ func (at *AgentTracker) lookupChecks(a *agent) {
 	}
 
 	// Look for all .json files in the checks directory...and assume they are valid check details
-	//TODO validate check details
 	for _, fileInfo := range contents {
-		if !fileInfo.IsDir() && strings.HasSuffix(fileInfo.Name(), ".json") {
-			jsonContent, err := ioutil.ReadFile(path.Join(pathToChecks, fileInfo.Name()))
+		if !fileInfo.IsDir() && strings.HasSuffix(fileInfo.Name(), CheckFileSuffix) {
+			filename := fileInfo.Name()
+			jsonContent, err := ioutil.ReadFile(path.Join(pathToChecks, filename))
+
+			check, err := at.decodeAdjustAndValidate(jsonContent, zone, filename, a)
+
 			if err != nil {
 				log.WithFields(log.Fields{
 					"checksDir": checksDir,
@@ -263,9 +269,30 @@ func (at *AgentTracker) lookupChecks(a *agent) {
 				continue
 			}
 
-			go a.sendTo(protocol.MethodPollerChecksAdd, jsonContent)
+			go a.sendTo(protocol.MethodPollerChecksAdd, check)
 		}
 	}
+}
+
+func (at *AgentTracker) decodeAdjustAndValidate(jsonContent []byte, zone string, filename string, a *agent) (map[string]interface{}, error) {
+	var check map[string]interface{}
+	err := json.Unmarshal(jsonContent, &check)
+	if err != nil {
+		return nil, err
+	}
+
+	// Only do a cursory validation so that we don't have to maintain thorough validation rules and allow for
+	// development time flexibility.
+	if !utils.ContainsAllKeys(check, "type", "entity_id", "zone_id") {
+		return nil, AgentTrackingError{Message: "Missing an expected field", SourceId: a.sourceId}
+	}
+
+	check[CheckId] = fmt.Sprintf("ch-%s-%s-%s", zone, a.id,
+		strings.Map(
+			utils.IdentifierSafe, strings.TrimSuffix(
+				filename, CheckFileSuffix)))
+
+	return check, nil
 }
 
 func (at *AgentTracker) handleGreetedAgent(greetedAgent *agent) {
@@ -289,26 +316,15 @@ func (at *AgentTracker) handleGreetedAgent(greetedAgent *agent) {
 func (a *agent) sendTo(method string, params interface{}) {
 	msgId := atomic.AddUint64(&a.outMsgId, 1)
 
-	var rawParams json.RawMessage
-
-	switch params.(type) {
-	case []byte:
-		// already marshalled
-		rawParams = params.([]byte)
-
-	default:
-		// needs marshalling
-		var err error
-		rawParams, err = json.Marshal(params)
-		if err != nil {
-			log.WithField("params", params).Warn("Unable to marshal params")
-			return
-		}
+	rawParams, err := json.Marshal(params)
+	if err != nil {
+		log.WithField("params", params).Warn("Unable to marshal params")
+		return
 	}
 
 	frameOut := &protocol.FrameMsg{
 		FrameMsgCommon: protocol.FrameMsgCommon{
-			Version: "1",
+			Version: protocol.ProtocolVersion,
 			Id:      msgId,
 			Source:  "endpoint",
 			Target:  "endpoint",

@@ -22,6 +22,10 @@ import (
 	"github.com/racker/rackspace-monitoring-poller/config"
 )
 
+const (
+	IncomingChanSize = 100
+)
+
 type Metric struct {
 	// Name is <entity_id>.<agent_id>.<check_type>.<check_id>.<field>
 	Name       string
@@ -37,7 +41,7 @@ type MetricsRouter struct {
 
 func NewMetricsRouter(cfg *config.EndpointConfig) *MetricsRouter {
 	mr := &MetricsRouter{
-		metrics: make(chan *Metric, 100),
+		metrics: make(chan *Metric, IncomingChanSize),
 		cfg:     *cfg,
 	}
 

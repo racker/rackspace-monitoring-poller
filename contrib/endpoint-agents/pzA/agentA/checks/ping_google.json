@@ -1,13 +1,13 @@
 {
-  "id": "chPzAPingGoogle",
+  "id": "GETS REPLACED",
   "zone_id": "pzA",
   "entity_id": "enAAAAIPV4",
   "details": {
     "count": 3
   },
   "type": "remote.ping",
-  "timeout": 5,
-  "period": 15,
+  "timeout": 15,
+  "period": 30,
   "ip_addresses": {
     "default": "google.com"
   },

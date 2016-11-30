@@ -14,13 +14,12 @@
 // limitations under the License.
 //
 
-
 package utils
 
 import (
+	"encoding/json"
 	"net"
 	"time"
-	"encoding/json"
 )
 
 const (
@@ -102,7 +101,7 @@ func (c *SmartConn) Write(p []byte) (n int, err error) {
 }
 
 func (c *SmartConn) Read(b []byte) (n int, err error) {
-	defer c.observedRead()
+	c.observedRead()
 	return c.managedConn.Read(b)
 }
 
@@ -121,7 +120,7 @@ func (c *SmartConn) observedRead() error {
 		// Allow some tolerance on the read deadline since a keepalive sent "on the dot" could technically fall
 		// a little too close to a deadline set exactly at the same.
 		return c.managedConn.SetReadDeadline(time.Now().Add(
-			c.ReadKeepalive + (c.ReadKeepalive/ReadKeepaliveTolerance)))
+			c.ReadKeepalive + (c.ReadKeepalive / ReadKeepaliveTolerance)))
 	} else {
 		return nil
 	}

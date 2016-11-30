@@ -14,19 +14,26 @@
 // limitations under the License.
 //
 
-// Constants
-package config
+package utils
 
-var (
-	DefaultProdSrvEndpoints = []string{
-		"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
-		"_monitoringagent._tcp.ord1.prod.monitoring.api.rackspacecloud.com",
-		"_monitoringagent._tcp.lon3.prod.monitoring.api.rackspacecloud.com",
+import "unicode"
+
+func ContainsAllKeys(v map[string]interface{}, keys ...string) bool {
+	for _, k := range keys {
+		if _, ok := v[k]; !ok {
+			return false
+		}
 	}
-)
 
-const (
-	DefaultConfigPathLinux = "/etc/rackspace-monitoring-agent.cfg"
+	return true
+}
 
-	DefaultPort = "50041"
-)
+// IdentifierSafe can be passed to strings.Map to convert all non-alphanumeric characters to underscores
+func IdentifierSafe(r rune) rune {
+	switch {
+	case unicode.IsLetter(r) || unicode.IsDigit(r):
+		return r
+	default:
+		return '_'
+	}
+}
