@@ -1,7 +1,7 @@
 {
   "CertFile": "cert.pem",
   "KeyFile": "key.pem",
-  "BindAddr": "localhost:55000",
+  "BindAddr": "0.0.0.0:55000",
 
   "AgentsConfigDir": "contrib/endpoint-agents"
 }
