@@ -24,7 +24,7 @@ test:
     - cd "$APP_PATH" && go get github.com/golang/mock/gomock
     - cd "$APP_PATH" && go get github.com/golang/mock/mockgen
   override:
-    - cd "$APP_PATH" && go test -v -coverprofile=coverage.out $(go list ./... | grep -v /vendor/)
+    - cd "$APP_PATH" && go test -v -cover $(go list ./... | grep -v /vendor/)
 
 deployment:
  release:
