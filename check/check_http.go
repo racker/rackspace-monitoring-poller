@@ -26,13 +26,14 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	log "github.com/Sirupsen/logrus"
-	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	protocol "github.com/racker/rackspace-monitoring-poller/protocol/check"
+	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	"github.com/racker/rackspace-monitoring-poller/utils"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -225,7 +226,8 @@ func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
 	}
 	endtime := utils.NowTimestampMillis()
 
-	cr.AddMetric(metric.NewMetric("code", "", metric.MetricNumber, resp.StatusCode, ""))
+	codeStr := strconv.FormatInt(int64(resp.StatusCode), 10)
+	cr.AddMetric(metric.NewMetric("code", "", metric.MetricString, codeStr, ""))
 	cr.AddMetric(metric.NewMetric("duration", "", metric.MetricNumber, endtime-starttime, "milliseconds"))
 	cr.AddMetric(metric.NewMetric("bytes", "", metric.MetricNumber, len(body), "bytes"))
 
