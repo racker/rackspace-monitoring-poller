@@ -14,23 +14,22 @@
 // limitations under the License.
 //
 
-// Package hostinfo contains a file for each supported host info query
 package hostinfo
 
-import (
-	"github.com/racker/rackspace-monitoring-poller/check"
-	"github.com/racker/rackspace-monitoring-poller/protocol"
-)
-
-type HostInfo interface {
-	Run() (*check.CheckResultSet, error)
-	BuildResult(cr *check.CheckResultSet) interface{}
+type HostInfoFilesystemMetrics struct {
+	DirectoryName  string `json:"dir_name"`
+	DeviceName     string `json:"dev_name"`
+	Options        string `json:"options"`
+	SystemTypeName string `json:"sys_type_name"`
+	Free           uint64 `json:"free"`
+	Total          uint64 `json:"total"`
+	Used           uint64 `json:"used"`
+	Available      uint64 `json:"avail"`
+	Files          uint64 `json:"files"`
+	FreeFiles      uint64 `json:"free_files"`
 }
 
-func NewHostInfoResponse(cr *check.CheckResultSet, f *protocol.FrameMsg, hinfo HostInfo) *protocol.HostInfoResponse {
-	resp := &protocol.HostInfoResponse{}
-	resp.Result = hinfo.BuildResult(cr)
-	resp.SetResponseFrameMsg(f)
-
-	return resp
+type HostInfoFilesystemResult struct {
+	Metrics   []HostInfoFilesystemMetrics `json:"metrics"`
+	Timestamp int64                       `json:"timestamp"`
 }

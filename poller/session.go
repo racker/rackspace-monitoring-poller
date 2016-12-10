@@ -91,6 +91,12 @@ func (s *Session) Send(msg protocol.Frame) {
 	s.sendCh <- msg
 }
 
+func (s *Session) SendResponse(msg protocol.Frame) {
+	msg.SetTarget("endpoint")
+	msg.SetSource(s.connection.guid)
+	s.sendCh <- msg
+}
+
 func (s *Session) SetHeartbeatInterval(timeout uint64) {
 	duration := time.Duration(timeout) * time.Millisecond
 	log.Debugf("setting heartbeat interval %v", duration)
@@ -117,6 +123,7 @@ func (s *Session) handleResponse(resp *protocol.FrameMsg) {
 			s.SetHeartbeatInterval(resp.Result.HandshakeInterval)
 			s.Send(protocol.NewPollerRegister([]string{"pzA"}))
 		case protocol.MethodCheckScheduleGet:
+
 		case protocol.MethodPollerRegister:
 		case protocol.MethodHeartbeatPost:
 		case protocol.MethodCheckMetricsPost:
@@ -176,14 +183,12 @@ func (s *Session) handleFrame(f *protocol.FrameMsg) {
 
 func (s *Session) handleHostInfo(f *protocol.FrameMsg) {
 	if hinfo := hostinfo.NewHostInfo(f.GetRawParams()); hinfo != nil {
-		go func(s *Session, hinfo hostinfo.HostInfo, f *protocol.FrameMsg) {
-			cr, err := hinfo.Run()
-			if err != nil {
-			} else {
-				response := hostinfo.NewHostInfoResponse(cr, f, hinfo)
-				s.Send(response)
-			}
-		}(s, hinfo, f)
+		cr, err := hinfo.Run()
+		if err != nil {
+		} else {
+			response := hostinfo.NewHostInfoResponse(cr, f, hinfo)
+			s.SendResponse(response)
+		}
 	}
 }
 

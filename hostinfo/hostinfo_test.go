@@ -19,13 +19,13 @@ package hostinfo_test
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/hostinfo"
-	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	"github.com/racker/rackspace-monitoring-poller/protocol"
 	hostinfo_proto "github.com/racker/rackspace-monitoring-poller/protocol/hostinfo"
+	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	"github.com/racker/rackspace-monitoring-poller/utils"
-	"log"
 	"testing"
 )
 
@@ -33,6 +33,7 @@ func TestHostInfoMemory_PopulateResult(t *testing.T) {
 	hinfo := &hostinfo_proto.HostInfoBase{Type: "MEMORY"}
 	hostInfoMemory := hostinfo.NewHostInfoMemory(hinfo)
 
+	crs := check.NewCheckResultSet(nil, nil)
 	cr := check.NewCheckResult()
 	cr.AddMetrics(
 		metric.NewMetric("UsedPercentage", "", metric.MetricFloat, 0.75, ""),
@@ -44,20 +45,29 @@ func TestHostInfoMemory_PopulateResult(t *testing.T) {
 		metric.NewMetric("SwapUsed", "", metric.MetricNumber, 150, ""),
 		metric.NewMetric("SwapUsedPercentage", "", metric.MetricFloat, 0.75, ""),
 	)
+	crs.Add(cr)
 
 	sourceFrame := &protocol.FrameMsg{}
-
 	utils.NowTimestampMillis = func() int64 { return 100 }
-
-	response := hostinfo.NewHostInfoResponse(cr, sourceFrame, hostInfoMemory)
-
+	response := hostinfo.NewHostInfoResponse(crs, sourceFrame, hostInfoMemory)
 	encoded, err := response.Encode()
 	if err != nil {
 		t.Error(err)
 	}
 
-	if !bytes.Equal(encoded, []byte("{\"v\":\"\",\"id\":0,\"target\":\"\",\"source\":\"\",\"result\":{\"metrics\":{\"used_percentage\":0.75,\"free\":0,\"total\":0,\"used\":0,\"swap_free\":0,\"swap_total\":0,\"swap_used\":0,\"swap_percentage\":0.75},\"timestamp\":100}}")) {
-		log.Printf(string(encoded))
+	expected := []byte(`{"v":"","id":0,"target":"","source":"","result":{"metrics":{"used_percentage":0.75,"actual_free":0,"actual_used":0,"free":0,"total":0,"used":0,"ram":0,"swap_free":0,"swap_total":0,"swap_used":0,"swap_percentage":0.75},"timestamp":100}}`)
+	if !bytes.Equal(encoded, expected) {
 		t.Error("wrong encoding")
 	}
+}
+
+func TestHostInfoProcesses_PopulateResult(t *testing.T) {
+	hinfo := &hostinfo_proto.HostInfoBase{Type: "PROCS"}
+	hostInfoProcs := hostinfo.NewHostInfoProcesses(hinfo)
+	crs, err := hostInfoProcs.Run()
+	if err != nil {
+		t.Error(err)
+	}
+	result := hostInfoProcs.BuildResult(crs)
+	fmt.Printf("%v", result)
 }

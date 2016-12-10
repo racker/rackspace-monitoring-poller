@@ -16,5 +16,25 @@
 
 package hostinfo
 
+type HostInfoCpuMetrics struct {
+	Idle         uint64  `json:"idle"`
+	Irq          float64 `json:"irq"`
+	Mhz          float64 `json:"mhz"`
+	Model        string  `json:"model"`
+	Name         string  `json:"name"`
+	Nice         float64 `json:"nice"`
+	SoftIrq      float64 `json:"softirq"`
+	Stolen       float64 `json:"stolen"`
+	Sys          float64 `json:"sys"`
+	Total        uint64  `json:"total"`
+	TotalCores   uint64  `json:"total_cores"`
+	TotalSockets uint64  `json:"total_sockets"`
+	User         float64 `json:"user"`
+	Vendor       string  `json:"vendor"`
+	Wait         float64 `json:"wait"`
+}
+
 type HostInfoCpuResult struct {
+	Metrics   []HostInfoCpuMetrics `json:"metrics"`
+	Timestamp int64                `json:"timestamp"`
 }

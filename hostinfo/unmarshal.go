@@ -33,6 +33,12 @@ func NewHostInfo(rawParams json.RawMessage) HostInfo {
 		return NewHostInfoMemory(hinfo)
 	case "CPU":
 		return NewHostInfoCpu(hinfo)
+	case "FILESYSTEM":
+		return NewHostInfoFilesystem(hinfo)
+	case "SYSTEM":
+		return NewHostInfoSystem(hinfo)
+	case "PROCS":
+		return NewHostInfoProcesses(hinfo)
 	default:
 		return nil
 	}

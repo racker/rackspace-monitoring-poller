@@ -66,6 +66,20 @@ func NewMetric(name, metricDimension string, internalMetricType int, value inter
 	return metric
 }
 
+func (m *Metric) ToString() (string, error) {
+	if m.Type != MetricString {
+		return "", errors.New("Invalid coercion to String")
+	}
+	if m.Value == nil {
+		return "", nil
+	}
+	value, ok := m.Value.(string)
+	if !ok {
+		return "", errors.New("Invalid coercion to String")
+	}
+	return value, nil
+}
+
 func (m *Metric) ToUint64() (uint64, error) {
 	if m.Type != MetricNumber {
 		return 0, errors.New("Invalid coercion to Uint64")
@@ -73,6 +87,28 @@ func (m *Metric) ToUint64() (uint64, error) {
 	value, ok := m.Value.(uint64)
 	if !ok {
 		return 0, errors.New("Invalid coercion to Uint64")
+	}
+	return value, nil
+}
+
+func (m *Metric) ToInt64() (int64, error) {
+	if m.Type != MetricNumber {
+		return 0, errors.New("Invalid coercion to int64")
+	}
+	value, ok := m.Value.(int64)
+	if !ok {
+		return 0, errors.New("Invalid coercion to int64")
+	}
+	return value, nil
+}
+
+func (m *Metric) ToInt32() (int32, error) {
+	if m.Type != MetricNumber {
+		return 0, errors.New("Invalid coercion to int32")
+	}
+	value, ok := m.Value.(int32)
+	if !ok {
+		return 0, errors.New("Invalid coercion to int32")
 	}
 	return value, nil
 }
