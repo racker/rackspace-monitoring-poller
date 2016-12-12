@@ -29,6 +29,8 @@ type HostInfoMemory struct {
 	hostinfo.HostInfoBase
 }
 
+const Megabyte = 1024 * 1024
+
 ///////////////////////////////////////////////////////////////////////////////
 // HostInfo Memory
 
@@ -77,7 +79,7 @@ func (hi *HostInfoMemory) BuildResult(crs *check.CheckResultSet) interface{} {
 	result.Metrics.SwapUsed, _ = cr.GetMetric("SwapUsed").ToUint64()
 	result.Metrics.SwapUsedPercentage, _ = cr.GetMetric("SwapUsedPercentage").ToFloat64()
 	ram, _ := cr.GetMetric("Total").ToUint64()
-	result.Metrics.RAM = uint64(ram / (1024 * 1024))
+	result.Metrics.RAM = uint64(ram / Megabyte)
 
 	return result
 }
