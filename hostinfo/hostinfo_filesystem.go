@@ -29,6 +29,8 @@ type HostInfoFilesystem struct {
 	hostinfo.HostInfoBase
 }
 
+const BytesToKilobytes = 1024
+
 ///////////////////////////////////////////////////////////////////////////////
 // HostInfo Memory
 
@@ -49,10 +51,10 @@ func (*HostInfoFilesystem) Run() (*check.CheckResultSet, error) {
 				metric.NewMetric("sys_type_name", "", metric.MetricString, part.Fstype, ""),
 				metric.NewMetric("options", "", metric.MetricString, part.Opts, ""),
 
-				metric.NewMetric("total", "", metric.MetricNumber, usage.Total/1024, ""),
-				metric.NewMetric("free", "", metric.MetricNumber, usage.Free/1024, ""),
-				metric.NewMetric("used", "", metric.MetricNumber, usage.Used/1024, ""),
-				metric.NewMetric("avail", "", metric.MetricNumber, usage.Free/1024, ""),
+				metric.NewMetric("total", "", metric.MetricNumber, usage.Total/BytesToKilobytes, ""),
+				metric.NewMetric("free", "", metric.MetricNumber, usage.Free/BytesToKilobytes, ""),
+				metric.NewMetric("used", "", metric.MetricNumber, usage.Used/BytesToKilobytes, ""),
+				metric.NewMetric("avail", "", metric.MetricNumber, usage.Free/BytesToKilobytes, ""),
 				metric.NewMetric("files", "", metric.MetricNumber, usage.InodesUsed, ""),
 				metric.NewMetric("free_files", "", metric.MetricNumber, usage.InodesFree, ""),
 			)
