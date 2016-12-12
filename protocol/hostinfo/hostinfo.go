@@ -20,3 +20,11 @@ package hostinfo
 type HostInfoBase struct {
 	Type string `json:"type"`
 }
+
+const (
+	Memory     = "MEMORY"
+	Cpu        = "CPU"
+	Filesystem = "FILESYSTEM"
+	System     = "SYSTEM"
+	Processes  = "PROCS"
+)

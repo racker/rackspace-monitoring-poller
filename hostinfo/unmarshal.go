@@ -29,15 +29,15 @@ func NewHostInfo(rawParams json.RawMessage) HostInfo {
 		return nil
 	}
 	switch hinfo.Type {
-	case "MEMORY":
+	case protocol.Memory:
 		return NewHostInfoMemory(hinfo)
-	case "CPU":
+	case protocol.Cpu:
 		return NewHostInfoCpu(hinfo)
-	case "FILESYSTEM":
+	case protocol.Filesystem:
 		return NewHostInfoFilesystem(hinfo)
-	case "SYSTEM":
+	case protocol.System:
 		return NewHostInfoSystem(hinfo)
-	case "PROCS":
+	case protocol.Processes:
 		return NewHostInfoProcesses(hinfo)
 	default:
 		return nil
