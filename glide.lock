@@ -1,5 +1,5 @@
-hash: c3eb06652b26ae4ae0935cb1d014b4f1376c28e8fd202bcdf285ae96ac4336f3
-updated: 2016-12-12T15:11:46.642814739-06:00
+hash: cc2482ae8357e75171694424cc72ab56f44b4bd2db1cf0656a8efbe325373c6c
+updated: 2016-12-12T15:17:36.942426318-06:00
 imports:
 - name: github.com/go-ole/go-ole
   version: 5e9c030faf78847db7aa77e3661b9cc449de29b7
@@ -10,7 +10,7 @@ imports:
 - name: github.com/satori/go.uuid
   version: 879c5887cd475cd7864858769793b2ceb0d44feb
 - name: github.com/shirou/gopsutil
-  version: 22a03b5be3f384f558742929065778aa26471033
+  version: 061b699a971e0f74834f69ef8b78643f48980d10
   subpackages:
   - cpu
   - disk
