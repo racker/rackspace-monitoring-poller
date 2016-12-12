@@ -17,6 +17,7 @@
 package endpoint
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	log "github.com/Sirupsen/logrus"
@@ -24,7 +25,6 @@ import (
 	"github.com/racker/rackspace-monitoring-poller/protocol"
 	"github.com/racker/rackspace-monitoring-poller/utils"
 	"go/types"
-	"golang.org/x/net/context"
 	"net"
 	"time"
 )
