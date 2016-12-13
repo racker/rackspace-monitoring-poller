@@ -15,4 +15,4 @@ install:
 
 script:
   - go test $(glide novendor)
-  - gox -arch "386 amd64" -os "linux darwin"
+  - gox -osarch "linux/386 linux/amd64 darwin/amd64"
