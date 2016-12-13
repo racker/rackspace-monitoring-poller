@@ -9,7 +9,10 @@ go:
 install:
   - go get -v github.com/Masterminds/glide
   - cd $GOPATH/src/github.com/Masterminds/glide && git checkout v0.12.3 && go install && cd -
+  - go get -v github.com/mitchellh/gox
+  - cd $GOPATH/src/github.com/mitchellh/gox && git checkout v0.3.0 && go install && cd -
   - glide install
 
 script:
   - go test $(glide novendor)
+  - gox
