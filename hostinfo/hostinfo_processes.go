@@ -39,48 +39,44 @@ func NewHostInfoProcesses(base *hostinfo.HostInfoBase) HostInfo {
 func (*HostInfoProcesses) Run() (*check.CheckResultSet, error) {
 	log.Debug("Running Processes")
 	crs := check.NewCheckResultSet(nil, nil)
-	p, err := process.NewProcess(1)
+	pids, err := process.Pids()
 	if err != nil {
 		return nil, err
 	}
-	c, err := p.Children()
-	if err != nil {
-		return nil, err
-	}
-	for _, pr := range c {
+	for _, pid := range pids {
 		cr := check.NewCheckResult()
+		pr, err := process.NewProcess(pid)
+		if err != nil {
+			continue
+		}
 		cr.AddMetric(metric.NewMetric("pid", "", metric.MetricNumber, pr.Pid, ""))
 		if name, err := pr.Name(); err == nil {
 			cr.AddMetric(
 				metric.NewMetric("state_name", "", metric.MetricString, name, ""),
 			)
 		} else {
-			cr.AddMetric(
-				metric.NewMetric("state_name", "", metric.MetricString, "", ""),
-			)
+			continue
 		}
 		if cwd, err := pr.Cwd(); err == nil {
 			cr.AddMetric(
 				metric.NewMetric("exe_cwd", "", metric.MetricString, cwd, ""),
 			)
 		} else {
-			cr.AddMetric(
-				metric.NewMetric("exe_cwd", "", metric.MetricString, "", ""),
-			)
+			continue
 		}
 		if root, err := pr.Exe(); err == nil {
 			cr.AddMetric(
 				metric.NewMetric("exe_root", "", metric.MetricString, root, ""),
 			)
 		} else {
-			cr.AddMetric(
-				metric.NewMetric("exe_root", "", metric.MetricString, "", ""),
-			)
+			continue
 		}
 		if createTime, err := pr.CreateTime(); err == nil {
 			cr.AddMetric(
 				metric.NewMetric("time_start_time", "", metric.MetricNumber, createTime, ""),
 			)
+		} else {
+			continue
 		}
 		if times, err := pr.Times(); err == nil {
 			cr.AddMetrics(
@@ -88,15 +84,15 @@ func (*HostInfoProcesses) Run() (*check.CheckResultSet, error) {
 				metric.NewMetric("time_sys", "", metric.MetricFloat, times.System, ""),
 				metric.NewMetric("time_total", "", metric.MetricFloat, times.Total, ""),
 			)
+		} else {
+			continue
 		}
 		if memory, err := pr.MemoryInfo(); err == nil {
 			cr.AddMetrics(
 				metric.NewMetric("memory_resident", "", metric.MetricNumber, memory.RSS, ""),
 			)
 		} else {
-			cr.AddMetrics(
-				metric.NewMetric("memory_resident", "", metric.MetricNumber, 0, ""),
-			)
+			continue
 		}
 		crs.Add(cr)
 	}
