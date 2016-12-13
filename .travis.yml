@@ -14,7 +14,7 @@ install:
   - glide install
 
 script:
-  - go test $(glide novendor)
+  - go test -v -cover $(glide novendor)
   - gox
     -osarch "linux/386 linux/amd64 darwin/amd64"
     -output="dist/{{.Dir}}_{{.OS}}_{{.Arch}}"
