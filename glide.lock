@@ -1,15 +1,26 @@
-hash: c3eb06652b26ae4ae0935cb1d014b4f1376c28e8fd202bcdf285ae96ac4336f3
-updated: 2016-11-14T08:31:39.67275773-06:00
+hash: cc2482ae8357e75171694424cc72ab56f44b4bd2db1cf0656a8efbe325373c6c
+updated: 2016-12-12T15:17:36.942426318-06:00
 imports:
+- name: github.com/go-ole/go-ole
+  version: 5e9c030faf78847db7aa77e3661b9cc449de29b7
+  subpackages:
+  - oleutil
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
 - name: github.com/satori/go.uuid
   version: 879c5887cd475cd7864858769793b2ceb0d44feb
 - name: github.com/shirou/gopsutil
-  version: 22a03b5be3f384f558742929065778aa26471033
+  version: 061b699a971e0f74834f69ef8b78643f48980d10
   subpackages:
+  - cpu
+  - disk
+  - host
   - internal/common
   - mem
+  - net
+  - process
+- name: github.com/shirou/w32
+  version: bb4de0191aa41b5507caa14b0650cdbddcd9280b
 - name: github.com/Sirupsen/logrus
   version: d26492970760ca5d33129d2d799e34be5c4782eb
 - name: github.com/sparrc/go-ping
@@ -18,6 +29,8 @@ imports:
   version: 6e91dded25d73176bf7f60b40dd7aa1f0bf9be8d
 - name: github.com/spf13/pflag
   version: 5ccb023bc27df288a957c5e994cd44fd19619465
+- name: github.com/StackExchange/wmi
+  version: e54cbda6595d7293a7a468ccf9525f6bc8887f99
 - name: golang.org/x/net
   version: 8566e9372a500d1344adb9fdfd943c4354ef4aa2
   subpackages:

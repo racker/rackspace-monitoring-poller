@@ -16,30 +16,20 @@
 
 package hostinfo
 
-import (
-	"encoding/json"
-	protocol "github.com/racker/rackspace-monitoring-poller/protocol/hostinfo"
-)
+type HostInfoProcessesMetrics struct {
+	Pid       int32   `json:"pid"`
+	ExeName   string  `json:"exe_name"`
+	ExeCwd    string  `json:"exe_cwd"`
+	ExeRoot   string  `json:"exe_root"`
+	StartTime int64   `json:"time_start_time"`
+	TimeUser  float64 `json:"time_user"`
+	TimeSys   float64 `json:"time_sys"`
+	TimeTotal float64 `json:"time_total"`
+	StateName string  `json:"state_name"`
+	MemoryRes uint64  `json:"memory_resident"`
+}
 
-func NewHostInfo(rawParams json.RawMessage) HostInfo {
-	hinfo := &protocol.HostInfoBase{}
-
-	err := json.Unmarshal(rawParams, &hinfo)
-	if err != nil {
-		return nil
-	}
-	switch hinfo.Type {
-	case protocol.Memory:
-		return NewHostInfoMemory(hinfo)
-	case protocol.Cpu:
-		return NewHostInfoCpu(hinfo)
-	case protocol.Filesystem:
-		return NewHostInfoFilesystem(hinfo)
-	case protocol.System:
-		return NewHostInfoSystem(hinfo)
-	case protocol.Processes:
-		return NewHostInfoProcesses(hinfo)
-	default:
-		return nil
-	}
+type HostInfoProcessesResult struct {
+	Metrics   []HostInfoProcessesMetrics `json:"metrics"`
+	Timestamp int64                      `json:"timestamp"`
 }

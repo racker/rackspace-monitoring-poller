@@ -23,11 +23,11 @@ import (
 )
 
 type HostInfo interface {
-	Run() (*check.CheckResult, error)
-	BuildResult(cr *check.CheckResult) interface{}
+	Run() (*check.CheckResultSet, error)
+	BuildResult(cr *check.CheckResultSet) interface{}
 }
 
-func NewHostInfoResponse(cr *check.CheckResult, f *protocol.FrameMsg, hinfo HostInfo) *protocol.HostInfoResponse {
+func NewHostInfoResponse(cr *check.CheckResultSet, f *protocol.FrameMsg, hinfo HostInfo) *protocol.HostInfoResponse {
 	resp := &protocol.HostInfoResponse{}
 	resp.Result = hinfo.BuildResult(cr)
 	resp.SetResponseFrameMsg(f)

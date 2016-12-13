@@ -18,9 +18,12 @@ package hostinfo
 
 type HostInfoMemoryMetrics struct {
 	UsedPercentage     float64 `json:"used_percentage"`
+	ActualFree         uint64  `json:"actual_free"`
+	ActualUsed         uint64  `json:"actual_used"`
 	Free               uint64  `json:"free"`
 	Total              uint64  `json:"total"`
 	Used               uint64  `json:"used"`
+	RAM                uint64  `json:"ram"`
 	SwapFree           uint64  `json:"swap_free"`
 	SwapTotal          uint64  `json:"swap_total"`
 	SwapUsed           uint64  `json:"swap_used"`

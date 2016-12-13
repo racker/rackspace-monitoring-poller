@@ -16,30 +16,16 @@
 
 package hostinfo
 
-import (
-	"encoding/json"
-	protocol "github.com/racker/rackspace-monitoring-poller/protocol/hostinfo"
-)
+type HostInfoSystemMetrics struct {
+	Arch          string `json:"arch"`
+	Name          string `json:"name"`
+	Version       string `json:"version"`
+	VendorName    string `json:"vendor_name"`
+	Vendor        string `json:"vendor"`
+	VendorVersion string `json:"vendor_version"`
+}
 
-func NewHostInfo(rawParams json.RawMessage) HostInfo {
-	hinfo := &protocol.HostInfoBase{}
-
-	err := json.Unmarshal(rawParams, &hinfo)
-	if err != nil {
-		return nil
-	}
-	switch hinfo.Type {
-	case protocol.Memory:
-		return NewHostInfoMemory(hinfo)
-	case protocol.Cpu:
-		return NewHostInfoCpu(hinfo)
-	case protocol.Filesystem:
-		return NewHostInfoFilesystem(hinfo)
-	case protocol.System:
-		return NewHostInfoSystem(hinfo)
-	case protocol.Processes:
-		return NewHostInfoProcesses(hinfo)
-	default:
-		return nil
-	}
+type HostInfoSystemResult struct {
+	Metrics   HostInfoSystemMetrics `json:"metrics"`
+	Timestamp int64                 `json:"timestamp"`
 }
