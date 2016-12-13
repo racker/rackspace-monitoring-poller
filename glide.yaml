@@ -10,3 +10,7 @@ import:
 - package: github.com/satori/go.uuid
   version: v1.1.0
 - package: github.com/sparrc/go-ping
+- package: github.com/golang/mock
+  subpackages:
+  - mockgen
+  - gomock

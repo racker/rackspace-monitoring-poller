@@ -1,0 +1,13 @@
+version: "2"
+
+services:
+  endpoint:
+    build: .
+    command: ./rackspace-monitoring-poller endpoint --config contrib/endpoint-config.json  --debug
+    restart: always
+  server:
+    build: .
+    command: ./rackspace-monitoring-poller serve --config contrib/local-endpoint.cfg  --debug
+    depends_on:
+      - endpoint
+    restart: always

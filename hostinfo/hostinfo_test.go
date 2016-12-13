@@ -19,7 +19,6 @@ package hostinfo_test
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/hostinfo"
 	"github.com/racker/rackspace-monitoring-poller/protocol"
@@ -64,10 +63,8 @@ func TestHostInfoMemory_PopulateResult(t *testing.T) {
 func TestHostInfoProcesses_PopulateResult(t *testing.T) {
 	hinfo := &hostinfo_proto.HostInfoBase{Type: "PROCS"}
 	hostInfoProcs := hostinfo.NewHostInfoProcesses(hinfo)
-	crs, err := hostInfoProcs.Run()
+	_, err := hostInfoProcs.Run()
 	if err != nil {
 		t.Error(err)
 	}
-	result := hostInfoProcs.BuildResult(crs)
-	fmt.Printf("%v", result)
 }
