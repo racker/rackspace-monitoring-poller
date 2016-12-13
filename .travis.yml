@@ -21,6 +21,8 @@ script:
 
 deploy:
   provider: releases
+  # Generate OAuth token at https://github.com/settings/tokens and configure in
+  # project settings https://travis-ci.org/racker/rackspace-monitoring-poller/settings
   api_key: "$GITHUB_OAUTH_TOKEN"
   file:
     - "dist/rackspace-monitoring-poller_linux_386"
