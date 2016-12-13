@@ -21,8 +21,6 @@ test:
     - mkdir -p "$FILE_PATH"
     - ln -sf "$(pwd)" "$APP_PATH"
     - cd "$APP_PATH" && glide install
-    - cd "$APP_PATH" && go get github.com/golang/mock/gomock
-    - cd "$APP_PATH" && go get github.com/golang/mock/mockgen
   override:
     - cd "$APP_PATH" && go test -v -cover $(go list ./... | grep -v /vendor/)
 
