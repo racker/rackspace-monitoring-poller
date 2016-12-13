@@ -2,12 +2,32 @@ language: go
 
 sudo: false
 
-matrix:
-  include:
-    - go: 1.7.3
+
+go:
+  - 1.7.x
 
 install:
-  - go get -u -v $(go list -f '{{join .Imports "\n"}}' ./... | sort | uniq | grep -v golang-samples)
+  - go get -v github.com/Masterminds/glide
+  - cd $GOPATH/src/github.com/Masterminds/glide && git checkout v0.12.3 && go install && cd -
+  - go get -v github.com/mitchellh/gox
+  - cd $GOPATH/src/github.com/mitchellh/gox && git checkout v0.3.0 && go install && cd -
+  - glide install
 
 script:
-  - go test -v ./...;
+  - go test -v -cover $(glide novendor)
+  - gox
+    -osarch "linux/386 linux/amd64 darwin/amd64"
+    -output="dist/{{.Dir}}_{{.OS}}_{{.Arch}}"
+
+deploy:
+  provider: releases
+  # Generate OAuth token at https://github.com/settings/tokens and configure in
+  # project settings https://travis-ci.org/racker/rackspace-monitoring-poller/settings
+  api_key: "$GITHUB_OAUTH_TOKEN"
+  file:
+    - "dist/rackspace-monitoring-poller_linux_386"
+    - "dist/rackspace-monitoring-poller_linux_amd64"
+    - "dist/rackspace-monitoring-poller_darwin_amd64"
+  skip_cleanup: true
+  on:
+    tags: true
