@@ -2,9 +2,8 @@ language: go
 
 sudo: false
 
-matrix:
-  include:
-    - go: 1.7.3
+go:
+  - 1.7.4
 
 install:
   - go get -u -v $(go list -f '{{join .Imports "\n"}}' ./... | sort | uniq | grep -v golang-samples)
