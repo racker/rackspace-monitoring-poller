@@ -18,8 +18,12 @@ package utils
 
 import (
 	"fmt"
+	"io"
 	"os"
 )
+
+var ErrOutput io.Writer = os.Stderr
+var Exit func(code int) = os.Exit
 
 // Die prints messages and an error to stderr and then exit the process with status code 1.
 // It is intended for failures early in startup that need to be reported to a human.
@@ -27,8 +31,8 @@ import (
 // messages is zero or many messages that will each be printed on a line before the err
 func Die(err error, messages ...string) {
 	for _, msg := range messages {
-		fmt.Fprintf(os.Stderr, "%s\n", msg)
+		fmt.Fprintf(ErrOutput, "%s\n", msg)
 	}
-	fmt.Fprintf(os.Stderr, "Reason: %s\n", err.Error())
-	os.Exit(1)
+	fmt.Fprintf(ErrOutput, "Reason: %s\n", err.Error())
+	Exit(1)
 }
