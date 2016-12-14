@@ -1,12 +1,20 @@
 package config_test
 
 import (
+	"io/ioutil"
+	"os"
 	"reflect"
 	"testing"
 	"time"
 
+	"errors"
+
 	"github.com/racker/rackspace-monitoring-poller/config"
 )
+
+var tNow = time.Date(2013, 1, 1, 12, 0, 0, 0, time.UTC)
+
+type myFileInfo os.FileInfo
 
 func TestNewConfig(t *testing.T) {
 	type args struct {
@@ -51,6 +59,7 @@ func TestNewConfig(t *testing.T) {
 }
 
 func TestConfig_LoadFromFile(t *testing.T) {
+	tempList := []string{}
 	type fields struct {
 		UseSrv         bool
 		SrvQueries     []string
@@ -73,12 +82,84 @@ func TestConfig_LoadFromFile(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
+		osstat  func(fp string) (os.FileInfo, error)
+		osopen  func(fp string) (*os.File, error)
 		wantErr bool
 	}{
-	// TODO: Add test cases.
+		{
+			name:   "Error on fileinfo",
+			fields: fields{},
+			args: args{
+				filepath: "testpath",
+			},
+			osstat: func(fp string) (os.FileInfo, error) {
+				return nil, errors.New("We fail everything")
+			},
+			osopen:  func(fp string) (*os.File, error) { return nil, nil },
+			wantErr: true,
+		},
+		{
+			name:   "Error on file open",
+			fields: fields{},
+			args: args{
+				filepath: "testpath",
+			},
+			osstat: func(fp string) (os.FileInfo, error) {
+				return nil, nil
+			},
+			osopen: func(fp string) (*os.File, error) {
+				return nil, errors.New("Why?!?")
+			},
+			wantErr: true,
+		},
+		{
+			name:   "No comments config file",
+			fields: fields{},
+			args: args{
+				filepath: "testpath",
+			},
+			osstat: func(fp string) (os.FileInfo, error) { return nil, nil },
+			osopen: func(fp string) (*os.File, error) {
+				f, _ := ioutil.TempFile("", "load_path")
+				tempList = append(tempList, f.Name())
+				f.Write([]byte("hello\nworld\n"))
+
+				f.Sync()
+				defer f.Close()
+				return os.Open(f.Name())
+			},
+			wantErr: false,
+		},
+		{
+			name:   "With comments in config file",
+			fields: fields{},
+			args: args{
+				filepath: "testpath",
+			},
+			osstat: func(fp string) (os.FileInfo, error) { return nil, nil },
+			osopen: func(fp string) (*os.File, error) {
+				f, _ := ioutil.TempFile("", "load_path")
+				tempList = append(tempList, f.Name())
+				f.Write([]byte("hello\n#world\nrackspace\n"))
+
+				f.Sync()
+				defer f.Close()
+				return os.Open(f.Name())
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// mock os stat
+			osstat := config.OsStat
+			config.OsStat = tt.osstat
+			defer func() { config.OsStat = osstat }()
+			// mock os stat
+			osopen := config.OsOpen
+			config.OsOpen = tt.osopen
+			defer func() { config.OsOpen = osopen }()
+
 			cfg := &config.Config{
 				UseSrv:         tt.fields.UseSrv,
 				SrvQueries:     tt.fields.SrvQueries,
@@ -543,108 +624,6 @@ func TestConfig_SetPrivateZones(t *testing.T) {
 			cfg.SetPrivateZones(tt.args.zones)
 			if !reflect.DeepEqual(cfg, tt.want) {
 				t.Errorf("TestConfig_SetPrivateZones() = %v, want %v", cfg, tt.want)
-			}
-		})
-	}
-}
-
-func TestConfig_GetReadDeadline(t *testing.T) {
-	type fields struct {
-		UseSrv         bool
-		SrvQueries     []string
-		Addresses      []string
-		AgentId        string
-		AgentName      string
-		Features       []map[string]string
-		Guid           string
-		BundleVersion  string
-		ProcessVersion string
-		Token          string
-		PrivateZones   []string
-		TimeoutRead    time.Duration
-		TimeoutWrite   time.Duration
-	}
-	type args struct {
-		offset time.Duration
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   time.Time
-	}{
-	// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			cfg := &config.Config{
-				UseSrv:         tt.fields.UseSrv,
-				SrvQueries:     tt.fields.SrvQueries,
-				Addresses:      tt.fields.Addresses,
-				AgentId:        tt.fields.AgentId,
-				AgentName:      tt.fields.AgentName,
-				Features:       tt.fields.Features,
-				Guid:           tt.fields.Guid,
-				BundleVersion:  tt.fields.BundleVersion,
-				ProcessVersion: tt.fields.ProcessVersion,
-				Token:          tt.fields.Token,
-				PrivateZones:   tt.fields.PrivateZones,
-				TimeoutRead:    tt.fields.TimeoutRead,
-				TimeoutWrite:   tt.fields.TimeoutWrite,
-			}
-			if got := cfg.GetReadDeadline(tt.args.offset); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Config.GetReadDeadline() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestConfig_GetWriteDeadline(t *testing.T) {
-	type fields struct {
-		UseSrv         bool
-		SrvQueries     []string
-		Addresses      []string
-		AgentId        string
-		AgentName      string
-		Features       []map[string]string
-		Guid           string
-		BundleVersion  string
-		ProcessVersion string
-		Token          string
-		PrivateZones   []string
-		TimeoutRead    time.Duration
-		TimeoutWrite   time.Duration
-	}
-	type args struct {
-		offset time.Duration
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   time.Time
-	}{
-	// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			cfg := &config.Config{
-				UseSrv:         tt.fields.UseSrv,
-				SrvQueries:     tt.fields.SrvQueries,
-				Addresses:      tt.fields.Addresses,
-				AgentId:        tt.fields.AgentId,
-				AgentName:      tt.fields.AgentName,
-				Features:       tt.fields.Features,
-				Guid:           tt.fields.Guid,
-				BundleVersion:  tt.fields.BundleVersion,
-				ProcessVersion: tt.fields.ProcessVersion,
-				Token:          tt.fields.Token,
-				PrivateZones:   tt.fields.PrivateZones,
-				TimeoutRead:    tt.fields.TimeoutRead,
-				TimeoutWrite:   tt.fields.TimeoutWrite,
-			}
-			if got := cfg.GetWriteDeadline(tt.args.offset); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Config.GetWriteDeadline() = %v, want %v", got, tt.want)
 			}
 		})
 	}

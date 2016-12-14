@@ -25,8 +25,10 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/racker/rackspace-monitoring-poller/utils"
 )
+
+var OsStat func(name string) (os.FileInfo, error) = os.Stat
+var OsOpen func(name string) (*os.File, error) = os.Open
 
 type Config struct {
 	// Addresses
@@ -72,28 +74,27 @@ func (cfg *Config) init() {
 }
 
 func (cfg *Config) LoadFromFile(filepath string) error {
-	_, err := os.Stat(filepath)
+	_, err := OsStat(filepath)
 	if err != nil {
 		return err
 	}
-	f, err := os.Open(filepath)
+	f, err := OsOpen(filepath)
 	if err != nil {
 		return err
 	}
+	defer f.Close()
 	regexComment, _ := regexp.Compile("^#")
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := scanner.Text()
+
 		if regexComment.MatchString(line) {
 			continue
 		}
 		fields := strings.Fields(line)
-		if len(fields) != 2 {
-			continue
-		}
 		err := cfg.ParseFields(fields)
 		if err != nil {
-			utils.Die(err, "Unable to load configuration from file")
+			continue
 		}
 	}
 	log.WithField("file", filepath).Info("Loaded configuration")
