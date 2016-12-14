@@ -23,8 +23,8 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	log "github.com/Sirupsen/logrus"
-	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	protocol "github.com/racker/rackspace-monitoring-poller/protocol/check"
+	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	"github.com/racker/rackspace-monitoring-poller/utils"
 	"io"
 	"net"
@@ -141,8 +141,6 @@ func (ch *TCPCheck) Run() (*CheckResultSet, error) {
 
 	cr := NewCheckResult()
 	crs := NewCheckResultSet(ch, cr)
-	crs.SetStateUnavailable()
-	crs.SetStatusUnknown()
 	starttime := utils.NowTimestampMillis()
 	addr, _ := ch.GenerateAddress()
 	log.WithFields(log.Fields{
@@ -172,6 +170,9 @@ func (ch *TCPCheck) Run() (*CheckResultSet, error) {
 	}
 	defer conn.Close()
 
+	connectEndTime := utils.NowTimestampMillis()
+	cr.AddMetric(metric.NewMetric("tt_connect", "", metric.MetricNumber, connectEndTime-starttime, metric.UnitMilliseconds))
+
 	// Set read/write timeout
 	conn.SetDeadline(time.Now().Add(time.Duration(ch.GetTimeout()) * time.Millisecond))
 
@@ -200,17 +201,19 @@ func (ch *TCPCheck) Run() (*CheckResultSet, error) {
 				cr.AddMetric(metric.NewMetric("banner_match", "", metric.MetricString, "", ""))
 			}
 		}
-		cr.AddMetric(metric.NewMetric("tt_firstbyte", "", metric.MetricNumber, firstbytetime-starttime, "ms"))
+		cr.AddMetric(metric.NewMetric("tt_firstbyte", "", metric.MetricNumber, firstbytetime-starttime, metric.UnitMilliseconds))
 	}
 
 	// Body Match
 	if len(ch.Details.BodyMatch) > 0 {
 		body, err := ch.readLimit(conn, MaxTCPBodyLength)
 		if err != nil {
+			crs.SetStatus(err.Error())
+			crs.SetStateUnavailable()
 			return crs, nil
 		}
 		bodybytetime := utils.NowTimestampMillis()
-		cr.AddMetric(metric.NewMetric("tt_body", "", metric.MetricNumber, bodybytetime-starttime, "ms"))
+		cr.AddMetric(metric.NewMetric("tt_body", "", metric.MetricNumber, bodybytetime-starttime, metric.UnitMilliseconds))
 		if re, err := regexp.Compile(ch.Details.BodyMatch); err != nil {
 			if m := re.FindAllStringSubmatch(string(body), -1); m != nil {
 				for _, s := range m {
@@ -225,7 +228,8 @@ func (ch *TCPCheck) Run() (*CheckResultSet, error) {
 		}
 	}
 	endtime = utils.NowTimestampMillis()
-	cr.AddMetric(metric.NewMetric("duration", "", metric.MetricNumber, endtime-starttime, "ms"))
+	cr.AddMetric(metric.NewMetric("duration", "", metric.MetricNumber, endtime-starttime, metric.UnitMilliseconds))
+	crs.Add(cr)
 	crs.SetStateAvailable()
 	crs.SetStatusSuccess()
 	return crs, nil
