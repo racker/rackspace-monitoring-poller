@@ -147,8 +147,55 @@ func TestTCPRunSuccess(t *testing.T) {
 
 	// Validate Metrics
 	if crs.Status != "success" {
-		t.Fatal("status is not success")
+		t.Fatal("status is not `success`")
 	}
 
 	ValidateMetrics(t, []string{"duration", "tt_connect"}, crs.Get(0))
+}
+
+func TestTCPRunFailureClosedPort(t *testing.T) {
+	// Generate an unused port
+	laddr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Error(err)
+	}
+	listener, err := net.ListenTCP("tcp", laddr)
+	if err != nil {
+		t.Error(err)
+	}
+	listenPort := listener.Addr().(*net.TCPAddr).Port
+	listener.Close()
+
+	// Create Check
+	checkData := fmt.Sprintf(`{
+	  "id":"chPzATCP",
+	  "zone_id":"pzA",
+	  "entity_id":"enAAAAIPV4",
+	  "details":{"port":%d,"ssl":false},
+	  "type":"remote.tcp",
+	  "timeout":1,
+	  "period":30,
+	  "ip_addresses":{"default":"127.0.0.1"},
+	  "target_alias":"default",
+	  "target_hostname":"",
+	  "target_resolver":"",
+	  "disabled":false
+	  }`, listenPort)
+	check := check.NewCheck([]byte(checkData))
+
+	// Run check
+	crs, err := check.Run()
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Validate Metrics
+	//   - will be unavailable
+	if crs.Available == true {
+		t.Fatal("status must be not success")
+	}
+
+	if crs.Length() != 0 {
+		t.Fatal("metric length should be 0")
+	}
 }

@@ -98,8 +98,9 @@ func (cr *CheckResult) GetMetric(name string) *metric.Metric {
 
 type CheckResultSet struct {
 	States
-	Check   Check
-	Metrics []*CheckResult
+	Check     Check
+	Metrics   []*CheckResult
+	Available bool
 }
 
 func NewCheckResultSet(ch Check, cr *CheckResult) *CheckResultSet {
@@ -115,7 +116,13 @@ func NewCheckResultSet(ch Check, cr *CheckResult) *CheckResultSet {
 	return crs
 }
 
+func (crs *CheckResultSet) SetStateAvailable() {
+	crs.Available = true
+	crs.States.SetStateAvailable()
+}
+
 func (crs *CheckResultSet) SetStateUnavailable() {
+	crs.Available = false
 	crs.States.SetStateUnavailable()
 	crs.ClearMetrics()
 }
