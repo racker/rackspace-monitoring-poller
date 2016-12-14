@@ -58,7 +58,7 @@ func (s *BannerServer) Serve(listener *net.TCPListener) {
 			return
 		default:
 		}
-		listener.SetDeadline(time.Now().Add(1e9))
+		listener.SetDeadline(time.Now().Add(10 * time.Second))
 		conn, err := listener.AcceptTCP()
 		if nil != err {
 			if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
