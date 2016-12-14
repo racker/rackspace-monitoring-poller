@@ -14,13 +14,12 @@
 // limitations under the License.
 //
 
-
 package utils_test
 
 import (
-	"testing"
-	"strings"
 	"github.com/racker/rackspace-monitoring-poller/utils"
+	"strings"
+	"testing"
 )
 
 func TestIdentifierSafe(t *testing.T) {
@@ -35,10 +34,10 @@ func TestIdentifierSafe(t *testing.T) {
 
 func TestContainsAllKeys(t *testing.T) {
 	someMap := map[string]interface{}{
-		"first": "value1",
+		"first":  "value1",
 		"second": "value2",
-		"third": "value3",
-		"last": "valueN",
+		"third":  "value3",
+		"last":   "valueN",
 	}
 
 	if !utils.ContainsAllKeys(someMap, "first", "third") {

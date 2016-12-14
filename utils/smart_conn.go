@@ -33,13 +33,13 @@ const (
 // This implements the io.WriterCloser interface, so it can be used accordingly. It also partially implements
 // the net.Conn interface.
 type SmartConn struct {
-	managedConn           net.Conn
+	managedConn net.Conn
 	// Wraps ourselves in an encoder for use in WriteJSON
-	encoder               *json.Encoder
+	encoder *json.Encoder
 
 	// Specifies how long each Write (or helper thereof) is allowed to execute before triggering the channel deadline
-	WriteAllowance        time.Duration
-	ReadKeepalive         time.Duration
+	WriteAllowance time.Duration
+	ReadKeepalive  time.Duration
 
 	// An optional function that will get invoked according to HeartbeatSendInterval
 	HeartbeatSender       func(sconn *SmartConn)

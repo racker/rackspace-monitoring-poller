@@ -28,6 +28,10 @@ const (
 	MetricFloat  = iota
 )
 
+const (
+	UnitMilliseconds = "MILLISECONDS"
+)
+
 type Metric struct {
 	Type       int         `json:"-"` // does not export to json
 	TypeString string      `json:"type"`

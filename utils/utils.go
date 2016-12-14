@@ -14,7 +14,6 @@
 // limitations under the License.
 //
 
-
 // Package utils provides various utility functions and construct.
 //
 // Most are designed to be usable even outside of the poller project.
