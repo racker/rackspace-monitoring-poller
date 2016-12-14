@@ -13,12 +13,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-package check
+package check_test
 
 import (
 	"context"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
+	check "github.com/racker/rackspace-monitoring-poller/check"
 	"net"
 	"sync"
 	"testing"
@@ -94,7 +95,7 @@ func (s *BannerServer) serve(conn net.Conn) {
 	}
 }
 
-func ValidateMetrics(t *testing.T, metrics []string, cr *CheckResult) {
+func ValidateMetrics(t *testing.T, metrics []string, cr *check.CheckResult) {
 	for _, metricName := range metrics {
 		if metric := cr.GetMetric(metricName); metric == nil {
 			log.Fatal("metric " + metricName + " does not exist")
@@ -133,7 +134,7 @@ func TestTCPRunSuccess(t *testing.T) {
 	  "target_resolver":"",
 	  "disabled":false
 	  }`, listenPort)
-	check := NewCheck([]byte(checkData))
+	check := check.NewCheck([]byte(checkData))
 
 	// Run check
 	crs, err := check.Run()
