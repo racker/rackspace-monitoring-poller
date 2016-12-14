@@ -19,11 +19,13 @@ package config
 
 import (
 	"bufio"
-	log "github.com/Sirupsen/logrus"
 	"os"
 	"regexp"
 	"strings"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/racker/rackspace-monitoring-poller/utils"
 )
 
 type Config struct {
@@ -89,13 +91,19 @@ func (cfg *Config) LoadFromFile(filepath string) error {
 		if len(fields) != 2 {
 			continue
 		}
-		cfg.ParseFields(fields)
+		err := cfg.ParseFields(fields)
+		if err != nil {
+			utils.Die(err, "Unable to load configuration from file")
+		}
 	}
 	log.WithField("file", filepath).Info("Loaded configuration")
 	return nil
 }
 
-func (cfg *Config) ParseFields(fields []string) {
+func (cfg *Config) ParseFields(fields []string) error {
+	if len(fields) < 2 {
+		return BadConfig{Details: "Invalid fields length"}
+	}
 	switch fields[0] {
 	case "monitoring_id":
 		cfg.AgentId = fields[1]
@@ -108,6 +116,8 @@ func (cfg *Config) ParseFields(fields []string) {
 		cfg.UseSrv = false
 		log.Printf("cfg: Setting Endpoints: %s", fields[1])
 	}
+
+	return nil
 }
 
 func (cfg *Config) SetPrivateZones(zones []string) {
