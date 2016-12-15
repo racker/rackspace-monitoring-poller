@@ -14,11 +14,13 @@ install:
   - glide install
 
 script:
-  - go test -v -cover $(glide novendor)
+  - go test -v $(glide novendor)
   - gox
     -osarch "linux/386 linux/amd64 darwin/amd64"
     -output="dist/{{.Dir}}_{{.OS}}_{{.Arch}}"
-
+after_script:
+  - go get github.com/mattn/goveralls
+  - bash combine-coverage.sh --coveralls
 deploy:
   provider: releases
   # Generate OAuth token at https://github.com/settings/tokens and configure in
