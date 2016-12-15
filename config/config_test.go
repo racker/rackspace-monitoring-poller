@@ -2,15 +2,12 @@ package config_test
 
 import (
 	"io/ioutil"
-	"os"
 	"reflect"
 	"testing"
 	"time"
 
 	"github.com/racker/rackspace-monitoring-poller/config"
 )
-
-type myFileInfo os.FileInfo
 
 type configFields struct {
 	UseSrv         bool
