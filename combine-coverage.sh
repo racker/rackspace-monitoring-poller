@@ -21,7 +21,7 @@ generate_cover_data() {
     mkdir "$workdir"
 
     for pkg in "$@"; do
-        if [[ "$pkg" =~ .*/vendor/.* || "$pkg" =~ .*/testdata/.* ]]; then
+        if [[ "$pkg" =~ .*/vendor/.* ]]; then
             continue
         fi
         f="$workdir/$(echo $pkg | tr / -).cover"
