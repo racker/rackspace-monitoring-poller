@@ -258,7 +258,7 @@ func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
 	// TODO: BODY MATCHES
 
 	if ch.Details.IncludeBody {
-		cr.AddMetric(metric.NewMetric("body", "", metric.MetricNumber, string(body), ""))
+		cr.AddMetric(metric.NewMetric("body", "", metric.MetricString, string(body), ""))
 	}
 
 	// TLS
