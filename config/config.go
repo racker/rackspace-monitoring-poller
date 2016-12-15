@@ -24,6 +24,8 @@ import (
 	"strings"
 	"time"
 
+	"errors"
+
 	log "github.com/Sirupsen/logrus"
 )
 
@@ -96,7 +98,7 @@ func (cfg *Config) LoadFromFile(filepath string) error {
 
 func (cfg *Config) ParseFields(fields []string) error {
 	if len(fields) < 2 {
-		return BadConfig{Details: "Invalid fields length"}
+		return errors.New("Invalid fields length")
 	}
 	switch fields[0] {
 	case "monitoring_id":

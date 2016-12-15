@@ -137,11 +137,11 @@ func TestConfig_LoadFromFile(t *testing.T) {
 
 func TestConfig_ParseFields(t *testing.T) {
 	tests := []struct {
-		name     string
-		fields   config_fields
-		args     []string
-		expected *config.Config
-		err      error
+		name        string
+		fields      config_fields
+		args        []string
+		expected    *config.Config
+		expectedErr bool
 	}{
 		{
 			name: "Set Monitoring Id",
@@ -182,7 +182,7 @@ func TestConfig_ParseFields(t *testing.T) {
 				Token:          "",
 				Features:       make([]map[string]string, 0),
 			},
-			err: nil,
+			expectedErr: false,
 		},
 		{
 			name: "Set Monitoring Id without agent id",
@@ -221,7 +221,7 @@ func TestConfig_ParseFields(t *testing.T) {
 				Token:          "",
 				Features:       make([]map[string]string, 0),
 			},
-			err: config.BadConfig{Details: "Invalid fields length"},
+			expectedErr: true,
 		},
 		{
 			name: "Set Monitoring Token",
@@ -261,7 +261,7 @@ func TestConfig_ParseFields(t *testing.T) {
 				Token:          "myawesometoken",
 				Features:       make([]map[string]string, 0),
 			},
-			err: nil,
+			expectedErr: false,
 		},
 		{
 			name: "Set Monitoring Token without token",
@@ -300,7 +300,7 @@ func TestConfig_ParseFields(t *testing.T) {
 				Token:          "",
 				Features:       make([]map[string]string, 0),
 			},
-			err: config.BadConfig{Details: "Invalid fields length"},
+			expectedErr: true,
 		},
 		{
 			name: "Set Monitoring Endpoint",
@@ -344,7 +344,7 @@ func TestConfig_ParseFields(t *testing.T) {
 				},
 				Features: make([]map[string]string, 0),
 			},
-			err: nil,
+			expectedErr: false,
 		},
 		{
 			name: "Set Monitoring Endpoint without addresses",
@@ -383,7 +383,7 @@ func TestConfig_ParseFields(t *testing.T) {
 				Token:          "",
 				Features:       make([]map[string]string, 0),
 			},
-			err: config.BadConfig{Details: "Invalid fields length"},
+			expectedErr: true,
 		},
 		{
 			name: "Randomness",
@@ -423,7 +423,7 @@ func TestConfig_ParseFields(t *testing.T) {
 				Token:          "",
 				Features:       make([]map[string]string, 0),
 			},
-			err: nil,
+			expectedErr: false,
 		},
 	}
 	for _, tt := range tests {
@@ -447,8 +447,14 @@ func TestConfig_ParseFields(t *testing.T) {
 			if !reflect.DeepEqual(cfg, tt.expected) {
 				t.Errorf("TestConfig_ParseFields() = %v, expected %v", cfg, tt.expected)
 			}
-			if err != tt.err {
-				t.Errorf("TestConfig_ParseFields() error = %v, expected %v", err, tt.err)
+			if tt.expectedErr {
+				if err == nil {
+					t.Error("TestConfig_ParseFields() expected error")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("TestConfig_ParseFields() error = %v, expectedErr %v", err, tt.expectedErr)
+				}
 			}
 		})
 	}

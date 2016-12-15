@@ -42,6 +42,7 @@ func TestEndpointConfig_LoadFromFile(t *testing.T) {
 		fields      endpoint_fields
 		filepath    func() string
 		expectedErr bool
+		expected    *config.EndpointConfig
 	}{
 		{
 			name:   "Error on file open",
@@ -50,33 +51,51 @@ func TestEndpointConfig_LoadFromFile(t *testing.T) {
 				return "noexiste"
 			},
 			expectedErr: true,
+			expected:    &config.EndpointConfig{},
 		},
 		{
 			name:   "Empty config file",
 			fields: endpoint_fields{},
 			filepath: func() string {
 				f, _ := ioutil.TempFile("", "load_path")
-				tempList = append(tempList, f.Name())
-
-				f.Sync()
 				defer f.Close()
+				tempList = append(tempList, f.Name())
 				return f.Name()
 			},
-			expectedErr: true,
+			expectedErr: false,
+			expected:    &config.EndpointConfig{},
 		},
 		{
-			name:   "No comments config file",
+			name:   "Invalid json config file",
 			fields: endpoint_fields{},
 			filepath: func() string {
 				f, _ := ioutil.TempFile("", "load_path")
+				defer f.Close()
 				tempList = append(tempList, f.Name())
 				f.Write([]byte("hello\nworld\n"))
 
 				f.Sync()
-				defer f.Close()
 				return f.Name()
 			},
 			expectedErr: false,
+			expected:    &config.EndpointConfig{},
+		},
+		{
+			name:   "Valid json config file",
+			fields: endpoint_fields{},
+			filepath: func() string {
+				f, _ := ioutil.TempFile("", "load_path")
+				defer f.Close()
+				tempList = append(tempList, f.Name())
+				f.WriteString("{\"CertFile\":\"mycertfile\"}")
+
+				f.Sync()
+				return f.Name()
+			},
+			expectedErr: false,
+			expected: &config.EndpointConfig{
+				CertFile: "mycertfile",
+			},
 		},
 	}
 	for _, tt := range tests {
@@ -90,14 +109,17 @@ func TestEndpointConfig_LoadFromFile(t *testing.T) {
 			}
 			err := cfg.LoadFromFile(tt.filepath())
 			if tt.expectedErr {
-
-			}
-			if err != nil {
-				if !tt.expectedErr {
-					t.Errorf("EndpointConfig.LoadFromFile() error = %v, expectedErr %v", err, tt.expectedErr)
+				if err == nil {
+					t.Error("EndpointConfig.LoadFromFile() expected error")
 				}
 			} else {
-
+				if err != nil {
+					t.Errorf("EndpointConfig.LoadFromFile() error = %v, expectedErr %v", err, tt.expectedErr)
+				}
+			}
+			//check cfg
+			if !reflect.DeepEqual(cfg, tt.expected) {
+				t.Errorf("EndpointConfig.LoadFromFile() = %v, expected %v", cfg, tt.expected)
 			}
 		})
 	}
