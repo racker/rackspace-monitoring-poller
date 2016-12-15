@@ -8,7 +8,7 @@ import (
 	"github.com/racker/rackspace-monitoring-poller/config"
 )
 
-type endpoint_fields struct {
+type endpointFields struct {
 	CertFile        string
 	KeyFile         string
 	BindAddr        string
@@ -39,14 +39,14 @@ func TestEndpointConfig_LoadFromFile(t *testing.T) {
 	tempList := []string{}
 	tests := []struct {
 		name        string
-		fields      endpoint_fields
+		fields      endpointFields
 		filepath    func() string
 		expectedErr bool
 		expected    *config.EndpointConfig
 	}{
 		{
 			name:   "Error on file open",
-			fields: endpoint_fields{},
+			fields: endpointFields{},
 			filepath: func() string {
 				return "noexiste"
 			},
@@ -55,7 +55,7 @@ func TestEndpointConfig_LoadFromFile(t *testing.T) {
 		},
 		{
 			name:   "Empty config file",
-			fields: endpoint_fields{},
+			fields: endpointFields{},
 			filepath: func() string {
 				f, _ := ioutil.TempFile("", "load_path")
 				defer f.Close()
@@ -67,7 +67,7 @@ func TestEndpointConfig_LoadFromFile(t *testing.T) {
 		},
 		{
 			name:   "Invalid json config file",
-			fields: endpoint_fields{},
+			fields: endpointFields{},
 			filepath: func() string {
 				f, _ := ioutil.TempFile("", "load_path")
 				defer f.Close()
@@ -82,7 +82,7 @@ func TestEndpointConfig_LoadFromFile(t *testing.T) {
 		},
 		{
 			name:   "Valid json config file",
-			fields: endpoint_fields{},
+			fields: endpointFields{},
 			filepath: func() string {
 				f, _ := ioutil.TempFile("", "load_path")
 				defer f.Close()

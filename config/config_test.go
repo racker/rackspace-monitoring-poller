@@ -12,7 +12,7 @@ import (
 
 type myFileInfo os.FileInfo
 
-type config_fields struct {
+type configFields struct {
 	UseSrv         bool
 	SrvQueries     []string
 	Addresses      []string
@@ -69,13 +69,13 @@ func TestConfig_LoadFromFile(t *testing.T) {
 	tempList := []string{}
 	tests := []struct {
 		name        string
-		fields      config_fields
+		fields      configFields
 		filepath    func() string
 		expectedErr bool
 	}{
 		{
 			name:   "Error on file open",
-			fields: config_fields{},
+			fields: configFields{},
 			filepath: func() string {
 				return "noexiste"
 			},
@@ -83,7 +83,7 @@ func TestConfig_LoadFromFile(t *testing.T) {
 		},
 		{
 			name:   "No comments config file",
-			fields: config_fields{},
+			fields: configFields{},
 			filepath: func() string {
 				f, _ := ioutil.TempFile("", "load_path")
 				tempList = append(tempList, f.Name())
@@ -97,7 +97,7 @@ func TestConfig_LoadFromFile(t *testing.T) {
 		},
 		{
 			name:   "With comments in config file",
-			fields: config_fields{},
+			fields: configFields{},
 			filepath: func() string {
 				f, _ := ioutil.TempFile("", "load_path")
 				tempList = append(tempList, f.Name())
@@ -138,14 +138,14 @@ func TestConfig_LoadFromFile(t *testing.T) {
 func TestConfig_ParseFields(t *testing.T) {
 	tests := []struct {
 		name        string
-		fields      config_fields
+		fields      configFields
 		args        []string
 		expected    *config.Config
 		expectedErr bool
 	}{
 		{
 			name: "Set Monitoring Id",
-			fields: config_fields{
+			fields: configFields{
 				UseSrv: true,
 				SrvQueries: []string{
 					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
@@ -186,7 +186,7 @@ func TestConfig_ParseFields(t *testing.T) {
 		},
 		{
 			name: "Set Monitoring Id without agent id",
-			fields: config_fields{
+			fields: configFields{
 				UseSrv: true,
 				SrvQueries: []string{
 					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
@@ -225,7 +225,7 @@ func TestConfig_ParseFields(t *testing.T) {
 		},
 		{
 			name: "Set Monitoring Token",
-			fields: config_fields{
+			fields: configFields{
 				UseSrv: true,
 				SrvQueries: []string{
 					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
@@ -265,7 +265,7 @@ func TestConfig_ParseFields(t *testing.T) {
 		},
 		{
 			name: "Set Monitoring Token without token",
-			fields: config_fields{
+			fields: configFields{
 				UseSrv: true,
 				SrvQueries: []string{
 					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
@@ -304,7 +304,7 @@ func TestConfig_ParseFields(t *testing.T) {
 		},
 		{
 			name: "Set Monitoring Endpoint",
-			fields: config_fields{
+			fields: configFields{
 				UseSrv: true,
 				SrvQueries: []string{
 					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
@@ -348,7 +348,7 @@ func TestConfig_ParseFields(t *testing.T) {
 		},
 		{
 			name: "Set Monitoring Endpoint without addresses",
-			fields: config_fields{
+			fields: configFields{
 				UseSrv: true,
 				SrvQueries: []string{
 					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
@@ -387,7 +387,7 @@ func TestConfig_ParseFields(t *testing.T) {
 		},
 		{
 			name: "Randomness",
-			fields: config_fields{
+			fields: configFields{
 				UseSrv: true,
 				SrvQueries: []string{
 					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
@@ -464,13 +464,13 @@ func TestConfig_SetPrivateZones(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		fields   config_fields
+		fields   configFields
 		zones    []string
 		expected *config.Config
 	}{
 		{
 			name: "Set Private zones",
-			fields: config_fields{
+			fields: configFields{
 				UseSrv: true,
 				SrvQueries: []string{
 					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
