@@ -7,8 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"errors"
-
 	"github.com/racker/rackspace-monitoring-poller/config"
 )
 
@@ -72,76 +70,48 @@ func TestConfig_LoadFromFile(t *testing.T) {
 	tests := []struct {
 		name        string
 		fields      config_fields
-		filepath    string
-		osstat      func(fp string) (os.FileInfo, error)
-		osopen      func(fp string) (*os.File, error)
+		filepath    func() string
 		expectedErr bool
 	}{
 		{
-			name:     "Error on fileinfo",
-			fields:   config_fields{},
-			filepath: "testpath",
-			osstat: func(fp string) (os.FileInfo, error) {
-				return nil, errors.New("We fail everything")
-			},
-			osopen:      func(fp string) (*os.File, error) { return nil, nil },
-			expectedErr: true,
-		},
-		{
-			name:     "Error on file open",
-			fields:   config_fields{},
-			filepath: "testpath",
-			osstat: func(fp string) (os.FileInfo, error) {
-				return nil, nil
-			},
-			osopen: func(fp string) (*os.File, error) {
-				return nil, errors.New("Why?!?")
+			name:   "Error on file open",
+			fields: config_fields{},
+			filepath: func() string {
+				return "noexiste"
 			},
 			expectedErr: true,
 		},
 		{
-			name:     "No comments config file",
-			fields:   config_fields{},
-			filepath: "testpath",
-			osstat:   func(fp string) (os.FileInfo, error) { return nil, nil },
-			osopen: func(fp string) (*os.File, error) {
+			name:   "No comments config file",
+			fields: config_fields{},
+			filepath: func() string {
 				f, _ := ioutil.TempFile("", "load_path")
 				tempList = append(tempList, f.Name())
 				f.Write([]byte("hello\nworld\n"))
 
 				f.Sync()
 				defer f.Close()
-				return os.Open(f.Name())
+				return f.Name()
 			},
 			expectedErr: false,
 		},
 		{
-			name:     "With comments in config file",
-			fields:   config_fields{},
-			filepath: "testpath",
-			osstat:   func(fp string) (os.FileInfo, error) { return nil, nil },
-			osopen: func(fp string) (*os.File, error) {
+			name:   "With comments in config file",
+			fields: config_fields{},
+			filepath: func() string {
 				f, _ := ioutil.TempFile("", "load_path")
 				tempList = append(tempList, f.Name())
 				f.Write([]byte("hello\n#world\nrackspace\n"))
 
 				f.Sync()
 				defer f.Close()
-				return os.Open(f.Name())
+				return f.Name()
 			},
 			expectedErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// mock os stat
-			osstat := config.OsStat
-			config.OsStat = tt.osstat
-			defer func() { config.OsStat = osstat }()
-			// mock os open
-			osopen := config.OsOpen
-			config.OsOpen = tt.osopen
-			defer func() { config.OsOpen = osopen }()
 
 			cfg := &config.Config{
 				UseSrv:         tt.fields.UseSrv,
@@ -158,7 +128,7 @@ func TestConfig_LoadFromFile(t *testing.T) {
 				TimeoutRead:    tt.fields.TimeoutRead,
 				TimeoutWrite:   tt.fields.TimeoutWrite,
 			}
-			if err := cfg.LoadFromFile(tt.filepath); (err != nil) != tt.expectedErr {
+			if err := cfg.LoadFromFile(tt.filepath()); (err != nil) != tt.expectedErr {
 				t.Errorf("Config.LoadFromFile() error = %v, expectedErr %v", err, tt.expectedErr)
 			}
 		})

@@ -27,9 +27,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 )
 
-var OsStat func(name string) (os.FileInfo, error) = os.Stat
-var OsOpen func(name string) (*os.File, error) = os.Open
-
 type Config struct {
 	// Addresses
 	UseSrv     bool
@@ -74,11 +71,7 @@ func (cfg *Config) init() {
 }
 
 func (cfg *Config) LoadFromFile(filepath string) error {
-	_, err := OsStat(filepath)
-	if err != nil {
-		return err
-	}
-	f, err := OsOpen(filepath)
+	f, err := os.Open(filepath)
 	if err != nil {
 		return err
 	}

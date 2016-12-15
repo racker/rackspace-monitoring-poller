@@ -20,8 +20,9 @@ import (
 	"encoding/json"
 	"io/ioutil"
 
+	"os"
+
 	log "github.com/Sirupsen/logrus"
-	"github.com/racker/rackspace-monitoring-poller/config"
 )
 
 type EndpointConfig struct {
@@ -47,16 +48,14 @@ func NewEndpointConfig() *EndpointConfig {
 }
 
 func (cfg *EndpointConfig) LoadFromFile(filepath string) error {
-	configFile, err := config.OsOpen(filepath)
+	configFile, err := os.Open(filepath)
 	if err != nil {
-		log.Printf("err: %s", err)
 		return err
 	}
 	defer configFile.Close()
 
 	content, err := ioutil.ReadAll(configFile)
 	if err != nil {
-		log.Printf("err: %s", err)
 		return err
 	}
 	log.Printf("content: %s", content)
