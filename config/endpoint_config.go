@@ -57,7 +57,10 @@ func (cfg *EndpointConfig) LoadFromFile(filepath string) error {
 		return err
 	}
 
-	json.Unmarshal(content, cfg)
+	err = json.Unmarshal(content, cfg)
+	if err != nil {
+		return err
+	}
 
 	log.WithField("file", filepath).Info("Loaded configuration")
 
