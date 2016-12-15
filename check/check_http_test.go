@@ -80,7 +80,7 @@ func TestHTTPSuccess(t *testing.T) {
 	ValidateMetrics(t, metrics, crs.Get(0))
 }
 
-func TestHTTPSuccessIncludeBody(t *testing.T) {
+func TestHTTPSuccessIncludeBodyAndHeaders(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(staticResponse))
 	defer ts.Close()
 
@@ -89,7 +89,7 @@ func TestHTTPSuccessIncludeBody(t *testing.T) {
 	  "id":"chPzAHTTP",
 	  "zone_id":"pzA",
 	  "entity_id":"enAAAAIPV4",
-	  "details":{"url":"%s","include_body":true},
+	  "details":{"url":"%s","include_body":true,"headers":{"foo":"bar"}},
 	  "type":"remote.http",
 	  "timeout":15,
 	  "period":30,
@@ -121,11 +121,14 @@ func TestHTTPSuccessIncludeBody(t *testing.T) {
 		"tt_firstbyte",
 	}
 	ValidateMetrics(t, metrics, crs.Get(0))
-
 	// Validate body
 	body, _ := crs.Get(0).GetMetric("body").ToString()
 	if !strings.Contains(body, staticHello) {
 		t.Fatal("body does not contain: " + staticHello)
+	}
+
+	if !strings.Contains(body, "Foo=bar") {
+		t.Fatal("header is not present")
 	}
 }
 
