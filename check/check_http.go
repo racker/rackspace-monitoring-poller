@@ -247,13 +247,13 @@ func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
 		return crs, nil
 	}
 	endtime := utils.NowTimestampMillis()
-	truncated := int64(len(body)) < resp.ContentLength
+	truncated := resp.ContentLength - int64(len(body))
 	codeStr := strconv.FormatInt(int64(resp.StatusCode), 10)
 
 	cr.AddMetric(metric.NewMetric("code", "", metric.MetricString, codeStr, ""))
 	cr.AddMetric(metric.NewMetric("duration", "", metric.MetricNumber, endtime-starttime, "milliseconds"))
 	cr.AddMetric(metric.NewMetric("bytes", "", metric.MetricNumber, len(body), "bytes"))
-	cr.AddMetric(metric.NewMetric("truncated", "", metric.MetricBool, truncated, "bytes"))
+	cr.AddMetric(metric.NewMetric("truncated", "", metric.MetricNumber, truncated, "bytes"))
 
 	// TODO: BODY MATCHES
 
