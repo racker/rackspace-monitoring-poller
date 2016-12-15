@@ -31,7 +31,9 @@ import (
 	"github.com/racker/rackspace-monitoring-poller/utils"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
+	"net/http/httptrace"
 	"net/url"
 	"strconv"
 	"strings"
@@ -166,12 +168,19 @@ func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
 		return nil, err
 	}
 
-	host := parsed.Host
+	host, port, err := net.SplitHostPort(parsed.Host)
+	if err != nil {
+		return nil, err
+	}
 	ip, err := ch.GetTargetIP()
 	if err != nil {
 		return nil, err
 	}
-	parsed.Host = ip
+	if len(port) > 0 {
+		parsed.Host = net.JoinHostPort(ip, port)
+	} else {
+		parsed.Host = ip
+	}
 	url := parsed.String()
 
 	// Setup HTTP or HTTPS Client
@@ -195,9 +204,22 @@ func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
 	// Setup Request
 	req, err := http.NewRequest(method, url, nil)
 	if err != nil {
-		return nil, err
+		crs.SetStatus(err.Error())
+		crs.SetStateUnavailable()
+		return crs, nil
 	}
-	req = req.WithContext(ctx)
+	trace := &httptrace.ClientTrace{
+		GotFirstResponseByte: func() {
+			firstbytetime := utils.NowTimestampMillis()
+			cr.AddMetric(metric.NewMetric("tt_firstbyte", "", metric.MetricNumber, firstbytetime-starttime, "milliseconds"))
+		},
+		ConnectDone: func(network, addr string, err error) {
+			connectdonetime := utils.NowTimestampMillis()
+			cr.AddMetric(metric.NewMetric("tt_connect", "", metric.MetricNumber, connectdonetime-starttime, "milliseconds"))
+
+		},
+	}
+	req = req.WithContext(httptrace.WithClientTrace(ctx, trace))
 
 	// Add Headers
 	req.Header.Add("Accept-Encoding", "gzip, deflate")
@@ -225,11 +247,13 @@ func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
 		return crs, nil
 	}
 	endtime := utils.NowTimestampMillis()
-
+	truncated := int64(len(body)) < resp.ContentLength
 	codeStr := strconv.FormatInt(int64(resp.StatusCode), 10)
+
 	cr.AddMetric(metric.NewMetric("code", "", metric.MetricString, codeStr, ""))
 	cr.AddMetric(metric.NewMetric("duration", "", metric.MetricNumber, endtime-starttime, "milliseconds"))
 	cr.AddMetric(metric.NewMetric("bytes", "", metric.MetricNumber, len(body), "bytes"))
+	cr.AddMetric(metric.NewMetric("truncated", "", metric.MetricBool, truncated, "bytes"))
 
 	// TODO: BODY MATCHES
 
@@ -246,7 +270,7 @@ func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
 	sl.Add("code", resp.StatusCode)
 	sl.Add("duration", endtime-starttime)
 	sl.Add("bytes", len(body))
-	sl.Add("truncated", int64(len(body)) < resp.ContentLength)
+	sl.Add("truncated", truncated)
 
 	crs.SetStateAvailable()
 	crs.SetStatus(sl.String())
