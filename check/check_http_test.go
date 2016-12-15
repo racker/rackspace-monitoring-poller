@@ -16,6 +16,7 @@
 package check_test
 
 import (
+	"context"
 	"fmt"
 	check "github.com/racker/rackspace-monitoring-poller/check"
 	"net/http"
@@ -23,7 +24,7 @@ import (
 	"testing"
 )
 
-func TestHTTPRun(t *testing.T) {
+func TestHTTPSuccess(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "Hello, client")
 	}))
@@ -60,10 +61,86 @@ func TestHTTPRun(t *testing.T) {
 	metrics := []string{
 		"bytes",
 		"code",
-		"duration",
+
 		"truncated",
 		"tt_connect",
 		"tt_firstbyte",
 	}
 	ValidateMetrics(t, metrics, crs.Get(0))
+}
+
+func TestHTTPClosed(t *testing.T) {
+	// Create a server then close it
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "Hello, client")
+	}))
+	ts.Close()
+
+	// Create Check
+	checkData := fmt.Sprintf(`{
+	  "id":"chPzAHTTP",
+	  "zone_id":"pzA",
+
+	  "details":{"url":"%s"},
+	  "type":"remote.http",
+	  "timeout":15,
+	  "period":30,
+	  "ip_addresses":{"default":"127.0.0.1"},
+	  "target_alias":"default",
+	  "target_hostname":"",
+	  "target_resolver":"",
+	  "disabled":false
+	  }`, ts.URL)
+	check := check.NewCheck([]byte(checkData))
+
+	// Run check
+	crs, err := check.Run()
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Validate Metrics
+	if crs.Available == true {
+		t.Fatal("availability should be false")
+	}
+}
+
+func TestHTTPTimeout(t *testing.T) {
+	// Create a cancellable context
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Create a server that times out
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-ctx.Done()
+	}))
+	defer ts.Close()
+
+	// Create Check
+	checkData := fmt.Sprintf(`{
+	  "id":"chPzAHTTPTimeout",
+	  "zone_id":"pzA",
+	  "details":{"url":"%s"},
+	  "type":"remote.http",
+	  "timeout":1,
+	  "period":30,
+	  "ip_addresses":{"default":"127.0.0.1"},
+	  "target_alias":"default",
+	  "target_hostname":"",
+	  "target_resolver":"",
+	  "disabled":false
+	  }`, ts.URL)
+	check := check.NewCheck([]byte(checkData))
+
+	// Run check
+	crs, err := check.Run()
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Validate Metrics
+	if crs.Available == true {
+		t.Fatal("availability should be false")
+	}
+
+	cancel()
 }
