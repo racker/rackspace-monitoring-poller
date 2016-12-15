@@ -58,7 +58,6 @@ func (cfg *EndpointConfig) LoadFromFile(filepath string) error {
 	if err != nil {
 		return err
 	}
-	log.Printf("content: %s", content)
 
 	err = json.Unmarshal(content, cfg)
 	if err != nil {
