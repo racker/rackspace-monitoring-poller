@@ -12,25 +12,34 @@ import (
 	"github.com/racker/rackspace-monitoring-poller/config"
 )
 
-var tNow = time.Date(2013, 1, 1, 12, 0, 0, 0, time.UTC)
-
 type myFileInfo os.FileInfo
 
+type config_fields struct {
+	UseSrv         bool
+	SrvQueries     []string
+	Addresses      []string
+	AgentId        string
+	AgentName      string
+	Features       []map[string]string
+	Guid           string
+	BundleVersion  string
+	ProcessVersion string
+	Token          string
+	PrivateZones   []string
+	TimeoutRead    time.Duration
+	TimeoutWrite   time.Duration
+}
+
 func TestNewConfig(t *testing.T) {
-	type args struct {
-		guid string
-	}
 	tests := []struct {
-		name string
-		args args
-		want *config.Config
+		name     string
+		guid     string
+		expected *config.Config
 	}{
 		{
 			name: "HappyPath",
-			args: args{
-				guid: "some-guid",
-			},
-			want: &config.Config{
+			guid: "some-guid",
+			expected: &config.Config{
 				UseSrv: true,
 				SrvQueries: []string{
 					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
@@ -50,9 +59,9 @@ func TestNewConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := config.NewConfig(tt.args.guid)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewConfig() = %v, want %v", got, tt.want)
+			got := config.NewConfig(tt.guid)
+			if !reflect.DeepEqual(got, tt.expected) {
+				t.Errorf("NewConfig() = %v, expected %v", got, tt.expected)
 			}
 		})
 	}
@@ -60,65 +69,41 @@ func TestNewConfig(t *testing.T) {
 
 func TestConfig_LoadFromFile(t *testing.T) {
 	tempList := []string{}
-	type fields struct {
-		UseSrv         bool
-		SrvQueries     []string
-		Addresses      []string
-		AgentId        string
-		AgentName      string
-		Features       []map[string]string
-		Guid           string
-		BundleVersion  string
-		ProcessVersion string
-		Token          string
-		PrivateZones   []string
-		TimeoutRead    time.Duration
-		TimeoutWrite   time.Duration
-	}
-	type args struct {
-		filepath string
-	}
 	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		osstat  func(fp string) (os.FileInfo, error)
-		osopen  func(fp string) (*os.File, error)
-		wantErr bool
+		name        string
+		fields      config_fields
+		filepath    string
+		osstat      func(fp string) (os.FileInfo, error)
+		osopen      func(fp string) (*os.File, error)
+		expectedErr bool
 	}{
 		{
-			name:   "Error on fileinfo",
-			fields: fields{},
-			args: args{
-				filepath: "testpath",
-			},
+			name:     "Error on fileinfo",
+			fields:   config_fields{},
+			filepath: "testpath",
 			osstat: func(fp string) (os.FileInfo, error) {
 				return nil, errors.New("We fail everything")
 			},
-			osopen:  func(fp string) (*os.File, error) { return nil, nil },
-			wantErr: true,
+			osopen:      func(fp string) (*os.File, error) { return nil, nil },
+			expectedErr: true,
 		},
 		{
-			name:   "Error on file open",
-			fields: fields{},
-			args: args{
-				filepath: "testpath",
-			},
+			name:     "Error on file open",
+			fields:   config_fields{},
+			filepath: "testpath",
 			osstat: func(fp string) (os.FileInfo, error) {
 				return nil, nil
 			},
 			osopen: func(fp string) (*os.File, error) {
 				return nil, errors.New("Why?!?")
 			},
-			wantErr: true,
+			expectedErr: true,
 		},
 		{
-			name:   "No comments config file",
-			fields: fields{},
-			args: args{
-				filepath: "testpath",
-			},
-			osstat: func(fp string) (os.FileInfo, error) { return nil, nil },
+			name:     "No comments config file",
+			fields:   config_fields{},
+			filepath: "testpath",
+			osstat:   func(fp string) (os.FileInfo, error) { return nil, nil },
 			osopen: func(fp string) (*os.File, error) {
 				f, _ := ioutil.TempFile("", "load_path")
 				tempList = append(tempList, f.Name())
@@ -128,15 +113,13 @@ func TestConfig_LoadFromFile(t *testing.T) {
 				defer f.Close()
 				return os.Open(f.Name())
 			},
-			wantErr: false,
+			expectedErr: false,
 		},
 		{
-			name:   "With comments in config file",
-			fields: fields{},
-			args: args{
-				filepath: "testpath",
-			},
-			osstat: func(fp string) (os.FileInfo, error) { return nil, nil },
+			name:     "With comments in config file",
+			fields:   config_fields{},
+			filepath: "testpath",
+			osstat:   func(fp string) (os.FileInfo, error) { return nil, nil },
 			osopen: func(fp string) (*os.File, error) {
 				f, _ := ioutil.TempFile("", "load_path")
 				tempList = append(tempList, f.Name())
@@ -146,7 +129,7 @@ func TestConfig_LoadFromFile(t *testing.T) {
 				defer f.Close()
 				return os.Open(f.Name())
 			},
-			wantErr: false,
+			expectedErr: false,
 		},
 	}
 	for _, tt := range tests {
@@ -155,7 +138,7 @@ func TestConfig_LoadFromFile(t *testing.T) {
 			osstat := config.OsStat
 			config.OsStat = tt.osstat
 			defer func() { config.OsStat = osstat }()
-			// mock os stat
+			// mock os open
 			osopen := config.OsOpen
 			config.OsOpen = tt.osopen
 			defer func() { config.OsOpen = osopen }()
@@ -175,42 +158,24 @@ func TestConfig_LoadFromFile(t *testing.T) {
 				TimeoutRead:    tt.fields.TimeoutRead,
 				TimeoutWrite:   tt.fields.TimeoutWrite,
 			}
-			if err := cfg.LoadFromFile(tt.args.filepath); (err != nil) != tt.wantErr {
-				t.Errorf("Config.LoadFromFile() error = %v, wantErr %v", err, tt.wantErr)
+			if err := cfg.LoadFromFile(tt.filepath); (err != nil) != tt.expectedErr {
+				t.Errorf("Config.LoadFromFile() error = %v, expectedErr %v", err, tt.expectedErr)
 			}
 		})
 	}
 }
 
 func TestConfig_ParseFields(t *testing.T) {
-	type fields struct {
-		UseSrv         bool
-		SrvQueries     []string
-		Addresses      []string
-		AgentId        string
-		AgentName      string
-		Features       []map[string]string
-		Guid           string
-		BundleVersion  string
-		ProcessVersion string
-		Token          string
-		PrivateZones   []string
-		TimeoutRead    time.Duration
-		TimeoutWrite   time.Duration
-	}
-	type args struct {
-		fields []string
-	}
 	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   *config.Config
-		err    error
+		name     string
+		fields   config_fields
+		args     []string
+		expected *config.Config
+		err      error
 	}{
 		{
 			name: "Set Monitoring Id",
-			fields: fields{
+			fields: config_fields{
 				UseSrv: true,
 				SrvQueries: []string{
 					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
@@ -226,13 +191,11 @@ func TestConfig_ParseFields(t *testing.T) {
 				Token:          "",
 				Features:       make([]map[string]string, 0),
 			},
-			args: args{
-				fields: []string{
-					"monitoring_id",
-					"agentname",
-				},
+			args: []string{
+				"monitoring_id",
+				"agentname",
 			},
-			want: &config.Config{
+			expected: &config.Config{
 				UseSrv: true,
 				SrvQueries: []string{
 					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
@@ -253,7 +216,7 @@ func TestConfig_ParseFields(t *testing.T) {
 		},
 		{
 			name: "Set Monitoring Id without agent id",
-			fields: fields{
+			fields: config_fields{
 				UseSrv: true,
 				SrvQueries: []string{
 					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
@@ -269,12 +232,10 @@ func TestConfig_ParseFields(t *testing.T) {
 				Token:          "",
 				Features:       make([]map[string]string, 0),
 			},
-			args: args{
-				fields: []string{
-					"monitoring_id",
-				},
+			args: []string{
+				"monitoring_id",
 			},
-			want: &config.Config{
+			expected: &config.Config{
 				UseSrv: true,
 				SrvQueries: []string{
 					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
@@ -294,7 +255,7 @@ func TestConfig_ParseFields(t *testing.T) {
 		},
 		{
 			name: "Set Monitoring Token",
-			fields: fields{
+			fields: config_fields{
 				UseSrv: true,
 				SrvQueries: []string{
 					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
@@ -310,13 +271,11 @@ func TestConfig_ParseFields(t *testing.T) {
 				Token:          "",
 				Features:       make([]map[string]string, 0),
 			},
-			args: args{
-				fields: []string{
-					"monitoring_token",
-					"myawesometoken",
-				},
+			args: []string{
+				"monitoring_token",
+				"myawesometoken",
 			},
-			want: &config.Config{
+			expected: &config.Config{
 				UseSrv: true,
 				SrvQueries: []string{
 					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
@@ -336,7 +295,7 @@ func TestConfig_ParseFields(t *testing.T) {
 		},
 		{
 			name: "Set Monitoring Token without token",
-			fields: fields{
+			fields: config_fields{
 				UseSrv: true,
 				SrvQueries: []string{
 					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
@@ -352,12 +311,10 @@ func TestConfig_ParseFields(t *testing.T) {
 				Token:          "",
 				Features:       make([]map[string]string, 0),
 			},
-			args: args{
-				fields: []string{
-					"monitoring_token",
-				},
+			args: []string{
+				"monitoring_token",
 			},
-			want: &config.Config{
+			expected: &config.Config{
 				UseSrv: true,
 				SrvQueries: []string{
 					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
@@ -377,7 +334,7 @@ func TestConfig_ParseFields(t *testing.T) {
 		},
 		{
 			name: "Set Monitoring Endpoint",
-			fields: fields{
+			fields: config_fields{
 				UseSrv: true,
 				SrvQueries: []string{
 					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
@@ -393,13 +350,11 @@ func TestConfig_ParseFields(t *testing.T) {
 				Token:          "",
 				Features:       make([]map[string]string, 0),
 			},
-			args: args{
-				fields: []string{
-					"monitoring_endpoints",
-					"127.0.0.1,0.0.0.0",
-				},
+			args: []string{
+				"monitoring_endpoints",
+				"127.0.0.1,0.0.0.0",
 			},
-			want: &config.Config{
+			expected: &config.Config{
 				UseSrv: false,
 				SrvQueries: []string{
 					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
@@ -423,7 +378,7 @@ func TestConfig_ParseFields(t *testing.T) {
 		},
 		{
 			name: "Set Monitoring Endpoint without addresses",
-			fields: fields{
+			fields: config_fields{
 				UseSrv: true,
 				SrvQueries: []string{
 					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
@@ -439,12 +394,10 @@ func TestConfig_ParseFields(t *testing.T) {
 				Token:          "",
 				Features:       make([]map[string]string, 0),
 			},
-			args: args{
-				fields: []string{
-					"monitoring_endpoints",
-				},
+			args: []string{
+				"monitoring_endpoints",
 			},
-			want: &config.Config{
+			expected: &config.Config{
 				UseSrv: true,
 				SrvQueries: []string{
 					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
@@ -464,7 +417,7 @@ func TestConfig_ParseFields(t *testing.T) {
 		},
 		{
 			name: "Randomness",
-			fields: fields{
+			fields: config_fields{
 				UseSrv: true,
 				SrvQueries: []string{
 					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
@@ -480,13 +433,11 @@ func TestConfig_ParseFields(t *testing.T) {
 				Token:          "",
 				Features:       make([]map[string]string, 0),
 			},
-			args: args{
-				fields: []string{
-					"whatiseven",
-					"thething",
-				},
+			args: []string{
+				"whatiseven",
+				"thething",
 			},
-			want: &config.Config{
+			expected: &config.Config{
 				UseSrv: true,
 				SrvQueries: []string{
 					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
@@ -522,45 +473,28 @@ func TestConfig_ParseFields(t *testing.T) {
 				TimeoutRead:    tt.fields.TimeoutRead,
 				TimeoutWrite:   tt.fields.TimeoutWrite,
 			}
-			err := cfg.ParseFields(tt.args.fields)
-			if !reflect.DeepEqual(cfg, tt.want) {
-				t.Errorf("TestConfig_ParseFields() = %v, want %v", cfg, tt.want)
+			err := cfg.ParseFields(tt.args)
+			if !reflect.DeepEqual(cfg, tt.expected) {
+				t.Errorf("TestConfig_ParseFields() = %v, expected %v", cfg, tt.expected)
 			}
 			if err != tt.err {
-				t.Errorf("TestConfig_ParseFields() error = %v, want %v", err, tt.err)
+				t.Errorf("TestConfig_ParseFields() error = %v, expected %v", err, tt.err)
 			}
 		})
 	}
 }
 
 func TestConfig_SetPrivateZones(t *testing.T) {
-	type fields struct {
-		UseSrv         bool
-		SrvQueries     []string
-		Addresses      []string
-		AgentId        string
-		AgentName      string
-		Features       []map[string]string
-		Guid           string
-		BundleVersion  string
-		ProcessVersion string
-		Token          string
-		PrivateZones   []string
-		TimeoutRead    time.Duration
-		TimeoutWrite   time.Duration
-	}
-	type args struct {
-		zones []string
-	}
+
 	tests := []struct {
-		name   string
-		fields fields
-		args   args
-		want   *config.Config
+		name     string
+		fields   config_fields
+		zones    []string
+		expected *config.Config
 	}{
 		{
 			name: "Set Private zones",
-			fields: fields{
+			fields: config_fields{
 				UseSrv: true,
 				SrvQueries: []string{
 					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
@@ -576,13 +510,11 @@ func TestConfig_SetPrivateZones(t *testing.T) {
 				Token:          "",
 				Features:       make([]map[string]string, 0),
 			},
-			args: args{
-				zones: []string{
-					"zone1",
-					"zone2",
-				},
+			zones: []string{
+				"zone1",
+				"zone2",
 			},
-			want: &config.Config{
+			expected: &config.Config{
 				UseSrv: true,
 				SrvQueries: []string{
 					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
@@ -621,9 +553,9 @@ func TestConfig_SetPrivateZones(t *testing.T) {
 				TimeoutRead:    tt.fields.TimeoutRead,
 				TimeoutWrite:   tt.fields.TimeoutWrite,
 			}
-			cfg.SetPrivateZones(tt.args.zones)
-			if !reflect.DeepEqual(cfg, tt.want) {
-				t.Errorf("TestConfig_SetPrivateZones() = %v, want %v", cfg, tt.want)
+			cfg.SetPrivateZones(tt.zones)
+			if !reflect.DeepEqual(cfg, tt.expected) {
+				t.Errorf("TestConfig_SetPrivateZones() = %v, expected %v", cfg, tt.expected)
 			}
 		})
 	}
