@@ -1,7 +1,6 @@
 package config_test
 
 import (
-	"io/ioutil"
 	"reflect"
 	"testing"
 
@@ -36,62 +35,38 @@ func TestNewEndpointConfig(t *testing.T) {
 }
 
 func TestEndpointConfig_LoadFromFile(t *testing.T) {
-	tempList := []string{}
 	tests := []struct {
 		name        string
 		fields      endpointFields
-		filepath    func() string
+		filepath    string
 		expectedErr bool
 		expected    *config.EndpointConfig
 	}{
 		{
-			name:   "Error on file open",
-			fields: endpointFields{},
-			filepath: func() string {
-				return "noexiste"
-			},
+			name:        "Error on file open",
+			fields:      endpointFields{},
+			filepath:    "noexiste",
 			expectedErr: true,
 			expected:    &config.EndpointConfig{},
 		},
 		{
-			name:   "Empty config file",
-			fields: endpointFields{},
-			filepath: func() string {
-				f, _ := ioutil.TempFile("", "load_path")
-				defer f.Close()
-				tempList = append(tempList, f.Name())
-				return f.Name()
-			},
-			expectedErr: false,
+			name:        "Empty config file",
+			fields:      endpointFields{},
+			filepath:    "testdata/empty-file.txt",
+			expectedErr: true,
 			expected:    &config.EndpointConfig{},
 		},
 		{
-			name:   "Invalid json config file",
-			fields: endpointFields{},
-			filepath: func() string {
-				f, _ := ioutil.TempFile("", "load_path")
-				defer f.Close()
-				tempList = append(tempList, f.Name())
-				f.Write([]byte("hello\nworld\n"))
-
-				f.Sync()
-				return f.Name()
-			},
-			expectedErr: false,
+			name:        "Invalid json config file",
+			fields:      endpointFields{},
+			filepath:    "testdata/no-comments-config-file.txt",
+			expectedErr: true,
 			expected:    &config.EndpointConfig{},
 		},
 		{
-			name:   "Valid json config file",
-			fields: endpointFields{},
-			filepath: func() string {
-				f, _ := ioutil.TempFile("", "load_path")
-				defer f.Close()
-				tempList = append(tempList, f.Name())
-				f.WriteString("{\"CertFile\":\"mycertfile\"}")
-
-				f.Sync()
-				return f.Name()
-			},
+			name:        "Valid json config file",
+			fields:      endpointFields{},
+			filepath:    "testdata/valid-endpoint-config.json",
 			expectedErr: false,
 			expected: &config.EndpointConfig{
 				CertFile: "mycertfile",
@@ -107,7 +82,7 @@ func TestEndpointConfig_LoadFromFile(t *testing.T) {
 				StatsDAddr:      tt.fields.StatsDAddr,
 				AgentsConfigDir: tt.fields.AgentsConfigDir,
 			}
-			err := cfg.LoadFromFile(tt.filepath())
+			err := cfg.LoadFromFile(tt.filepath)
 			if tt.expectedErr {
 				if err == nil {
 					t.Error("EndpointConfig.LoadFromFile() expected error")

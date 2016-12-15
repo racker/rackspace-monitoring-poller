@@ -1,7 +1,6 @@
 package config_test
 
 import (
-	"io/ioutil"
 	"reflect"
 	"testing"
 	"time"
@@ -23,6 +22,25 @@ type configFields struct {
 	PrivateZones   []string
 	TimeoutRead    time.Duration
 	TimeoutWrite   time.Duration
+}
+
+func getConfigFields() configFields {
+	return configFields{
+		UseSrv: true,
+		SrvQueries: []string{
+			"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
+			"_monitoringagent._tcp.ord1.prod.monitoring.api.rackspacecloud.com",
+			"_monitoringagent._tcp.lon3.prod.monitoring.api.rackspacecloud.com",
+		},
+		AgentName:      "remote_poller",
+		ProcessVersion: "0.0.1",
+		BundleVersion:  "0.0.1",
+		Guid:           "some-guid",
+		TimeoutRead:    time.Duration(10 * time.Second),
+		TimeoutWrite:   time.Duration(10 * time.Second),
+		Token:          "",
+		Features:       make([]map[string]string, 0),
+	}
 }
 
 func TestNewConfig(t *testing.T) {
@@ -63,47 +81,28 @@ func TestNewConfig(t *testing.T) {
 }
 
 func TestConfig_LoadFromFile(t *testing.T) {
-	tempList := []string{}
 	tests := []struct {
 		name        string
 		fields      configFields
-		filepath    func() string
+		filepath    string
 		expectedErr bool
 	}{
 		{
-			name:   "Error on file open",
-			fields: configFields{},
-			filepath: func() string {
-				return "noexiste"
-			},
+			name:        "Error on file open",
+			fields:      configFields{},
+			filepath:    "noexiste",
 			expectedErr: true,
 		},
 		{
-			name:   "No comments config file",
-			fields: configFields{},
-			filepath: func() string {
-				f, _ := ioutil.TempFile("", "load_path")
-				tempList = append(tempList, f.Name())
-				f.Write([]byte("hello\nworld\n"))
-
-				f.Sync()
-				defer f.Close()
-				return f.Name()
-			},
+			name:        "No comments config file",
+			fields:      configFields{},
+			filepath:    "testdata/no-comments-config-file.txt",
 			expectedErr: false,
 		},
 		{
-			name:   "With comments in config file",
-			fields: configFields{},
-			filepath: func() string {
-				f, _ := ioutil.TempFile("", "load_path")
-				tempList = append(tempList, f.Name())
-				f.Write([]byte("hello\n#world\nrackspace\n"))
-
-				f.Sync()
-				defer f.Close()
-				return f.Name()
-			},
+			name:        "With comments in config file",
+			fields:      configFields{},
+			filepath:    "testdata/with-comments-config-file.txt",
 			expectedErr: false,
 		},
 	}
@@ -125,7 +124,7 @@ func TestConfig_LoadFromFile(t *testing.T) {
 				TimeoutRead:    tt.fields.TimeoutRead,
 				TimeoutWrite:   tt.fields.TimeoutWrite,
 			}
-			if err := cfg.LoadFromFile(tt.filepath()); (err != nil) != tt.expectedErr {
+			if err := cfg.LoadFromFile(tt.filepath); (err != nil) != tt.expectedErr {
 				t.Errorf("Config.LoadFromFile() error = %v, expectedErr %v", err, tt.expectedErr)
 			}
 		})
@@ -141,23 +140,8 @@ func TestConfig_ParseFields(t *testing.T) {
 		expectedErr bool
 	}{
 		{
-			name: "Set Monitoring Id",
-			fields: configFields{
-				UseSrv: true,
-				SrvQueries: []string{
-					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
-					"_monitoringagent._tcp.ord1.prod.monitoring.api.rackspacecloud.com",
-					"_monitoringagent._tcp.lon3.prod.monitoring.api.rackspacecloud.com",
-				},
-				AgentName:      "remote_poller",
-				ProcessVersion: "0.0.1",
-				BundleVersion:  "0.0.1",
-				Guid:           "some-guid",
-				TimeoutRead:    time.Duration(10 * time.Second),
-				TimeoutWrite:   time.Duration(10 * time.Second),
-				Token:          "",
-				Features:       make([]map[string]string, 0),
-			},
+			name:   "Set Monitoring Id",
+			fields: getConfigFields(),
 			args: []string{
 				"monitoring_id",
 				"agentname",
@@ -182,23 +166,8 @@ func TestConfig_ParseFields(t *testing.T) {
 			expectedErr: false,
 		},
 		{
-			name: "Set Monitoring Id without agent id",
-			fields: configFields{
-				UseSrv: true,
-				SrvQueries: []string{
-					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
-					"_monitoringagent._tcp.ord1.prod.monitoring.api.rackspacecloud.com",
-					"_monitoringagent._tcp.lon3.prod.monitoring.api.rackspacecloud.com",
-				},
-				AgentName:      "remote_poller",
-				ProcessVersion: "0.0.1",
-				BundleVersion:  "0.0.1",
-				Guid:           "some-guid",
-				TimeoutRead:    time.Duration(10 * time.Second),
-				TimeoutWrite:   time.Duration(10 * time.Second),
-				Token:          "",
-				Features:       make([]map[string]string, 0),
-			},
+			name:   "Set Monitoring Id without agent id",
+			fields: getConfigFields(),
 			args: []string{
 				"monitoring_id",
 			},
@@ -221,23 +190,8 @@ func TestConfig_ParseFields(t *testing.T) {
 			expectedErr: true,
 		},
 		{
-			name: "Set Monitoring Token",
-			fields: configFields{
-				UseSrv: true,
-				SrvQueries: []string{
-					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
-					"_monitoringagent._tcp.ord1.prod.monitoring.api.rackspacecloud.com",
-					"_monitoringagent._tcp.lon3.prod.monitoring.api.rackspacecloud.com",
-				},
-				AgentName:      "remote_poller",
-				ProcessVersion: "0.0.1",
-				BundleVersion:  "0.0.1",
-				Guid:           "some-guid",
-				TimeoutRead:    time.Duration(10 * time.Second),
-				TimeoutWrite:   time.Duration(10 * time.Second),
-				Token:          "",
-				Features:       make([]map[string]string, 0),
-			},
+			name:   "Set Monitoring Token",
+			fields: getConfigFields(),
 			args: []string{
 				"monitoring_token",
 				"myawesometoken",
@@ -261,23 +215,8 @@ func TestConfig_ParseFields(t *testing.T) {
 			expectedErr: false,
 		},
 		{
-			name: "Set Monitoring Token without token",
-			fields: configFields{
-				UseSrv: true,
-				SrvQueries: []string{
-					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
-					"_monitoringagent._tcp.ord1.prod.monitoring.api.rackspacecloud.com",
-					"_monitoringagent._tcp.lon3.prod.monitoring.api.rackspacecloud.com",
-				},
-				AgentName:      "remote_poller",
-				ProcessVersion: "0.0.1",
-				BundleVersion:  "0.0.1",
-				Guid:           "some-guid",
-				TimeoutRead:    time.Duration(10 * time.Second),
-				TimeoutWrite:   time.Duration(10 * time.Second),
-				Token:          "",
-				Features:       make([]map[string]string, 0),
-			},
+			name:   "Set Monitoring Token without token",
+			fields: getConfigFields(),
 			args: []string{
 				"monitoring_token",
 			},
@@ -300,23 +239,8 @@ func TestConfig_ParseFields(t *testing.T) {
 			expectedErr: true,
 		},
 		{
-			name: "Set Monitoring Endpoint",
-			fields: configFields{
-				UseSrv: true,
-				SrvQueries: []string{
-					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
-					"_monitoringagent._tcp.ord1.prod.monitoring.api.rackspacecloud.com",
-					"_monitoringagent._tcp.lon3.prod.monitoring.api.rackspacecloud.com",
-				},
-				AgentName:      "remote_poller",
-				ProcessVersion: "0.0.1",
-				BundleVersion:  "0.0.1",
-				Guid:           "some-guid",
-				TimeoutRead:    time.Duration(10 * time.Second),
-				TimeoutWrite:   time.Duration(10 * time.Second),
-				Token:          "",
-				Features:       make([]map[string]string, 0),
-			},
+			name:   "Set Monitoring Endpoint",
+			fields: getConfigFields(),
 			args: []string{
 				"monitoring_endpoints",
 				"127.0.0.1,0.0.0.0",
@@ -344,23 +268,8 @@ func TestConfig_ParseFields(t *testing.T) {
 			expectedErr: false,
 		},
 		{
-			name: "Set Monitoring Endpoint without addresses",
-			fields: configFields{
-				UseSrv: true,
-				SrvQueries: []string{
-					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
-					"_monitoringagent._tcp.ord1.prod.monitoring.api.rackspacecloud.com",
-					"_monitoringagent._tcp.lon3.prod.monitoring.api.rackspacecloud.com",
-				},
-				AgentName:      "remote_poller",
-				ProcessVersion: "0.0.1",
-				BundleVersion:  "0.0.1",
-				Guid:           "some-guid",
-				TimeoutRead:    time.Duration(10 * time.Second),
-				TimeoutWrite:   time.Duration(10 * time.Second),
-				Token:          "",
-				Features:       make([]map[string]string, 0),
-			},
+			name:   "Set Monitoring Endpoint without addresses",
+			fields: getConfigFields(),
 			args: []string{
 				"monitoring_endpoints",
 			},
@@ -383,23 +292,8 @@ func TestConfig_ParseFields(t *testing.T) {
 			expectedErr: true,
 		},
 		{
-			name: "Randomness",
-			fields: configFields{
-				UseSrv: true,
-				SrvQueries: []string{
-					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
-					"_monitoringagent._tcp.ord1.prod.monitoring.api.rackspacecloud.com",
-					"_monitoringagent._tcp.lon3.prod.monitoring.api.rackspacecloud.com",
-				},
-				AgentName:      "remote_poller",
-				ProcessVersion: "0.0.1",
-				BundleVersion:  "0.0.1",
-				Guid:           "some-guid",
-				TimeoutRead:    time.Duration(10 * time.Second),
-				TimeoutWrite:   time.Duration(10 * time.Second),
-				Token:          "",
-				Features:       make([]map[string]string, 0),
-			},
+			name:   "Randomness",
+			fields: getConfigFields(),
 			args: []string{
 				"whatiseven",
 				"thething",
@@ -466,23 +360,8 @@ func TestConfig_SetPrivateZones(t *testing.T) {
 		expected *config.Config
 	}{
 		{
-			name: "Set Private zones",
-			fields: configFields{
-				UseSrv: true,
-				SrvQueries: []string{
-					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
-					"_monitoringagent._tcp.ord1.prod.monitoring.api.rackspacecloud.com",
-					"_monitoringagent._tcp.lon3.prod.monitoring.api.rackspacecloud.com",
-				},
-				AgentName:      "remote_poller",
-				ProcessVersion: "0.0.1",
-				BundleVersion:  "0.0.1",
-				Guid:           "some-guid",
-				TimeoutRead:    time.Duration(10 * time.Second),
-				TimeoutWrite:   time.Duration(10 * time.Second),
-				Token:          "",
-				Features:       make([]map[string]string, 0),
-			},
+			name:   "Set Private zones",
+			fields: getConfigFields(),
 			zones: []string{
 				"zone1",
 				"zone2",
