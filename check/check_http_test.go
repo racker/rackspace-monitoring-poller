@@ -132,6 +132,70 @@ func TestHTTPSuccessIncludeBodyAndHeaders(t *testing.T) {
 	}
 }
 
+func TestHTTPSuccessBodyMatch(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(staticResponse))
+	defer ts.Close()
+
+	// Create Check
+	checkData := fmt.Sprintf(`{
+	  "id":"chPzAHTTP",
+	  "zone_id":"pzA",
+	  "entity_id":"enAAAAIPV4",
+	  "details":{"url":"%s","include_body":true,"headers":{"foo":"bar"},"body":"Foo=(.*)","body_matches":{"foo":"Foo=(.*)"}},
+	  "type":"remote.http",
+	  "timeout":15,
+	  "period":30,
+	  "ip_addresses":{"default":"127.0.0.1"},
+	  "target_alias":"default",
+	  "target_hostname":"",
+	  "target_resolver":"",
+	  "disabled":false
+	  }`, ts.URL)
+	check := check.NewCheck([]byte(checkData))
+
+	// Run check
+	crs, err := check.Run()
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Validate Metrics
+	if crs.Available == false {
+		t.Fatal("availability should be true")
+	}
+
+	metrics := []string{
+		"bytes",
+		"code",
+		"body",
+		"body_match",
+		"body_match_foo",
+		"truncated",
+		"tt_connect",
+		"tt_firstbyte",
+	}
+	ValidateMetrics(t, metrics, crs.Get(0))
+
+	// Validate body
+	body, _ := crs.Get(0).GetMetric("body").ToString()
+	if !strings.Contains(body, staticHello) {
+		t.Fatal("body does not contain: " + staticHello)
+	}
+	if !strings.Contains(body, "Foo=bar") {
+		t.Fatal("header is not present")
+	}
+	// Validate body_match
+	bodyMatch, _ := crs.Get(0).GetMetric("body_match").ToString()
+	if !strings.Contains(bodyMatch, "bar") {
+		t.Fatal("bodyMatch does not contain bar")
+	}
+	// Validate body_match_foo
+	foo, _ := crs.Get(0).GetMetric("body_match_foo").ToString()
+	if !strings.Contains(foo, "bar") {
+		t.Fatal("foo does not contain bar")
+	}
+}
+
 func TestHTTPClosed(t *testing.T) {
 	// Create a server then close it
 	ts := httptest.NewServer(http.HandlerFunc(staticResponse))

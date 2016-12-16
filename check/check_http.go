@@ -25,6 +25,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"fmt"
 	log "github.com/Sirupsen/logrus"
 	protocol "github.com/racker/rackspace-monitoring-poller/protocol/check"
 	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
@@ -35,6 +36,7 @@ import (
 	"net/http"
 	"net/http/httptrace"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -222,7 +224,7 @@ func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
 	req = req.WithContext(httptrace.WithClientTrace(ctx, trace))
 
 	// Add Headers
-	req.Header.Add("Accept-Encoding", "gzip, deflate")
+	req.Header.Add("Accept-Encoding", "gzip,deflate")
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Host", host)
 	for key, value := range ch.Details.Headers {
@@ -247,6 +249,38 @@ func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
 		return crs, nil
 	}
 	endtime := utils.NowTimestampMillis()
+
+	// Parse Body
+	if len(ch.Details.Body) > 0 {
+		if re, err := regexp.Compile(ch.Details.Body); err == nil {
+			if m := re.FindSubmatch(body); m != nil {
+				cr.AddMetric(metric.NewMetric("body_match", "", metric.MetricString, string(m[1]), ""))
+			} else {
+				cr.AddMetric(metric.NewMetric("body_match", "", metric.MetricString, "", ""))
+			}
+		} else {
+			crs.SetStatus(err.Error())
+			crs.SetStateUnavailable()
+			return crs, nil
+		}
+	}
+
+	// Body Matches
+	for key, regex := range ch.Details.BodyMatches {
+		if re, err := regexp.Compile(regex); err == nil {
+			if m := re.FindSubmatch(body); m != nil {
+				cr.AddMetric(metric.NewMetric(fmt.Sprintf("body_match_%s", key), "", metric.MetricString, string(m[1]), ""))
+			} else {
+				cr.AddMetric(metric.NewMetric(fmt.Sprintf("body_match_%s", key), "", metric.MetricString, "", ""))
+			}
+		} else {
+			crs.SetStatus(err.Error())
+			crs.SetStateUnavailable()
+			return crs, nil
+		}
+
+	}
+
 	truncated := resp.ContentLength - int64(len(body))
 	codeStr := strconv.FormatInt(int64(resp.StatusCode), 10)
 
