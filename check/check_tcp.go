@@ -194,9 +194,9 @@ func (ch *TCPCheck) Run() (*CheckResultSet, error) {
 		if len(line) > MaxTCPBannerLength {
 			line = line[:MaxTCPBannerLength]
 		}
-		if re, err := regexp.Compile(ch.Details.BannerMatch); err != nil {
+		if re, err := regexp.Compile(ch.Details.BannerMatch); err == nil {
 			if m := re.FindSubmatch(line); m != nil {
-				cr.AddMetric(metric.NewMetric("banner_match", "", metric.MetricString, m[0], ""))
+				cr.AddMetric(metric.NewMetric("banner_match", "", metric.MetricString, string(m[1]), ""))
 			} else {
 				cr.AddMetric(metric.NewMetric("banner_match", "", metric.MetricString, "", ""))
 			}
