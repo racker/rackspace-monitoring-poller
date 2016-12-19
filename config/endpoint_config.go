@@ -18,9 +18,11 @@ package config
 
 import (
 	"encoding/json"
-	log "github.com/Sirupsen/logrus"
 	"io/ioutil"
+
 	"os"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 type EndpointConfig struct {
