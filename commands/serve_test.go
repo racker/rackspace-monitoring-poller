@@ -14,15 +14,14 @@
 // limitations under the License.
 //
 
-
 package commands_test
 
 import (
-	"testing"
 	"github.com/racker/rackspace-monitoring-poller/commands"
+	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/stretchr/testify/assert"
 	"os"
-	"github.com/racker/rackspace-monitoring-poller/config"
+	"testing"
 )
 
 func TestServe_tls_defaults(t *testing.T) {
@@ -44,7 +43,7 @@ func TestServe_tls_insecure(t *testing.T) {
 func TestServe_tls_staging(t *testing.T) {
 	assert := assert.New(t)
 
-	os.Setenv(config.EnvStaging, "1")
+	os.Setenv(config.EnvStaging, config.EnabledEnvOpt)
 	certPool := commands.LoadRootCAs(false)
 	if assert.NotNil(certPool) {
 		assert.Len(certPool.Subjects(), 1)

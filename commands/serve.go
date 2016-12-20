@@ -17,6 +17,7 @@
 package commands
 
 import (
+	"crypto/x509"
 	log "github.com/Sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/poller"
@@ -26,14 +27,13 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"crypto/x509"
 )
 
 var (
-	configFilePath    string
-	insecure          bool
+	configFilePath string
+	insecure       bool
 
-	ServeCmd          = &cobra.Command{
+	ServeCmd = &cobra.Command{
 		Use:   "serve",
 		Short: "Start the service",
 		Long:  "Start the service",
@@ -59,7 +59,7 @@ func LoadRootCAs(insecure bool) *x509.CertPool {
 	} else {
 		devCAPath := os.Getenv(config.EnvDevCA)
 		isStaging := os.Getenv(config.EnvStaging)
-		if isStaging == "1" {
+		if isStaging == config.EnabledEnvOpt {
 			log.Warn("Staging root CAs are in use")
 			return config.LoadStagingCAs()
 		} else if devCAPath != "" {

@@ -30,6 +30,7 @@ const (
 
 	DefaultPort = "50041"
 
-	EnvStaging = "STAGING"
-	EnvDevCA   = "DEV_CA"
+	EnvStaging    = "STAGING"
+	EnvDevCA      = "DEV_CA"
+	EnabledEnvOpt = "1"
 )
