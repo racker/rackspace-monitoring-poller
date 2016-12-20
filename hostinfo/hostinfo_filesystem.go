@@ -67,6 +67,10 @@ func (*HostInfoFilesystem) Run() (*check.CheckResultSet, error) {
 func (*HostInfoFilesystem) BuildResult(crs *check.CheckResultSet) interface{} {
 	result := &hostinfo.HostInfoFilesystemResult{}
 	result.Timestamp = utils.NowTimestampMillis()
+	if crs == nil {
+		log.Infoln("Check result set is unset")
+		return result
+	}
 	for i := 0; i < crs.Length(); i++ {
 		cr := crs.Get(i)
 		metrics := hostinfo.HostInfoFilesystemMetrics{}
