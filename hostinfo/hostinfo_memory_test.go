@@ -223,8 +223,8 @@ func TestHostInfoMemory_BuildResult(t *testing.T) {
 			h := &hostinfo.HostInfoMemory{
 				HostInfoBase: protocol_hostinfo.HostInfoBase{},
 			}
-			if got := h.BuildResult(tt.crs); !reflect.DeepEqual(got, tt.expected) {
-				t.Errorf("HostInfoMemory.BuildResult() = %v, expected %v", got, tt.expected)
+			if got := h.BuildResult(tt.crs); !reflect.DeepEqual(got.(*protocol_hostinfo.HostInfoMemoryResult).Metrics, tt.expected.Metrics) {
+				t.Errorf("HostInfoMemory.BuildResult() = %v, expected %v", got.(*protocol_hostinfo.HostInfoMemoryResult).Metrics, tt.expected.Metrics)
 			}
 		})
 	}

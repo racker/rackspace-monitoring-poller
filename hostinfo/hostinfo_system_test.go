@@ -226,8 +226,8 @@ func TestHostInfoSystem_BuildResult(t *testing.T) {
 			h := &hostinfo.HostInfoSystem{
 				HostInfoBase: protocol_hostinfo.HostInfoBase{},
 			}
-			if got := h.BuildResult(tt.crs); !reflect.DeepEqual(got, tt.expected) {
-				t.Errorf("HostInfoSystem.BuildResult() = %v, expected %v", got, tt.expected)
+			if got := h.BuildResult(tt.crs); !reflect.DeepEqual(got.(*protocol_hostinfo.HostInfoSystemResult).Metrics, tt.expected.Metrics) {
+				t.Errorf("HostInfoSystem.BuildResult() = %v, expected %v", got.(*protocol_hostinfo.HostInfoSystemResult).Metrics, tt.expected.Metrics)
 			}
 		})
 	}
