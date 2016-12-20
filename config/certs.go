@@ -125,7 +125,7 @@ func LoadStagingCAs() *x509.CertPool {
 func LoadDevelopmentCAs(pemFilename string) *x509.CertPool {
 	content, err := ioutil.ReadFile(pemFilename)
 	if err != nil {
-		logrus.WithField("pemFilename", pemFilename).Fatal("Unable to load development cert pool")
+		logrus.WithField("pemFilename", pemFilename).Error("Unable to load development cert pool")
 		return nil
 	}
 
