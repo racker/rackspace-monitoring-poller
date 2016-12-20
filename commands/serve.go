@@ -26,11 +26,14 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"crypto/x509"
 )
 
 var (
-	configFilePath string
-	ServeCmd       = &cobra.Command{
+	configFilePath    string
+	insecure          bool
+
+	ServeCmd          = &cobra.Command{
 		Use:   "serve",
 		Short: "Start the service",
 		Long:  "Start the service",
@@ -40,6 +43,7 @@ var (
 
 func init() {
 	ServeCmd.Flags().StringVar(&configFilePath, "config", "", "Path to a file containing the config, used in "+config.DefaultConfigPathLinux)
+	ServeCmd.Flags().BoolVar(&insecure, "insecure", false, "Enabled ONLY during development and when connecting to a known farend")
 }
 
 func HandleInterrupts() chan os.Signal {
@@ -55,11 +59,29 @@ func serveCmdRun(cmd *cobra.Command, args []string) {
 	if err != nil {
 		utils.Die(err, "Failed to load configuration")
 	}
+
+	var rootCAs *x509.CertPool
+	if insecure {
+		log.Warn("Insecure TLS connectivity is enabled. Make sure you TRUST the farend host")
+	} else {
+		devCAPath := os.Getenv(config.EnvDevCA)
+		isStaging := os.Getenv(config.EnvStaging)
+		if isStaging == "1" {
+			log.Warn("Staging root CAs are in use")
+			rootCAs = config.LoadStagingCAs()
+		} else if devCAPath != "" {
+			log.WithField("path", devCAPath).Warn("Development root CAs are in use")
+			rootCAs = config.LoadDevelopmentCAs(devCAPath)
+		} else {
+			rootCAs = config.LoadProductionCAs()
+		}
+	}
+
 	log.WithField("guid", guid).Info("Assigned unique identifier")
 
 	signalNotify := HandleInterrupts()
 	for {
-		stream := poller.NewConnectionStream(cfg)
+		stream := poller.NewConnectionStream(cfg, rootCAs)
 		stream.Connect()
 		waitCh := stream.WaitCh()
 		for {

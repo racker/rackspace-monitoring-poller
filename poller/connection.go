@@ -26,7 +26,8 @@ import (
 )
 
 type Connection struct {
-	stream *ConnectionStream
+	stream    *ConnectionStream
+	tlsConfig *tls.Config
 
 	session *Session
 	conn    io.ReadWriteCloser
@@ -37,10 +38,11 @@ type Connection struct {
 	connectionTimeout time.Duration
 }
 
-func NewConnection(address string, guid string, stream *ConnectionStream) *Connection {
+func NewConnection(address string, guid string, tlsConfig *tls.Config, stream *ConnectionStream) *Connection {
 	return &Connection{
 		address:           address,
 		guid:              guid,
+		tlsConfig:         tlsConfig,
 		stream:            stream,
 		connectionTimeout: time.Duration(10) * time.Second,
 	}
@@ -65,10 +67,12 @@ func (conn *Connection) SetWriteDeadline(deadline time.Time) {
 }
 
 func (conn *Connection) Connect(ctx context.Context) error {
-	log.Infof("Connecting to %s with timeout %v", conn.address, conn.connectionTimeout)
+	log.WithFields(log.Fields{
+		"address": conn.address,
+		"timeout": conn.connectionTimeout,
+	}).Info("Connecting to agent/poller endpoint")
 	nd := net.Dialer{Timeout: conn.connectionTimeout}
-	conf := &tls.Config{InsecureSkipVerify: true}
-	tlsConn, err := tls.DialWithDialer(&nd, "tcp", conn.address, conf)
+	tlsConn, err := tls.DialWithDialer(&nd, "tcp", conn.address, conn.tlsConfig)
 	if err != nil {
 		return err
 	}

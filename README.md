@@ -16,13 +16,33 @@ go build
 
 ## Running Simple Endpoint Server for development
 
-In the workspace, generate self signed certificate and private key:
- 
+In the workspace, generate self-signed client/server certificates and keys. In the following examples, the files
+will be stored under sub-directories of `data`. Create that directory, if needed:
+
 ```
-openssl req -newkey rsa:2048 -nodes -keyout key.pem -x509 -days 365 -out cert.pem
+mkdir -p data
+```
+ 
+First, be your own certificate authority by filling out the prompts when running:
+
+```
+docker run -it -v $(pwd)/data/ca:/ca itzg/cert-helper \
+  init
 ```
 
-First, place any additional zones->agents->checks under `contrib/endpoint-agents` (if using the example config), then
+NOTE: if you forget the pass phrase for the ca.pem, just remove `data/ca` and `data/server-certs` and re-run init.
+
+With CA powers, create a server certificate/key replacing `localhost` and `127.0.0.1` for your setup:
+
+```
+docker run -it -v $(pwd)/data/ca:/ca -v $(pwd)/data/server-certs:/certs itzg/cert-helper \
+  create -server -cn localhost:55000 -alt IP:127.0.0.1
+```
+
+When running the `serve` command, your CA certificate will be specified by setting the environment variable `DEV_CA`
+to the location `data/ca/ca.pem`.
+
+Before starting the endpoint, place any additional zones->agents->checks under `contrib/endpoint-agents` (if using the example config), then
 start the Endpoint server and Poller server.
 
 In window #1:

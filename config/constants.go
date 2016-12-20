@@ -29,4 +29,7 @@ const (
 	DefaultConfigPathLinux = "/etc/rackspace-monitoring-agent.cfg"
 
 	DefaultPort = "50041"
+
+	EnvStaging = "STAGING"
+	EnvDevCA   = "DEV_CA"
 )

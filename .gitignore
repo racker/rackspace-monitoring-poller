@@ -4,4 +4,5 @@
 /rackspace-monitoring-poller.exe
 /vendor/
 /*.pem
+/data/
 .DS_Store
