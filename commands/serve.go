@@ -52,6 +52,25 @@ func HandleInterrupts() chan os.Signal {
 	return c
 }
 
+func LoadRootCAs(insecure bool) *x509.CertPool {
+	if insecure {
+		log.Warn("Insecure TLS connectivity is enabled. Make sure you TRUST the farend host")
+		return nil
+	} else {
+		devCAPath := os.Getenv(config.EnvDevCA)
+		isStaging := os.Getenv(config.EnvStaging)
+		if isStaging == "1" {
+			log.Warn("Staging root CAs are in use")
+			return config.LoadStagingCAs()
+		} else if devCAPath != "" {
+			log.WithField("path", devCAPath).Warn("Development root CAs are in use")
+			return config.LoadDevelopmentCAs(devCAPath)
+		} else {
+			return config.LoadProductionCAs()
+		}
+	}
+}
+
 func serveCmdRun(cmd *cobra.Command, args []string) {
 	guid := uuid.NewV4()
 	cfg := config.NewConfig(guid.String())
@@ -60,22 +79,7 @@ func serveCmdRun(cmd *cobra.Command, args []string) {
 		utils.Die(err, "Failed to load configuration")
 	}
 
-	var rootCAs *x509.CertPool
-	if insecure {
-		log.Warn("Insecure TLS connectivity is enabled. Make sure you TRUST the farend host")
-	} else {
-		devCAPath := os.Getenv(config.EnvDevCA)
-		isStaging := os.Getenv(config.EnvStaging)
-		if isStaging == "1" {
-			log.Warn("Staging root CAs are in use")
-			rootCAs = config.LoadStagingCAs()
-		} else if devCAPath != "" {
-			log.WithField("path", devCAPath).Warn("Development root CAs are in use")
-			rootCAs = config.LoadDevelopmentCAs(devCAPath)
-		} else {
-			rootCAs = config.LoadProductionCAs()
-		}
-	}
+	rootCAs := LoadRootCAs(insecure)
 
 	log.WithField("guid", guid).Info("Assigned unique identifier")
 
