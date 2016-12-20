@@ -47,10 +47,6 @@ func TestHostInfoCpu_Run(t *testing.T) {
 	if err != nil {
 		t.Skip("We cannot get cpu info right now.  Skipping")
 	}
-	stats, err := cpu.Times(true)
-	if err != nil {
-		t.Skip("We cannot get cpu stats right now.  Skipping")
-	}
 	coreCount, _ := cpu.Counts(true)
 
 	tests := []struct {
@@ -85,14 +81,6 @@ func TestHostInfoCpu_Run(t *testing.T) {
 					Type:       metric.MetricNumber,
 					TypeString: "int64",
 					Value:      coreCount,
-					Unit:       "",
-				},
-				"total": &metric.Metric{
-					Name:       "total",
-					Dimension:  "none",
-					Type:       metric.MetricFloat,
-					TypeString: "double",
-					Value:      stats[0].Total(),
 					Unit:       "",
 				},
 			},
