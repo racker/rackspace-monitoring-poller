@@ -27,24 +27,23 @@ import (
 func TestServe_tls_defaults(t *testing.T) {
 	assert := assert.New(t)
 
-	certPool := commands.LoadRootCAs(false)
+	certPool := commands.LoadRootCAs(false, false)
 	if assert.NotNil(certPool) {
-		assert.Len(certPool.Subjects(), 2)
+		assert.Len(certPool.Subjects(), 1)
 	}
 }
 
 func TestServe_tls_insecure(t *testing.T) {
 	assert := assert.New(t)
 
-	certPool := commands.LoadRootCAs(true)
+	certPool := commands.LoadRootCAs(true, false)
 	assert.Nil(certPool)
 }
 
 func TestServe_tls_staging(t *testing.T) {
 	assert := assert.New(t)
 
-	os.Setenv(config.EnvStaging, config.EnabledEnvOpt)
-	certPool := commands.LoadRootCAs(false)
+	certPool := commands.LoadRootCAs(false, true)
 	if assert.NotNil(certPool) {
 		assert.Len(certPool.Subjects(), 1)
 	}
@@ -54,7 +53,7 @@ func TestServe_tls_development(t *testing.T) {
 	assert := assert.New(t)
 
 	os.Setenv(config.EnvDevCA, "testdata/ca.pem")
-	certPool := commands.LoadRootCAs(false)
+	certPool := commands.LoadRootCAs(false, false)
 	if assert.NotNil(certPool) {
 		assert.Len(certPool.Subjects(), 1)
 	}
