@@ -1,7 +1,6 @@
 package hostinfo_test
 
 import (
-	"reflect"
 	"testing"
 
 	"fmt"
@@ -12,6 +11,7 @@ import (
 	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	"github.com/racker/rackspace-monitoring-poller/utils"
 	"github.com/shirou/gopsutil/cpu"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewHostInfoCpu(t *testing.T) {
@@ -35,19 +35,21 @@ func TestNewHostInfoCpu(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := hostinfo.NewHostInfoCpu(tt.base)
-			if !reflect.DeepEqual(got, tt.expected) {
-				t.Errorf("NewHostInfoCpu() = %v, expected %v", got, tt.expected)
-			}
+			assert.Equal(
+				t, got,
+				tt.expected, fmt.Sprintf(
+					"NewHostInfoCpu() = %v, expected %v",
+					got, tt.expected))
 		})
 	}
 }
 
 func TestHostInfoCpu_Run(t *testing.T) {
-	info, err := cpu.Info()
+	expectedInfo, err := cpu.Info()
 	if err != nil {
 		t.Skip("We cannot get cpu info right now.  Skipping")
 	}
-	coreCount, _ := cpu.Counts(true)
+	expectedCoreCount, _ := cpu.Counts(true)
 
 	tests := []struct {
 		name                    string
@@ -57,7 +59,7 @@ func TestHostInfoCpu_Run(t *testing.T) {
 	}{
 		{
 			name: "Happy path",
-			expectedResultSetLength: len(info),
+			expectedResultSetLength: len(expectedInfo),
 			expectedSampleMetricSet: map[string]*metric.Metric{
 				"name": &metric.Metric{
 					Name:       "name",
@@ -72,7 +74,7 @@ func TestHostInfoCpu_Run(t *testing.T) {
 					Dimension:  "none",
 					Type:       metric.MetricString,
 					TypeString: "string",
-					Value:      info[0].ModelName,
+					Value:      expectedInfo[0].ModelName,
 					Unit:       "",
 				},
 				"total_cores": &metric.Metric{
@@ -80,7 +82,7 @@ func TestHostInfoCpu_Run(t *testing.T) {
 					Dimension:  "none",
 					Type:       metric.MetricNumber,
 					TypeString: "int64",
-					Value:      coreCount,
+					Value:      expectedCoreCount,
 					Unit:       "",
 				},
 			},
@@ -93,31 +95,21 @@ func TestHostInfoCpu_Run(t *testing.T) {
 				HostInfoBase: protocol_hostinfo.HostInfoBase{},
 			}
 			got, err := h.Run()
-			if (err != nil) != tt.expectedErr {
-				t.Errorf("HostInfoCpu.Run() error = %v, expectedErr %v", err, tt.expectedErr)
-				return
-			}
-			// loop through sample set and validate it exists in result
-			for name, sample_metric := range tt.expectedSampleMetricSet {
-				// iterate through result
-				var isFound, isValidated = false, false
-				for _, got_check_result := range got.Metrics {
-					if got_check_result.Metrics[name] != nil {
-						isFound = true
-						if reflect.DeepEqual(got_check_result.Metrics[name], sample_metric) {
-							isValidated = true
-						} else {
-							t.Log("not equal ", sample_metric, got_check_result.Metrics[name])
-						}
+			if tt.expectedErr {
+				assert.Error(t, err, fmt.Sprintf("HostInfoCpu.Run() error = %v, expectedErr %v", err, tt.expectedErr))
+			} else {
+				for name, sample_metric := range tt.expectedSampleMetricSet {
+					// first, get the metric
+					gotMetric := getMetricResults(name, got.Metrics)
+					if gotMetric == nil {
+						t.Errorf("Metric not found in result = %v ", name)
+					} else {
+						assert.Equal(
+							t, sample_metric, gotMetric,
+							fmt.Sprintf("Metric did not have correct values = %v ", sample_metric))
 					}
-				}
-				if !isFound {
-					t.Errorf("Metric not found in result = %v ", name)
-				}
-				if !isValidated {
-					t.Errorf("Metric did not have correct values = %v ", sample_metric)
-				}
 
+				}
 			}
 		})
 	}
@@ -296,9 +288,12 @@ func TestHostInfoCpu_BuildResult(t *testing.T) {
 				HostInfoBase: protocol_hostinfo.HostInfoBase{},
 			}
 
-			if got := h.BuildResult(tt.crs); !reflect.DeepEqual(got.(*protocol_hostinfo.HostInfoCpuResult).Metrics, tt.expected.Metrics) {
-				t.Errorf("HostInfoCpu.BuildResult() = %v, expected %v", got.(*protocol_hostinfo.HostInfoCpuResult).Metrics, tt.expected.Metrics)
-			}
+			got := h.BuildResult(tt.crs)
+			assert.Equal(
+				t, tt.expected.Metrics,
+				got.(*protocol_hostinfo.HostInfoCpuResult).Metrics,
+				fmt.Sprintf("HostInfoCpu.BuildResult() = %v, expected %v", got.(*protocol_hostinfo.HostInfoCpuResult).Metrics, tt.expected.Metrics))
+
 		})
 	}
 }

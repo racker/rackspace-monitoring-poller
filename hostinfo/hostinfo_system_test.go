@@ -1,7 +1,7 @@
 package hostinfo_test
 
 import (
-	"reflect"
+	"fmt"
 	"runtime"
 	"testing"
 
@@ -10,6 +10,7 @@ import (
 	protocol_hostinfo "github.com/racker/rackspace-monitoring-poller/protocol/hostinfo"
 	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	"github.com/shirou/gopsutil/host"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewHostInfoSystem(t *testing.T) {
@@ -32,15 +33,18 @@ func TestNewHostInfoSystem(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := hostinfo.NewHostInfoSystem(tt.base); !reflect.DeepEqual(got, tt.expected) {
-				t.Errorf("NewHostInfoSystem() = %v, expected %v", got, tt.expected)
-			}
+			got := hostinfo.NewHostInfoSystem(tt.base)
+			assert.Equal(
+				t, got,
+				tt.expected, fmt.Sprintf(
+					"NewHostInfoSystem() = %v, expected %v",
+					got, tt.expected))
 		})
 	}
 }
 
 func TestHostInfoSystem_Run(t *testing.T) {
-	info, err := host.Info()
+	expectedInfo, err := host.Info()
 	if err != nil {
 		t.Skip("Host info is unavailable. Skipping", err)
 	}
@@ -65,7 +69,7 @@ func TestHostInfoSystem_Run(t *testing.T) {
 					Dimension:  "none",
 					Type:       metric.MetricString,
 					TypeString: "string",
-					Value:      info.OS,
+					Value:      expectedInfo.OS,
 					Unit:       "",
 				},
 				"version": &metric.Metric{
@@ -73,7 +77,7 @@ func TestHostInfoSystem_Run(t *testing.T) {
 					Dimension:  "none",
 					Type:       metric.MetricString,
 					TypeString: "string",
-					Value:      info.KernelVersion,
+					Value:      expectedInfo.KernelVersion,
 					Unit:       "",
 				},
 				"vendor_name": &metric.Metric{
@@ -81,7 +85,7 @@ func TestHostInfoSystem_Run(t *testing.T) {
 					Dimension:  "none",
 					Type:       metric.MetricString,
 					TypeString: "string",
-					Value:      info.OS,
+					Value:      expectedInfo.OS,
 					Unit:       "",
 				},
 				"vendor": &metric.Metric{
@@ -89,7 +93,7 @@ func TestHostInfoSystem_Run(t *testing.T) {
 					Dimension:  "none",
 					Type:       metric.MetricString,
 					TypeString: "string",
-					Value:      info.Platform,
+					Value:      expectedInfo.Platform,
 					Unit:       "",
 				},
 				"vendor_version": &metric.Metric{
@@ -97,7 +101,7 @@ func TestHostInfoSystem_Run(t *testing.T) {
 					Dimension:  "none",
 					Type:       metric.MetricString,
 					TypeString: "string",
-					Value:      info.PlatformVersion,
+					Value:      expectedInfo.PlatformVersion,
 					Unit:       "",
 				},
 			},
@@ -110,31 +114,21 @@ func TestHostInfoSystem_Run(t *testing.T) {
 				HostInfoBase: protocol_hostinfo.HostInfoBase{},
 			}
 			got, err := h.Run()
-			if (err != nil) != tt.expectedErr {
-				t.Errorf("HostInfoSystem.Run() error = %v, expectedErr %v", err, tt.expectedErr)
-				return
-			}
-			// loop through sample set and validate it exists in result
-			for name, sample_metric := range tt.expected {
-				// iterate through result
-				var isFound, isValidated = false, false
-				for _, got_check_result := range got.Metrics {
-					if got_check_result.Metrics[name] != nil {
-						isFound = true
-						if reflect.DeepEqual(got_check_result.Metrics[name], sample_metric) {
-							isValidated = true
-						} else {
-							t.Log("not equal ", sample_metric, got_check_result.Metrics[name])
-						}
+			if tt.expectedErr {
+				assert.Error(t, err, fmt.Sprintf("HostInfoSystem.Run() error = %v, expectedErr %v", err, tt.expectedErr))
+			} else {
+				// loop through sample set and validate it exists in result
+				for name, sample_metric := range tt.expected {
+					// first, get the metric
+					gotMetric := getMetricResults(name, got.Metrics)
+					if gotMetric == nil {
+						t.Errorf("Metric not found in result = %v ", name)
+					} else {
+						assert.Equal(
+							t, sample_metric, gotMetric,
+							fmt.Sprintf("Metric did not have correct values = %v ", sample_metric))
 					}
 				}
-				if !isFound {
-					t.Errorf("Metric not found in result = %v ", name)
-				}
-				if !isValidated {
-					t.Errorf("Metric did not have correct values = %v ", sample_metric)
-				}
-
 			}
 		})
 	}
@@ -226,9 +220,12 @@ func TestHostInfoSystem_BuildResult(t *testing.T) {
 			h := &hostinfo.HostInfoSystem{
 				HostInfoBase: protocol_hostinfo.HostInfoBase{},
 			}
-			if got := h.BuildResult(tt.crs); !reflect.DeepEqual(got.(*protocol_hostinfo.HostInfoSystemResult).Metrics, tt.expected.Metrics) {
-				t.Errorf("HostInfoSystem.BuildResult() = %v, expected %v", got.(*protocol_hostinfo.HostInfoSystemResult).Metrics, tt.expected.Metrics)
-			}
+			got := h.BuildResult(tt.crs)
+			assert.Equal(
+				t, tt.expected.Metrics,
+				got.(*protocol_hostinfo.HostInfoSystemResult).Metrics,
+				fmt.Sprintf("HostInfoSystem.BuildResult() = %v, expected %v", got.(*protocol_hostinfo.HostInfoSystemResult).Metrics, tt.expected.Metrics))
+
 		})
 	}
 }

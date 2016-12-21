@@ -1,13 +1,14 @@
 package hostinfo_test
 
 import (
-	"reflect"
+	"fmt"
 	"testing"
 
 	"github.com/racker/rackspace-monitoring-poller/hostinfo"
 	protocol_hostinfo "github.com/racker/rackspace-monitoring-poller/protocol/hostinfo"
 	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	"github.com/shirou/gopsutil/process"
+	"github.com/stretchr/testify/assert"
 )
 
 func getTimeMetric(metric_type string, pr *process.Process, t *testing.T) map[string]*metric.Metric {
@@ -60,23 +61,26 @@ func TestNewHostInfoProcesses(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := hostinfo.NewHostInfoProcesses(tt.base); !reflect.DeepEqual(got, tt.expected) {
-				t.Errorf("NewHostInfoProcesses() = %v, expected %v", got, tt.expected)
-			}
+			got := hostinfo.NewHostInfoProcesses(tt.base)
+			assert.Equal(
+				t, got,
+				tt.expected, fmt.Sprintf(
+					"NewHostInfoProcesses() = %v, expected %v",
+					got, tt.expected))
 		})
 	}
 }
 
 func TestHostInfoProcesses_Run(t *testing.T) {
-	pids, err := process.Pids()
+	expectedPids, err := process.Pids()
 	if err != nil {
-		t.Skip("Unable to get host process information.  Skipping for now")
+		t.Skip("Unable to get host process information.  Skipping for now", err)
 	}
-	pr, err := process.NewProcess(pids[0])
+	expectedProcess, err := process.NewProcess(expectedPids[0])
 	if err != nil {
-		t.Skip("Unable to get the process pid. Skipping!")
+		t.Skip("Unable to get the process pid. Skipping!", err)
 	}
-	cwd, err := pr.Cwd()
+	expectedCwd, err := expectedProcess.Cwd()
 	if err != nil {
 		t.Skip("CWD currently not implemented.  Skipping", err)
 	}
@@ -93,7 +97,7 @@ func TestHostInfoProcesses_Run(t *testing.T) {
 					Dimension:  "none",
 					Type:       metric.MetricNumber,
 					TypeString: "int32",
-					Value:      pr.Pid,
+					Value:      expectedProcess.Pid,
 					Unit:       "",
 				},
 				"state_name": &metric.Metric{
@@ -102,7 +106,7 @@ func TestHostInfoProcesses_Run(t *testing.T) {
 					Type:       metric.MetricString,
 					TypeString: "string",
 					Value: func() string {
-						name, err := pr.Name()
+						name, err := expectedProcess.Name()
 						if err != nil {
 							t.Error("Unable to get the process name")
 						}
@@ -115,7 +119,7 @@ func TestHostInfoProcesses_Run(t *testing.T) {
 					Dimension:  "none",
 					Type:       metric.MetricString,
 					TypeString: "string",
-					Value:      cwd,
+					Value:      expectedCwd,
 					Unit:       "",
 				},
 				"exe_root": &metric.Metric{
@@ -124,7 +128,7 @@ func TestHostInfoProcesses_Run(t *testing.T) {
 					Type:       metric.MetricString,
 					TypeString: "string",
 					Value: func() string {
-						root, err := pr.Exe()
+						root, err := expectedProcess.Exe()
 						if err != nil {
 							t.Error("Unable to get the process root executable")
 						}
@@ -138,7 +142,7 @@ func TestHostInfoProcesses_Run(t *testing.T) {
 					Type:       metric.MetricNumber,
 					TypeString: "int64",
 					Value: func() int64 {
-						createTime, err := pr.CreateTime()
+						createTime, err := expectedProcess.CreateTime()
 						if err != nil {
 							t.Error("Unable to get the process created time")
 						}
@@ -156,31 +160,21 @@ func TestHostInfoProcesses_Run(t *testing.T) {
 				HostInfoBase: protocol_hostinfo.HostInfoBase{},
 			}
 			got, err := h.Run()
-			if (err != nil) != tt.expectedErr {
-				t.Errorf("HostInfoProcesses.Run() error = %v, expectedErr %v", err, tt.expectedErr)
-				return
-			}
-			// loop through sample set and validate it exists in result
-			for name, sample_metric := range tt.expected {
-				// iterate through result
-				var isFound, isValidated = false, false
-				for _, got_check_result := range got.Metrics {
-					if got_check_result.Metrics[name] != nil {
-						isFound = true
-						if reflect.DeepEqual(got_check_result.Metrics[name], sample_metric) {
-							isValidated = true
-						} else {
-							t.Log("not equal ", sample_metric, got_check_result.Metrics[name])
-						}
+			if tt.expectedErr {
+				assert.Error(t, err, fmt.Sprintf("HostInfoProcesses.Run() error = %v, expectedErr %v", err, tt.expectedErr))
+			} else {
+				// loop through sample set and validate it exists in result
+				for name, sample_metric := range tt.expected {
+					// first, get the metric
+					gotMetric := getMetricResults(name, got.Metrics)
+					if gotMetric == nil {
+						t.Errorf("Metric not found in result = %v ", name)
+					} else {
+						assert.Equal(
+							t, sample_metric, gotMetric,
+							fmt.Sprintf("Metric did not have correct values = %v ", sample_metric))
 					}
 				}
-				if !isFound {
-					t.Errorf("Metric not found in result = %v ", name)
-				}
-				if !isValidated {
-					t.Errorf("Metric did not have correct values = %v ", sample_metric)
-				}
-
 			}
 		})
 	}

@@ -1,7 +1,7 @@
 package hostinfo_test
 
 import (
-	"reflect"
+	"fmt"
 	"testing"
 
 	"github.com/racker/rackspace-monitoring-poller/check"
@@ -10,6 +10,7 @@ import (
 	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	"github.com/racker/rackspace-monitoring-poller/utils"
 	"github.com/shirou/gopsutil/disk"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewHostInfoFilesystem(t *testing.T) {
@@ -32,15 +33,18 @@ func TestNewHostInfoFilesystem(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := hostinfo.NewHostInfoFilesystem(tt.base); !reflect.DeepEqual(got, tt.expected) {
-				t.Errorf("NewHostInfoFilesystem() = %v, expected %v", got, tt.expected)
-			}
+			got := hostinfo.NewHostInfoFilesystem(tt.base)
+			assert.Equal(
+				t, got,
+				tt.expected, fmt.Sprintf(
+					"NewHostInfoFilesystem() = %v, expected %v",
+					got, tt.expected))
 		})
 	}
 }
 
 func TestHostInfoFilesystem_Run(t *testing.T) {
-	partitions, err := disk.Partitions(false)
+	expectedPartitions, err := disk.Partitions(false)
 	if err != nil {
 		t.Skip("We cannot get filesystem info right now.  Skipping")
 	}
@@ -58,7 +62,7 @@ func TestHostInfoFilesystem_Run(t *testing.T) {
 					Dimension:  "none",
 					Type:       metric.MetricString,
 					TypeString: "string",
-					Value:      partitions[0].Mountpoint,
+					Value:      expectedPartitions[0].Mountpoint,
 					Unit:       "",
 				},
 				"dev_name": &metric.Metric{
@@ -66,7 +70,7 @@ func TestHostInfoFilesystem_Run(t *testing.T) {
 					Dimension:  "none",
 					Type:       metric.MetricString,
 					TypeString: "string",
-					Value:      partitions[0].Device,
+					Value:      expectedPartitions[0].Device,
 					Unit:       "",
 				},
 				"sys_type_name": &metric.Metric{
@@ -74,7 +78,7 @@ func TestHostInfoFilesystem_Run(t *testing.T) {
 					Dimension:  "none",
 					Type:       metric.MetricString,
 					TypeString: "string",
-					Value:      partitions[0].Fstype,
+					Value:      expectedPartitions[0].Fstype,
 					Unit:       "",
 				},
 				"options": &metric.Metric{
@@ -82,7 +86,7 @@ func TestHostInfoFilesystem_Run(t *testing.T) {
 					Dimension:  "none",
 					Type:       metric.MetricString,
 					TypeString: "string",
-					Value:      partitions[0].Opts,
+					Value:      expectedPartitions[0].Opts,
 					Unit:       "",
 				},
 			},
@@ -95,31 +99,21 @@ func TestHostInfoFilesystem_Run(t *testing.T) {
 				HostInfoBase: protocol_hostinfo.HostInfoBase{},
 			}
 			got, err := h.Run()
-			if (err != nil) != tt.expectedErr {
-				t.Errorf("HostInfoFilesystem.Run() error = %v, expectedErr %v", err, tt.expectedErr)
-				return
-			}
-			// loop through sample set and validate it exists in result
-			for name, sample_metric := range tt.expected {
-				// iterate through result
-				var isFound, isValidated = false, false
-				for _, got_check_result := range got.Metrics {
-					if got_check_result.Metrics[name] != nil {
-						isFound = true
-						if reflect.DeepEqual(got_check_result.Metrics[name], sample_metric) {
-							isValidated = true
-						} else {
-							t.Log("not equal ", sample_metric, got_check_result.Metrics[name])
-						}
+			if tt.expectedErr {
+				assert.Error(t, err, fmt.Sprintf("HostInfoFilesystem.Run() error = %v, expectedErr %v", err, tt.expectedErr))
+			} else {
+				// loop through sample set and validate it exists in result
+				for name, sample_metric := range tt.expected {
+					// first, get the metric
+					gotMetric := getMetricResults(name, got.Metrics)
+					if gotMetric == nil {
+						t.Errorf("Metric not found in result = %v ", name)
+					} else {
+						assert.Equal(
+							t, sample_metric, gotMetric,
+							fmt.Sprintf("Metric did not have correct values = %v ", sample_metric))
 					}
 				}
-				if !isFound {
-					t.Errorf("Metric not found in result = %v ", name)
-				}
-				if !isValidated {
-					t.Errorf("Metric did not have correct values = %v ", sample_metric)
-				}
-
 			}
 		})
 	}
@@ -252,9 +246,13 @@ func TestHostInfoFilesystem_BuildResult(t *testing.T) {
 			h := &hostinfo.HostInfoFilesystem{
 				HostInfoBase: protocol_hostinfo.HostInfoBase{},
 			}
-			if got := h.BuildResult(tt.crs); !reflect.DeepEqual(got.(*protocol_hostinfo.HostInfoFilesystemResult).Metrics, tt.expected.Metrics) {
-				t.Errorf("HostInfoFilesystem.BuildResult() = %v, expected %v", got.(*protocol_hostinfo.HostInfoFilesystemResult).Metrics, tt.expected.Metrics)
-			}
+
+			got := h.BuildResult(tt.crs)
+			assert.Equal(
+				t, tt.expected.Metrics,
+				got.(*protocol_hostinfo.HostInfoFilesystemResult).Metrics,
+				fmt.Sprintf("HostInfoFilesystem.BuildResult() = %v, expected %v", got.(*protocol_hostinfo.HostInfoFilesystemResult).Metrics, tt.expected.Metrics))
+
 		})
 	}
 }

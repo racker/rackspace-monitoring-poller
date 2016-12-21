@@ -1,13 +1,14 @@
 package hostinfo_test
 
 import (
-	"reflect"
+	"fmt"
 	"testing"
 
 	"github.com/racker/rackspace-monitoring-poller/check"
 	protocol_hostinfo "github.com/racker/rackspace-monitoring-poller/protocol/hostinfo"
 	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	"github.com/racker/rackspace-monitoring-poller/utils"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/racker/rackspace-monitoring-poller/hostinfo"
 	"github.com/shirou/gopsutil/mem"
@@ -33,19 +34,22 @@ func TestNewHostInfoMemory(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := hostinfo.NewHostInfoMemory(tt.base); !reflect.DeepEqual(got, tt.expected) {
-				t.Errorf("NewHostInfoMemory() = %v, expected %v", got, tt.expected)
-			}
+			got := hostinfo.NewHostInfoMemory(tt.base)
+			assert.Equal(
+				t, got,
+				tt.expected, fmt.Sprintf(
+					"NewHostInfoMemory() = %v, expected %v",
+					got, tt.expected))
 		})
 	}
 }
 
 func TestHostInfoMemory_Run(t *testing.T) {
-	v, err := mem.VirtualMemory()
+	expectedVirtualMem, err := mem.VirtualMemory()
 	if err != nil {
 		t.Skip("We cannot get virtual memory info right now.  Skipping")
 	}
-	s, err := mem.SwapMemory()
+	expectedSwapMem, err := mem.SwapMemory()
 	if err != nil {
 		t.Skip("We cannot get swap memory info right now.  Skipping")
 	}
@@ -62,7 +66,7 @@ func TestHostInfoMemory_Run(t *testing.T) {
 					Dimension:  "none",
 					Type:       metric.MetricNumber,
 					TypeString: "int64",
-					Value:      v.Total,
+					Value:      expectedVirtualMem.Total,
 					Unit:       "",
 				},
 				"SwapTotal": &metric.Metric{
@@ -70,7 +74,7 @@ func TestHostInfoMemory_Run(t *testing.T) {
 					Dimension:  "none",
 					Type:       metric.MetricNumber,
 					TypeString: "int64",
-					Value:      s.Total,
+					Value:      expectedSwapMem.Total,
 					Unit:       "",
 				},
 			},
@@ -83,31 +87,21 @@ func TestHostInfoMemory_Run(t *testing.T) {
 				HostInfoBase: protocol_hostinfo.HostInfoBase{},
 			}
 			got, err := h.Run()
-			if (err != nil) != tt.expectedErr {
-				t.Errorf("HostInfoMemory.Run() error = %v, expectedErr %v", err, tt.expectedErr)
-				return
-			}
-			// loop through sample set and validate it exists in result
-			for name, sample_metric := range tt.expected {
-				// iterate through result
-				var isFound, isValidated = false, false
-				for _, got_check_result := range got.Metrics {
-					if got_check_result.Metrics[name] != nil {
-						isFound = true
-						if reflect.DeepEqual(got_check_result.Metrics[name], sample_metric) {
-							isValidated = true
-						} else {
-							t.Log("not equal ", sample_metric, got_check_result.Metrics[name])
-						}
+			if tt.expectedErr {
+				assert.Error(t, err, fmt.Sprintf("HostInfoMemory.Run() error = %v, expectedErr %v", err, tt.expectedErr))
+			} else {
+				// loop through sample set and validate it exists in result
+				for name, sample_metric := range tt.expected {
+					// first, get the metric
+					gotMetric := getMetricResults(name, got.Metrics)
+					if gotMetric == nil {
+						t.Errorf("Metric not found in result = %v ", name)
+					} else {
+						assert.Equal(
+							t, sample_metric, gotMetric,
+							fmt.Sprintf("Metric did not have correct values = %v ", sample_metric))
 					}
 				}
-				if !isFound {
-					t.Errorf("Metric not found in result = %v ", name)
-				}
-				if !isValidated {
-					t.Errorf("Metric did not have correct values = %v ", sample_metric)
-				}
-
 			}
 		})
 	}
@@ -223,9 +217,12 @@ func TestHostInfoMemory_BuildResult(t *testing.T) {
 			h := &hostinfo.HostInfoMemory{
 				HostInfoBase: protocol_hostinfo.HostInfoBase{},
 			}
-			if got := h.BuildResult(tt.crs); !reflect.DeepEqual(got.(*protocol_hostinfo.HostInfoMemoryResult).Metrics, tt.expected.Metrics) {
-				t.Errorf("HostInfoMemory.BuildResult() = %v, expected %v", got.(*protocol_hostinfo.HostInfoMemoryResult).Metrics, tt.expected.Metrics)
-			}
+
+			got := h.BuildResult(tt.crs)
+			assert.Equal(
+				t, tt.expected.Metrics,
+				got.(*protocol_hostinfo.HostInfoMemoryResult).Metrics,
+				fmt.Sprintf("HostInfoMemory.BuildResult() = %v, expected %v", got.(*protocol_hostinfo.HostInfoMemoryResult).Metrics, tt.expected.Metrics))
 		})
 	}
 }
