@@ -1,5 +1,5 @@
-hash: 3ccce276397b552d27552358ed5e0d46db42c5ceb0f65bb63727aa3d36736d69
-updated: 2016-12-15T11:18:10.594002568-06:00
+hash: 9ba23e4e0ca50d10439aeed9abef943003cdc4cc2c410f5d33f326248dd51653
+updated: 2016-12-20T22:14:56.555951696-06:00
 imports:
 - name: github.com/go-ole/go-ole
   version: 5e9c030faf78847db7aa77e3661b9cc449de29b7
@@ -36,6 +36,10 @@ imports:
   version: 5ccb023bc27df288a957c5e994cd44fd19619465
 - name: github.com/StackExchange/wmi
   version: e54cbda6595d7293a7a468ccf9525f6bc8887f99
+- name: github.com/stretchr/testify
+  version: 18a02ba4a312f95da08ff4cfc0055750ce50ae9e
+  subpackages:
+  - assert
 - name: golang.org/x/net
   version: 8566e9372a500d1344adb9fdfd943c4354ef4aa2
   subpackages:
