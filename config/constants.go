@@ -23,6 +23,11 @@ var (
 		"_monitoringagent._tcp.ord1.prod.monitoring.api.rackspacecloud.com",
 		"_monitoringagent._tcp.lon3.prod.monitoring.api.rackspacecloud.com",
 	}
+	DefaultStagingSrvEndpoints = []string{
+		"_monitoringagent._tcp.dfw1.stage.monitoring.api.rackspacecloud.com",
+		"_monitoringagent._tcp.ord1.stage.monitoring.api.rackspacecloud.com",
+		"_monitoringagent._tcp.lon3.stage.monitoring.api.rackspacecloud.com",
+	}
 )
 
 const (

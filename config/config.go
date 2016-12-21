@@ -52,7 +52,7 @@ type Config struct {
 	TimeoutWrite time.Duration
 }
 
-func NewConfig(guid string) *Config {
+func NewConfig(guid string, useStaging bool) *Config {
 	cfg := &Config{}
 	cfg.init()
 	cfg.Guid = guid
@@ -63,7 +63,12 @@ func NewConfig(guid string) *Config {
 	cfg.BundleVersion = "0.0.1"  //TODO
 	cfg.TimeoutRead = time.Duration(10 * time.Second)
 	cfg.TimeoutWrite = time.Duration(10 * time.Second)
-	cfg.SrvQueries = DefaultProdSrvEndpoints
+	if useStaging {
+		cfg.SrvQueries = DefaultStagingSrvEndpoints
+		log.Warn("Using staging endpoints")
+	} else {
+		cfg.SrvQueries = DefaultProdSrvEndpoints
+	}
 	cfg.UseSrv = true
 	return cfg
 }

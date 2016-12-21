@@ -72,7 +72,7 @@ func TestNewConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := config.NewConfig(tt.guid)
+			got := config.NewConfig(tt.guid, false)
 			if !reflect.DeepEqual(got, tt.expected) {
 				t.Errorf("NewConfig() = %v, expected %v", got, tt.expected)
 			}

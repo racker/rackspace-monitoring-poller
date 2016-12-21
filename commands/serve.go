@@ -52,14 +52,13 @@ func HandleInterrupts() chan os.Signal {
 	return c
 }
 
-func LoadRootCAs(insecure bool) *x509.CertPool {
+func LoadRootCAs(insecure bool, useStaging bool) *x509.CertPool {
 	if insecure {
 		log.Warn("Insecure TLS connectivity is enabled. Make sure you TRUST the farend host")
 		return nil
 	} else {
 		devCAPath := os.Getenv(config.EnvDevCA)
-		isStaging := os.Getenv(config.EnvStaging)
-		if isStaging == config.EnabledEnvOpt {
+		if useStaging {
 			log.Warn("Staging root CAs are in use")
 			return config.LoadStagingCAs()
 		} else if devCAPath != "" {
@@ -73,13 +72,14 @@ func LoadRootCAs(insecure bool) *x509.CertPool {
 
 func serveCmdRun(cmd *cobra.Command, args []string) {
 	guid := uuid.NewV4()
-	cfg := config.NewConfig(guid.String())
+	useStaging := os.Getenv(config.EnvStaging) == config.EnabledEnvOpt
+	cfg := config.NewConfig(guid.String(), useStaging)
 	err := cfg.LoadFromFile(configFilePath)
 	if err != nil {
 		utils.Die(err, "Failed to load configuration")
 	}
 
-	rootCAs := LoadRootCAs(insecure)
+	rootCAs := LoadRootCAs(insecure, useStaging)
 
 	log.WithField("guid", guid).Info("Assigned unique identifier")
 

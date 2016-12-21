@@ -14,13 +14,12 @@
 // limitations under the License.
 //
 
-
 package config_test
 
 import (
-	"testing"
-	"github.com/stretchr/testify/assert"
 	"github.com/racker/rackspace-monitoring-poller/config"
+	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func TestLoadProductionCAs(t *testing.T) {
@@ -30,7 +29,7 @@ func TestLoadProductionCAs(t *testing.T) {
 	assert.NotNil(pool)
 
 	subjects := pool.Subjects()
-	assert.Len(subjects, 2)
+	assert.Len(subjects, 1)
 }
 
 func TestLoadStagingCAs(t *testing.T) {

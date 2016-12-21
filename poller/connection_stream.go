@@ -158,9 +158,10 @@ func (cs *ConnectionStream) connectByHost(addr string) {
 }
 
 func (cs *ConnectionStream) buildTlsConfig(addr string) *tls.Config {
+	host, _, _ := net.SplitHostPort(addr)
 	conf := &tls.Config{
 		InsecureSkipVerify: cs.rootCAs == nil,
-		ServerName:         addr,
+		ServerName:         host,
 		RootCAs:            cs.rootCAs,
 	}
 	return conf
