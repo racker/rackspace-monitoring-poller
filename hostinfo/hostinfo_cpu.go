@@ -18,6 +18,7 @@ package hostinfo
 
 import (
 	"fmt"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/protocol/hostinfo"
@@ -73,6 +74,10 @@ func (*HostInfoCpu) Run() (*check.CheckResultSet, error) {
 func (*HostInfoCpu) BuildResult(crs *check.CheckResultSet) interface{} {
 	result := &hostinfo.HostInfoCpuResult{}
 	result.Timestamp = utils.NowTimestampMillis()
+	if crs == nil {
+		log.Infoln("Check result set is unset")
+		return result
+	}
 	for i := 0; i < crs.Length(); i++ {
 		cr := crs.Get(i)
 		metrics := hostinfo.HostInfoCpuMetrics{}

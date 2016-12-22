@@ -17,12 +17,13 @@
 package hostinfo
 
 import (
+	"runtime"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/protocol/hostinfo"
 	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	"github.com/shirou/gopsutil/host"
-	"runtime"
 )
 
 type HostInfoSystem struct {
@@ -55,6 +56,10 @@ func (*HostInfoSystem) Run() (*check.CheckResultSet, error) {
 
 func (*HostInfoSystem) BuildResult(crs *check.CheckResultSet) interface{} {
 	result := &hostinfo.HostInfoSystemResult{}
+	if crs == nil {
+		log.Infoln("Check result set is unset")
+		return result
+	}
 	cr := crs.Get(0)
 	result.Metrics.Arch, _ = cr.GetMetric("arch").ToString()
 	result.Metrics.Name, _ = cr.GetMetric("name").ToString()

@@ -18,6 +18,7 @@ package hostinfo
 
 import (
 	"encoding/json"
+
 	protocol "github.com/racker/rackspace-monitoring-poller/protocol/hostinfo"
 )
 
