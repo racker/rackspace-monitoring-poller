@@ -66,8 +66,12 @@ func (*HostInfoMemory) Run() (*check.CheckResultSet, error) {
 
 func (hi *HostInfoMemory) BuildResult(crs *check.CheckResultSet) interface{} {
 	result := &hostinfo.HostInfoMemoryResult{}
-	cr := crs.Get(0)
 	result.Timestamp = utils.NowTimestampMillis()
+	if crs == nil {
+		log.Infoln("Check result set is unset")
+		return result
+	}
+	cr := crs.Get(0)
 	result.Metrics.UsedPercentage, _ = cr.GetMetric("UsedPercentage").ToFloat64()
 	result.Metrics.Free, _ = cr.GetMetric("Free").ToUint64()
 	result.Metrics.ActualFree, _ = cr.GetMetric("Free").ToUint64()

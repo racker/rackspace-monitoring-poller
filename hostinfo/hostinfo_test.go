@@ -19,13 +19,14 @@ package hostinfo_test
 
 import (
 	"bytes"
+	"testing"
+
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/hostinfo"
 	"github.com/racker/rackspace-monitoring-poller/protocol"
 	hostinfo_proto "github.com/racker/rackspace-monitoring-poller/protocol/hostinfo"
 	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	"github.com/racker/rackspace-monitoring-poller/utils"
-	"testing"
 )
 
 func TestHostInfoMemory_PopulateResult(t *testing.T) {
@@ -67,4 +68,13 @@ func TestHostInfoProcesses_PopulateResult(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+}
+
+func getMetricResults(name string, checkResultList []*check.CheckResult) *metric.Metric {
+	for _, got_check_result := range checkResultList {
+		if got_check_result.Metrics[name] != nil {
+			return got_check_result.Metrics[name]
+		}
+	}
+	return nil
 }

@@ -17,9 +17,7 @@
 // Package metric provides the messaging structures specific to metric reporting
 package metric
 
-import (
-	"errors"
-)
+import "errors"
 
 const (
 	MetricString = iota
