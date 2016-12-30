@@ -19,17 +19,29 @@ package poller
 import (
 	"context"
 	"encoding/json"
-	log "github.com/Sirupsen/logrus"
-	"github.com/racker/rackspace-monitoring-poller/hostinfo"
-	"github.com/racker/rackspace-monitoring-poller/protocol"
 	"io"
 	"sync"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/racker/rackspace-monitoring-poller/hostinfo"
+	"github.com/racker/rackspace-monitoring-poller/protocol"
 )
 
 type CompletionFrame struct {
 	Id     uint64
 	Method string
+}
+
+type SessionInterface interface {
+	Auth()
+	Send(msg protocol.Frame)
+	SendResponse(msg protocol.Frame)
+	SetHeartbeatInterval(timeout uint64)
+	GetReadDeadline() time.Time
+	GetWriteDeadline() time.Time
+	Close()
+	Wait()
 }
 
 type Session struct {

@@ -19,16 +19,29 @@ package poller
 import (
 	"context"
 	"crypto/tls"
-	log "github.com/Sirupsen/logrus"
 	"io"
 	"net"
 	"time"
+
+	"errors"
+
+	log "github.com/Sirupsen/logrus"
 )
 
-type Connection struct {
-	stream *ConnectionStream
+type ConnectionInterface interface {
+	GetStream() ConnectionStreamInterface
+	SetReadDeadline(deadline time.Time)
+	SetWriteDeadline(deadline time.Time)
+	Connect(ctx context.Context, tlsConfig *tls.Config) error
+	Close()
+	Wait()
+	GetConnection() *Connection
+}
 
-	session *Session
+type Connection struct {
+	stream ConnectionStreamInterface
+
+	session SessionInterface
 	conn    io.ReadWriteCloser
 
 	address string
@@ -37,7 +50,7 @@ type Connection struct {
 	connectionTimeout time.Duration
 }
 
-func NewConnection(address string, guid string, stream *ConnectionStream) *Connection {
+func NewConnection(address string, guid string, stream ConnectionStreamInterface) ConnectionInterface {
 	return &Connection{
 		address:           address,
 		guid:              guid,
@@ -46,7 +59,11 @@ func NewConnection(address string, guid string, stream *ConnectionStream) *Conne
 	}
 }
 
-func (conn *Connection) GetStream() *ConnectionStream {
+func (conn *Connection) GetConnection() *Connection {
+	return conn
+}
+
+func (conn *Connection) GetStream() ConnectionStreamInterface {
 	return conn.stream
 }
 
@@ -65,6 +82,9 @@ func (conn *Connection) SetWriteDeadline(deadline time.Time) {
 }
 
 func (conn *Connection) Connect(ctx context.Context, tlsConfig *tls.Config) error {
+	if ctx == nil {
+		return errors.New("Context is undefined")
+	}
 	log.WithFields(log.Fields{
 		"address": conn.address,
 		"timeout": conn.connectionTimeout,

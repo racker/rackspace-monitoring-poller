@@ -21,13 +21,28 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	"github.com/racker/rackspace-monitoring-poller/check"
-	"github.com/racker/rackspace-monitoring-poller/config"
 	"net"
 	"sync"
 	"time"
+
+	"errors"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/racker/rackspace-monitoring-poller/check"
+	"github.com/racker/rackspace-monitoring-poller/config"
 )
+
+type ConnectionStreamInterface interface {
+	GetConfig() *config.Config
+	RegisterConnection(qry string, conn ConnectionInterface) error
+	Stop()
+	StopNotify() chan struct{}
+	GetScheduler() *Scheduler
+	SendMetrics(crs *check.CheckResultSet) error
+	Connect()
+	WaitCh() <-chan struct{}
+	GetConnections() map[string]ConnectionInterface
+}
 
 type ConnectionStream struct {
 	ctx     context.Context
@@ -37,7 +52,7 @@ type ConnectionStream struct {
 	config *config.Config
 
 	connsMu sync.Mutex
-	conns   map[string]*Connection
+	conns   map[string]ConnectionInterface
 	wg      sync.WaitGroup
 
 	// map is the private zone ID as a string
@@ -55,7 +70,7 @@ func NewConnectionStream(config *config.Config, rootCAs *x509.CertPool) *Connect
 		scheduler: make(map[string]*Scheduler),
 	}
 	stream.ctx = context.Background()
-	stream.conns = make(map[string]*Connection)
+	stream.conns = make(map[string]ConnectionInterface)
 	stream.stopCh = make(chan struct{}, 1)
 	for _, pz := range config.ZoneIds {
 		stream.scheduler[pz] = NewScheduler(pz, stream)
@@ -68,20 +83,32 @@ func (cs *ConnectionStream) GetConfig() *config.Config {
 	return cs.config
 }
 
-func (cs *ConnectionStream) RegisterConnection(qry string, conn *Connection) {
+func (cs *ConnectionStream) RegisterConnection(qry string, conn ConnectionInterface) error {
 	cs.connsMu.Lock()
 	defer cs.connsMu.Unlock()
+	if cs.conns == nil {
+		return errors.New("ConnectionStream has not been properly set up.  Re-initialize")
+	}
 	cs.conns[qry] = conn
+	log.Warningf("%v", cs.conns)
+	return nil
+}
+
+func (cs *ConnectionStream) GetConnections() map[string]ConnectionInterface {
+	return cs.conns
 }
 
 func (cs *ConnectionStream) Stop() {
-	for _, conn := range cs.conns {
-		conn.Close()
+	if cs.conns != nil {
+		for _, conn := range cs.conns {
+			conn.Close()
+		}
+		cs.stopCh <- struct{}{}
 	}
-	cs.stopCh <- struct{}{}
 }
 
 func (cs *ConnectionStream) StopNotify() chan struct{} {
+	log.Info("stop notify")
 	return cs.stopCh
 }
 
@@ -89,12 +116,17 @@ func (cs *ConnectionStream) GetScheduler() map[string]*Scheduler {
 	return cs.scheduler
 }
 
-func (cs *ConnectionStream) SendMetrics(crs *check.CheckResultSet) {
+func (cs *ConnectionStream) SendMetrics(crs *check.CheckResultSet) error {
+	if cs.conns == nil {
+		return errors.New("No connections")
+	}
 	for _, conn := range cs.conns {
 		// TODO make this better
-		conn.session.Send(check.NewMetricsPostRequest(crs))
+		conn.GetConnection().session.Send(check.NewMetricsPostRequest(crs))
 		break
 	}
+	return nil
+
 }
 
 func (cs *ConnectionStream) Connect() {
@@ -135,17 +167,21 @@ func (cs *ConnectionStream) connectBySrv(qry string) {
 }
 
 func (cs *ConnectionStream) connectByHost(addr string) {
+	var csi ConnectionStreamInterface = cs
 	defer cs.wg.Done()
 	for {
-		conn := NewConnection(addr, cs.GetConfig().Guid, cs)
+		conn := NewConnection(addr, csi.GetConfig().Guid, cs)
 		err := conn.Connect(cs.ctx, cs.buildTlsConfig(addr))
 		if err != nil {
-			goto error
+			goto conn_error
 		}
-		cs.RegisterConnection(addr, conn)
+		err = cs.RegisterConnection(addr, conn)
+		if err != nil {
+			goto conn_error
+		}
 		conn.Wait()
 		goto new_connection
-	error:
+	conn_error:
 		log.Errorf("Error: %v", err)
 	new_connection:
 		log.Debugf("  connection sleeping %v", ReconnectTimeout)
