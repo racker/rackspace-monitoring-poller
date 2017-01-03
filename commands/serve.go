@@ -17,6 +17,7 @@
 package commands
 
 import (
+	"crypto/x509"
 	log "github.com/Sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/poller"
@@ -30,7 +31,9 @@ import (
 
 var (
 	configFilePath string
-	ServeCmd       = &cobra.Command{
+	insecure       bool
+
+	ServeCmd = &cobra.Command{
 		Use:   "serve",
 		Short: "Start the service",
 		Long:  "Start the service",
@@ -40,6 +43,7 @@ var (
 
 func init() {
 	ServeCmd.Flags().StringVar(&configFilePath, "config", "", "Path to a file containing the config, used in "+config.DefaultConfigPathLinux)
+	ServeCmd.Flags().BoolVar(&insecure, "insecure", false, "Enabled ONLY during development and when connecting to a known farend")
 }
 
 func HandleInterrupts() chan os.Signal {
@@ -48,18 +52,40 @@ func HandleInterrupts() chan os.Signal {
 	return c
 }
 
+func LoadRootCAs(insecure bool, useStaging bool) *x509.CertPool {
+	if insecure {
+		log.Warn("Insecure TLS connectivity is enabled. Make sure you TRUST the farend host")
+		return nil
+	} else {
+		devCAPath := os.Getenv(config.EnvDevCA)
+		if useStaging {
+			log.Warn("Staging root CAs are in use")
+			return config.LoadStagingCAs()
+		} else if devCAPath != "" {
+			log.WithField("path", devCAPath).Warn("Development root CAs are in use")
+			return config.LoadDevelopmentCAs(devCAPath)
+		} else {
+			return config.LoadProductionCAs()
+		}
+	}
+}
+
 func serveCmdRun(cmd *cobra.Command, args []string) {
 	guid := uuid.NewV4()
-	cfg := config.NewConfig(guid.String())
+	useStaging := os.Getenv(config.EnvStaging) == config.EnabledEnvOpt
+	cfg := config.NewConfig(guid.String(), useStaging)
 	err := cfg.LoadFromFile(configFilePath)
 	if err != nil {
 		utils.Die(err, "Failed to load configuration")
 	}
+
+	rootCAs := LoadRootCAs(insecure, useStaging)
+
 	log.WithField("guid", guid).Info("Assigned unique identifier")
 
 	signalNotify := HandleInterrupts()
 	for {
-		stream := poller.NewConnectionStream(cfg)
+		stream := poller.NewConnectionStream(cfg, rootCAs)
 		stream.Connect()
 		waitCh := stream.WaitCh()
 		for {

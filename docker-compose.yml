@@ -7,7 +7,7 @@ services:
     restart: always
   server:
     build: .
-    command: ./rackspace-monitoring-poller serve --config contrib/local-endpoint.cfg  --debug
+    command: ./rackspace-monitoring-poller serve --config contrib/local-docker-endpoint.cfg --insecure  --debug
     depends_on:
       - endpoint
     restart: always

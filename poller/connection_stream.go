@@ -18,6 +18,8 @@ package poller
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/check"
@@ -28,7 +30,8 @@ import (
 )
 
 type ConnectionStream struct {
-	ctx context.Context
+	ctx     context.Context
+	rootCAs *x509.CertPool
 
 	stopCh chan struct{}
 	config *config.Config
@@ -44,8 +47,11 @@ var (
 	ReconnectTimeout = 25 * time.Second
 )
 
-func NewConnectionStream(config *config.Config) *ConnectionStream {
-	stream := &ConnectionStream{config: config}
+func NewConnectionStream(config *config.Config, rootCAs *x509.CertPool) *ConnectionStream {
+	stream := &ConnectionStream{
+		config:  config,
+		rootCAs: rootCAs,
+	}
 	stream.ctx = context.Background()
 	stream.conns = make(map[string]*Connection)
 	stream.stopCh = make(chan struct{}, 1)
@@ -128,7 +134,7 @@ func (cs *ConnectionStream) connectByHost(addr string) {
 	defer cs.wg.Done()
 	for {
 		conn := NewConnection(addr, cs.GetConfig().Guid, cs)
-		err := conn.Connect(cs.ctx)
+		err := conn.Connect(cs.ctx, cs.buildTlsConfig(addr))
 		if err != nil {
 			goto error
 		}
@@ -149,4 +155,14 @@ func (cs *ConnectionStream) connectByHost(addr string) {
 			}
 		}
 	}
+}
+
+func (cs *ConnectionStream) buildTlsConfig(addr string) *tls.Config {
+	host, _, _ := net.SplitHostPort(addr)
+	conf := &tls.Config{
+		InsecureSkipVerify: cs.rootCAs == nil,
+		ServerName:         host,
+		RootCAs:            cs.rootCAs,
+	}
+	return conf
 }

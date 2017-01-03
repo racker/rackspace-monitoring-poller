@@ -1,11 +1,16 @@
 FROM golang:1.7-alpine
 
+ENV GLIDE_VER=0.12.3
+
 RUN apk update && apk upgrade && \
     apk add --no-cache --virtual .build-deps \
         bash git openssh make openssl && \
     rm -rf /var/cache/apk/*
 
-RUN go get -u github.com/Masterminds/glide/...
+RUN go get -d -u github.com/Masterminds/glide/... && \
+  cd $GOPATH/src/github.com/Masterminds/glide && \
+  git checkout v$GLIDE_VER && \
+  go install
 
 COPY . $GOPATH/src/github.com/racker/rackspace-monitoring-poller
 

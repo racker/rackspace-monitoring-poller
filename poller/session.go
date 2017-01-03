@@ -248,7 +248,7 @@ done:
 }
 
 func (s *Session) exitError(err error) {
-	log.Println(err)
+	log.Warn("Session exiting with error", err)
 	s.shutdownLock.Lock()
 	if s.error == nil {
 		s.error = err

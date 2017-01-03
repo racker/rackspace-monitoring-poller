@@ -64,11 +64,13 @@ func (conn *Connection) SetWriteDeadline(deadline time.Time) {
 	}
 }
 
-func (conn *Connection) Connect(ctx context.Context) error {
-	log.Infof("Connecting to %s with timeout %v", conn.address, conn.connectionTimeout)
+func (conn *Connection) Connect(ctx context.Context, tlsConfig *tls.Config) error {
+	log.WithFields(log.Fields{
+		"address": conn.address,
+		"timeout": conn.connectionTimeout,
+	}).Info("Connecting to agent/poller endpoint")
 	nd := net.Dialer{Timeout: conn.connectionTimeout}
-	conf := &tls.Config{InsecureSkipVerify: true}
-	tlsConn, err := tls.DialWithDialer(&nd, "tcp", conn.address, conf)
+	tlsConn, err := tls.DialWithDialer(&nd, "tcp", conn.address, tlsConfig)
 	if err != nil {
 		return err
 	}
