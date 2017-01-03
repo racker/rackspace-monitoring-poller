@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/racker/rackspace-monitoring-poller/config"
+	"github.com/stretchr/testify/assert"
 )
 
 type configFields struct {
@@ -45,13 +46,15 @@ func getConfigFields() configFields {
 
 func TestNewConfig(t *testing.T) {
 	tests := []struct {
-		name     string
-		guid     string
-		expected *config.Config
+		name       string
+		guid       string
+		useStaging bool
+		expected   *config.Config
 	}{
 		{
-			name: "HappyPath",
-			guid: "some-guid",
+			name:       "HappyPath",
+			guid:       "some-guid",
+			useStaging: false,
 			expected: &config.Config{
 				UseSrv: true,
 				SrvQueries: []string{
@@ -69,13 +72,32 @@ func TestNewConfig(t *testing.T) {
 				Features:       make([]map[string]string, 0),
 			},
 		},
+		{
+			name:       "UseStating",
+			guid:       "some-guid-via-staging",
+			useStaging: true,
+			expected: &config.Config{
+				UseSrv: true,
+				SrvQueries: []string{
+					"_monitoringagent._tcp.dfw1.stage.monitoring.api.rackspacecloud.com",
+					"_monitoringagent._tcp.ord1.stage.monitoring.api.rackspacecloud.com",
+					"_monitoringagent._tcp.lon3.stage.monitoring.api.rackspacecloud.com",
+				},
+				AgentName:      "remote_poller",
+				ProcessVersion: "0.0.1",
+				BundleVersion:  "0.0.1",
+				Guid:           "some-guid-via-staging",
+				TimeoutRead:    time.Duration(10 * time.Second),
+				TimeoutWrite:   time.Duration(10 * time.Second),
+				Token:          "",
+				Features:       make([]map[string]string, 0),
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := config.NewConfig(tt.guid, false)
-			if !reflect.DeepEqual(got, tt.expected) {
-				t.Errorf("NewConfig() = %v, expected %v", got, tt.expected)
-			}
+			got := config.NewConfig(tt.guid, tt.useStaging)
+			assert.Equal(t, tt.expected, got)
 		})
 	}
 }
