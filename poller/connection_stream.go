@@ -133,8 +133,8 @@ func (cs *ConnectionStream) connectBySrv(qry string) {
 func (cs *ConnectionStream) connectByHost(addr string) {
 	defer cs.wg.Done()
 	for {
-		conn := NewConnection(addr, cs.GetConfig().Guid, cs.buildTlsConfig(addr), cs)
-		err := conn.Connect(cs.ctx)
+		conn := NewConnection(addr, cs.GetConfig().Guid, cs)
+		err := conn.Connect(cs.ctx, cs.buildTlsConfig(addr))
 		if err != nil {
 			goto error
 		}
