@@ -87,7 +87,7 @@ func (cs *ConnectionStream) RegisterConnection(qry string, conn ConnectionInterf
 	cs.connsMu.Lock()
 	defer cs.connsMu.Unlock()
 	if cs.conns == nil {
-		return errors.New("ConnectionStream has not been properly set up.  Re-initialize")
+		return errors.New(InvalidConnectionStream)
 	}
 	cs.conns[qry] = conn
 	log.Warningf("%v", cs.conns)
@@ -117,7 +117,7 @@ func (cs *ConnectionStream) GetScheduler() map[string]*Scheduler {
 
 func (cs *ConnectionStream) SendMetrics(crs *check.CheckResultSet) error {
 	if cs.conns == nil {
-		return errors.New("No connections")
+		return errors.New(NoConnections)
 	}
 	for _, conn := range cs.conns {
 		// TODO make this better

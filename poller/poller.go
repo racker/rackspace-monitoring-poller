@@ -16,3 +16,9 @@
 
 // Package poller contains the poller/agent side connectivity and coordination logic.
 package poller
+
+const (
+	UndefinedContext        string = "Context is undefined"
+	InvalidConnectionStream string = "ConnectionStream has not been properly set up.  Re-initialize"
+	NoConnections           string = "No connections"
+)

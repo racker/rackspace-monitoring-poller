@@ -88,7 +88,7 @@ func (conn *Connection) SetWriteDeadline(deadline time.Time) {
 
 func (conn *Connection) Connect(ctx context.Context, tlsConfig *tls.Config) error {
 	if ctx == nil {
-		return errors.New("Context is undefined")
+		return errors.New(UndefinedContext)
 	}
 	log.WithFields(log.Fields{
 		"address": conn.address,
