@@ -82,11 +82,11 @@ func (ch *PingCheck) Run() (*CheckResultSet, error) {
 	stats := pinger.Statistics()
 
 	cr := NewCheckResult(
-		metric.NewMetric("available", "", metric.MetricFloat, stats.PacketsRecv/stats.PacketsSent, ""),
-		metric.NewMetric("average", "", metric.MetricFloat, float64(stats.AvgRtt/time.Millisecond), "ms"),
+		metric.NewPercentMetricFromInt("available", "", stats.PacketsRecv, stats.PacketsSent),
+		metric.NewMetric("average", "", metric.MetricFloat, float64(stats.AvgRtt/time.Second), metric.UnitSeconds),
 		metric.NewMetric("count", "", metric.MetricNumber, stats.PacketsSent, ""),
-		metric.NewMetric("maximum", "", metric.MetricFloat, float64(stats.MaxRtt/time.Millisecond), "ms"),
-		metric.NewMetric("minimum", "", metric.MetricFloat, float64(stats.MinRtt/time.Millisecond), "ms"),
+		metric.NewMetric("maximum", "", metric.MetricFloat, float64(stats.MaxRtt/time.Second), metric.UnitSeconds),
+		metric.NewMetric("minimum", "", metric.MetricFloat, float64(stats.MinRtt/time.Second), metric.UnitSeconds),
 	)
 	crs := NewCheckResultSet(ch, cr)
 	crs.SetStateAvailable()
