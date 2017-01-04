@@ -108,7 +108,6 @@ func (cs *ConnectionStream) Stop() {
 }
 
 func (cs *ConnectionStream) StopNotify() chan struct{} {
-	log.Info("stop notify")
 	return cs.stopCh
 }
 
@@ -122,7 +121,7 @@ func (cs *ConnectionStream) SendMetrics(crs *check.CheckResultSet) error {
 	}
 	for _, conn := range cs.conns {
 		// TODO make this better
-		conn.GetConnection().session.Send(check.NewMetricsPostRequest(crs))
+		conn.GetConnection().GetSession().Send(check.NewMetricsPostRequest(crs))
 		break
 	}
 	return nil

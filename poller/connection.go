@@ -30,6 +30,7 @@ import (
 
 type ConnectionInterface interface {
 	GetStream() ConnectionStreamInterface
+	GetSession() SessionInterface
 	SetReadDeadline(deadline time.Time)
 	SetWriteDeadline(deadline time.Time)
 	Connect(ctx context.Context, tlsConfig *tls.Config) error
@@ -65,6 +66,10 @@ func (conn *Connection) GetConnection() *Connection {
 
 func (conn *Connection) GetStream() ConnectionStreamInterface {
 	return conn.stream
+}
+
+func (conn *Connection) GetSession() SessionInterface {
+	return conn.session
 }
 
 func (conn *Connection) SetReadDeadline(deadline time.Time) {

@@ -90,7 +90,6 @@ func TestConnectionStream_Connect(t *testing.T) {
 		addresses     func() []string
 		serverQueries func() []string
 		useSrv        bool
-		expectedErr   bool
 	}{
 		{
 			name: "Happy path",
@@ -101,30 +100,27 @@ func TestConnectionStream_Connect(t *testing.T) {
 			serverQueries: func() []string {
 				return []string{}
 			},
-			useSrv:      false,
-			expectedErr: false,
+			useSrv: false,
 		},
 		{
-			name: "Use server",
+			name: "Use service",
 			addresses: func() []string {
 				return []string{}
 			},
 			serverQueries: func() []string {
 				return []string{"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com"}
 			},
-			useSrv:      true,
-			expectedErr: false,
+			useSrv: true,
 		},
 		{
-			name: "Invalid server query",
+			name: "Invalid service query",
 			addresses: func() []string {
 				return []string{}
 			},
 			serverQueries: func() []string {
 				return []string{"magic"}
 			},
-			useSrv:      true,
-			expectedErr: false,
+			useSrv: true,
 		},
 		{
 			name: "Invalid url",
@@ -134,8 +130,7 @@ func TestConnectionStream_Connect(t *testing.T) {
 			serverQueries: func() []string {
 				return []string{}
 			},
-			useSrv:      false,
-			expectedErr: false,
+			useSrv: false,
 		},
 	}
 	for _, tt := range tests {
@@ -145,19 +140,11 @@ func TestConnectionStream_Connect(t *testing.T) {
 				Addresses:  tt.addresses(),
 				SrvQueries: tt.serverQueries(),
 			}, nil)
-			if tt.expectedErr {
-				// err := conn.Connect(tt.ctx)
-				// assert.EqualError(
-				// 	t, err, tt.expectedErrMessage,
-				// 	fmt.Sprintf("Expected to throw %v but got %v", tt.expectedErrMessage, err))
-			} else {
-				go cs.Connect()
-				// clean up after awhile
-				time.Sleep(100 * time.Millisecond)
+			go cs.Connect()
+			// clean up after awhile
+			time.Sleep(100 * time.Millisecond)
 
-				cs.Stop()
-
-			}
+			cs.Stop()
 		})
 	}
 }
