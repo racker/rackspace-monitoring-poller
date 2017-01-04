@@ -2,6 +2,7 @@ package poller_test
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -71,7 +72,7 @@ func TestConnection_Connect(t *testing.T) {
 			guid: "happy-test",
 			stream: poller.NewConnectionStream(&config.Config{
 				Guid: "test-guid",
-			}),
+			}, nil),
 			ctx:         context.Background(),
 			expectedErr: false,
 		},
@@ -83,7 +84,7 @@ func TestConnection_Connect(t *testing.T) {
 			guid: "another-test",
 			stream: poller.NewConnectionStream(&config.Config{
 				Guid: "test-guid",
-			}),
+			}, nil),
 			ctx:                context.Background(),
 			expectedErr:        true,
 			expectedErrMessage: "dial tcp: missing port in address invalid-url",
@@ -97,7 +98,7 @@ func TestConnection_Connect(t *testing.T) {
 			guid: "empty-context-guid",
 			stream: poller.NewConnectionStream(&config.Config{
 				Guid: "test-guid",
-			}),
+			}, nil),
 			ctx:                nil,
 			expectedErr:        true,
 			expectedErrMessage: "Context is undefined",
@@ -107,12 +108,16 @@ func TestConnection_Connect(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			conn := poller.NewConnection(tt.url(), tt.guid, tt.stream)
 			if tt.expectedErr {
-				err := conn.Connect(tt.ctx)
+				err := conn.Connect(tt.ctx, nil)
 				assert.EqualError(
 					t, err, tt.expectedErrMessage,
 					fmt.Sprintf("Expected to throw %v but got %v", tt.expectedErrMessage, err))
 			} else {
-				assert.NoError(t, conn.Connect(tt.ctx), "Simple connect should not throw an error")
+				assert.NoError(t, conn.Connect(tt.ctx, &tls.Config{
+					InsecureSkipVerify: true,
+					ServerName:         tt.url(),
+					RootCAs:            nil,
+				}), "Simple connect should not throw an error")
 			}
 		})
 	}

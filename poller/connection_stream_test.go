@@ -9,6 +9,8 @@ import (
 
 	"time"
 
+	"crypto/x509"
+
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/poller"
 	"github.com/stretchr/testify/assert"
@@ -21,17 +23,19 @@ func TestNewConnectionStream(t *testing.T) {
 	tests := []struct {
 		name     string
 		config   *config.Config
+		rootCA   *x509.CertPool
 		expected *config.Config
 	}{
 		{
 			name:     "Happy path",
 			config:   testConfig,
+			rootCA:   x509.NewCertPool(),
 			expected: testConfig,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := poller.NewConnectionStream(tt.config)
+			got := poller.NewConnectionStream(tt.config, tt.rootCA)
 			//assert that configs are the same
 			assert.Equal(t, tt.expected, got.GetConfig())
 		})
@@ -50,7 +54,7 @@ func TestConnectionStream_Register(t *testing.T) {
 			name:        "Happy path",
 			queryString: "test-query",
 			conn:        &poller.Connection{},
-			cs:          poller.NewConnectionStream(&config.Config{}),
+			cs:          poller.NewConnectionStream(&config.Config{}, nil),
 			expectedErr: false,
 		},
 		{
@@ -140,7 +144,7 @@ func TestConnectionStream_Connect(t *testing.T) {
 				UseSrv:     tt.useSrv,
 				Addresses:  tt.addresses(),
 				SrvQueries: tt.serverQueries(),
-			})
+			}, nil)
 			if tt.expectedErr {
 				// err := conn.Connect(tt.ctx)
 				// assert.EqualError(

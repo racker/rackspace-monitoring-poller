@@ -5,6 +5,7 @@ package poller
 
 import (
 	context "context"
+	"crypto/tls"
 	time "time"
 
 	gomock "github.com/golang/mock/gomock"
@@ -57,14 +58,14 @@ func (_mr *_MockConnectionInterfaceRecorder) SetWriteDeadline(arg0 interface{}) 
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetWriteDeadline", arg0)
 }
 
-func (_m *MockConnectionInterface) Connect(ctx context.Context) error {
-	ret := _m.ctrl.Call(_m, "Connect", ctx)
+func (_m *MockConnectionInterface) Connect(ctx context.Context, tlsConfig *tls.Config) error {
+	ret := _m.ctrl.Call(_m, "Connect", ctx, tlsConfig)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-func (_mr *_MockConnectionInterfaceRecorder) Connect(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Connect", arg0)
+func (_mr *_MockConnectionInterfaceRecorder) Connect(arg0 interface{}, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Connect", arg0, arg1)
 }
 
 func (_m *MockConnectionInterface) Close() {

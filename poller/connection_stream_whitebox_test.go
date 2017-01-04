@@ -121,7 +121,7 @@ func TestConnectionStream_Stop(t *testing.T) {
 }
 
 func TestConnection_GetScheduler(t *testing.T) {
-	cs := NewConnectionStream(config.NewConfig("test-guid"))
+	cs := NewConnectionStream(config.NewConfig("test-guid", false), nil)
 	assert.Equal(t, cs.(*ConnectionStream).scheduler, cs.GetScheduler())
 }
 

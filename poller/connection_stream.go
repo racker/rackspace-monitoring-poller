@@ -63,7 +63,7 @@ var (
 	ReconnectTimeout = 25 * time.Second
 )
 
-func NewConnectionStream(config *config.Config, rootCAs *x509.CertPool) *ConnectionStream {
+func NewConnectionStream(config *config.Config, rootCAs *x509.CertPool) ConnectionStreamInterface {
 	stream := &ConnectionStream{
 		config:    config,
 		rootCAs:   rootCAs,
