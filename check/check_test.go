@@ -75,7 +75,7 @@ func ExpectMetric(name, metricDimension string, internalMetricType int, value in
 	}
 }
 
-func (m *ExpectedMetric) ButExpectNonZeroValue() *ExpectedMetric {
+func (m *ExpectedMetric) ButNonZeroValue() *ExpectedMetric {
 	m.ExpectNonZeroValue = true
 	return m
 }
@@ -97,7 +97,7 @@ func AssertMetrics(t *testing.T, expected []*ExpectedMetric, actual map[string]*
 		if m.ExpectNonZeroValue {
 			assert.NotZero(t, actualM.Value, "value of %s", m.Name)
 		} else if !m.IgnoreValue {
-			assert.Equal(t, m.Value, actualM.Value)
+			assert.Equal(t, m.Value, actualM.Value, "value of %s", m.Name)
 		}
 		assert.Equal(t, m.Unit, actualM.Unit, "unit of %s", m.Name)
 
