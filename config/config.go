@@ -116,12 +116,11 @@ func (cfg *Config) ParseFields(fields []string) error {
 		cfg.Token = fields[1]
 		log.Printf("cfg: Setting Token")
 	case "monitoring_private_zones":
-		zones := make([]string, 0)
-		for _, zone := range strings.Split(fields[1], ",") {
-			zones = append(zones, strings.TrimSpace(zone))
+		cfg.ZoneIds = strings.Split(fields[1], ",")
+		for i := range cfg.ZoneIds {
+			cfg.ZoneIds[i] = strings.TrimSpace(cfg.ZoneIds[i])
 		}
-		log.Printf("cfg: Setting Zones: %s", strings.Join(zones, ", "))
-		cfg.ZoneIds = zones
+		log.Printf("cfg: Setting Zones: %s", strings.Join(cfg.ZoneIds, ", "))
 	case "monitoring_endpoints":
 		cfg.Addresses = strings.Split(fields[1], ",")
 		cfg.UseSrv = false
