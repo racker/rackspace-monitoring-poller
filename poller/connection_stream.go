@@ -40,6 +40,7 @@ type ConnectionStream struct {
 	conns   map[string]*Connection
 	wg      sync.WaitGroup
 
+	// map is the private zone ID as a string
 	scheduler map[string]*Scheduler
 }
 
