@@ -104,12 +104,13 @@ func (cs *ConnectionStream) GetConnections() map[string]ConnectionInterface {
 }
 
 func (cs *ConnectionStream) Stop() {
-	if cs.conns != nil {
-		for _, conn := range cs.conns {
-			conn.Close()
-		}
-		cs.stopCh <- struct{}{}
+	if cs.conns == nil {
+		return
 	}
+	for _, conn := range cs.conns {
+		conn.Close()
+	}
+	cs.stopCh <- struct{}{}
 }
 
 func (cs *ConnectionStream) StopNotify() chan struct{} {
