@@ -70,19 +70,25 @@ func LoadRootCAs(insecure bool, useStaging bool) *x509.CertPool {
 	}
 }
 
+func IsUsingStaging() bool {
+	return os.Getenv(config.EnvStaging) == config.EnabledEnvOpt
+}
+
 func serveCmdRun(cmd *cobra.Command, args []string) {
 	guid := uuid.NewV4()
-	useStaging := os.Getenv(config.EnvStaging) == config.EnabledEnvOpt
+	useStaging := IsUsingStaging()
+
 	cfg := config.NewConfig(guid.String(), useStaging)
-	err := cfg.LoadFromFile(configFilePath)
-	if err != nil {
+	if err := cfg.LoadFromFile(configFilePath); err != nil {
 		utils.Die(err, "Failed to load configuration")
 	}
-
-	rootCAs := LoadRootCAs(insecure, useStaging)
+	if err := cfg.Validate(); err != nil {
+		utils.Die(err, "Failed to validate configuration")
+	}
 
 	log.WithField("guid", guid).Info("Assigned unique identifier")
 
+	rootCAs := LoadRootCAs(insecure, useStaging)
 	signalNotify := HandleInterrupts()
 	for {
 		stream := poller.NewConnectionStream(cfg, rootCAs)

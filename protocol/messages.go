@@ -31,6 +31,7 @@ type HandshakeParameters struct {
 	AgentName      string              `json:"agent_name"`
 	ProcessVersion string              `json:"process_version"`
 	BundleVersion  string              `json:"bundle_version"`
+	ZoneIds        []string            `json:"zone_ids"`
 	Features       []map[string]string `json:"features"`
 }
 
@@ -49,6 +50,7 @@ func NewHandshakeRequest(cfg *config.Config) Frame {
 	f.Params.ProcessVersion = cfg.ProcessVersion
 	f.Params.BundleVersion = cfg.BundleVersion
 	f.Params.Features = cfg.Features
+	f.Params.ZoneIds = cfg.ZoneIds
 	return f
 }
 
@@ -117,30 +119,6 @@ func NewCheckScheduleGet() Frame {
 }
 
 func (r CheckScheduleGet) Encode() ([]byte, error) {
-	return json.Marshal(r)
-}
-
-///////////////////////////////////////////////////////////////////////////////
-// Poller Register
-
-const (
-	PollerZones = "zones"
-)
-
-type PollerRegister struct {
-	FrameMsg
-	Params map[string][]string `json:"params"`
-}
-
-func NewPollerRegister(zones []string) Frame {
-	f := &PollerRegister{}
-	f.Version = "1"
-	f.Method = "poller.register"
-	f.Params = map[string][]string{PollerZones: zones}
-	return f
-}
-
-func (r PollerRegister) Encode() ([]byte, error) {
 	return json.Marshal(r)
 }
 

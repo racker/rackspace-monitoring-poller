@@ -121,9 +121,7 @@ func (s *Session) handleResponse(resp *protocol.FrameMsg) {
 		case protocol.MethodHandshakeHello:
 			resp := protocol.NewHandshakeResponse(resp)
 			s.SetHeartbeatInterval(resp.Result.HandshakeInterval)
-			s.Send(protocol.NewPollerRegister([]string{"pzA"}))
 		case protocol.MethodCheckScheduleGet:
-
 		case protocol.MethodPollerRegister:
 		case protocol.MethodHeartbeatPost:
 		case protocol.MethodCheckMetricsPost:

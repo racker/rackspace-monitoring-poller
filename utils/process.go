@@ -17,13 +17,9 @@
 package utils
 
 import (
-	"fmt"
-	"io"
+	log "github.com/Sirupsen/logrus"
 	"os"
 )
-
-var ErrOutput io.Writer = os.Stderr
-var Exit func(code int) = os.Exit
 
 // Die prints messages and an error to stderr and then exit the process with status code 1.
 // It is intended for failures early in startup that need to be reported to a human.
@@ -31,8 +27,8 @@ var Exit func(code int) = os.Exit
 // messages is zero or many messages that will each be printed on a line before the err
 func Die(err error, messages ...string) {
 	for _, msg := range messages {
-		fmt.Fprintf(ErrOutput, "%s\n", msg)
+		log.Errorf("%s", msg)
 	}
-	fmt.Fprintf(ErrOutput, "Reason: %s\n", err.Error())
-	Exit(1)
+	log.Errorf("Reason: %s", err.Error())
+	os.Exit(1)
 }
