@@ -20,7 +20,7 @@ type configFields struct {
 	BundleVersion  string
 	ProcessVersion string
 	Token          string
-	PrivateZones   []string
+	ZoneIds        []string
 	TimeoutRead    time.Duration
 	TimeoutWrite   time.Duration
 }
@@ -142,7 +142,7 @@ func TestConfig_LoadFromFile(t *testing.T) {
 				BundleVersion:  tt.fields.BundleVersion,
 				ProcessVersion: tt.fields.ProcessVersion,
 				Token:          tt.fields.Token,
-				PrivateZones:   tt.fields.PrivateZones,
+				ZoneIds:        tt.fields.ZoneIds,
 				TimeoutRead:    tt.fields.TimeoutRead,
 				TimeoutWrite:   tt.fields.TimeoutWrite,
 			}
@@ -352,7 +352,7 @@ func TestConfig_ParseFields(t *testing.T) {
 				BundleVersion:  tt.fields.BundleVersion,
 				ProcessVersion: tt.fields.ProcessVersion,
 				Token:          tt.fields.Token,
-				PrivateZones:   tt.fields.PrivateZones,
+				ZoneIds:        tt.fields.ZoneIds,
 				TimeoutRead:    tt.fields.TimeoutRead,
 				TimeoutWrite:   tt.fields.TimeoutWrite,
 			}
@@ -403,7 +403,7 @@ func TestConfig_SetPrivateZones(t *testing.T) {
 				TimeoutWrite:   time.Duration(10 * time.Second),
 				Token:          "",
 				Features:       make([]map[string]string, 0),
-				PrivateZones: []string{
+				ZoneIds: []string{
 					"zone1",
 					"zone2",
 				},
@@ -423,7 +423,7 @@ func TestConfig_SetPrivateZones(t *testing.T) {
 				BundleVersion:  tt.fields.BundleVersion,
 				ProcessVersion: tt.fields.ProcessVersion,
 				Token:          tt.fields.Token,
-				PrivateZones:   tt.fields.PrivateZones,
+				ZoneIds:        tt.fields.ZoneIds,
 				TimeoutRead:    tt.fields.TimeoutRead,
 				TimeoutWrite:   tt.fields.TimeoutWrite,
 			}

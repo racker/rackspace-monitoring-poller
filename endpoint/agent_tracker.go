@@ -126,15 +126,6 @@ func (at *AgentTracker) ProcessHello(req protocol.HandshakeRequest, responder *u
 	return errors
 }
 
-func (at *AgentTracker) ProcessPollerRegister(req protocol.PollerRegister) {
-	reg := registration{
-		sourceId: req.Source,
-		zones:    req.Params[protocol.PollerZones],
-	}
-
-	at.registrations <- reg
-}
-
 func (at *AgentTracker) ProcessCheckMetricsPost(req protocol.MetricsPostRequest) {
 	at.metricReqs <- &req
 }

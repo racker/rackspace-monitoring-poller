@@ -19,14 +19,17 @@ package config
 
 import (
 	"bufio"
+	"errors"
+	log "github.com/Sirupsen/logrus"
 	"os"
 	"regexp"
 	"strings"
 	"time"
+)
 
-	"errors"
-
-	log "github.com/Sirupsen/logrus"
+var (
+	ErrorNoZones = errors.New("No zones are defined")
+	ErrorNoToken = errors.New("No token is defined")
 )
 
 type Config struct {
@@ -45,7 +48,7 @@ type Config struct {
 	Token          string
 
 	// Zones
-	PrivateZones []string
+	ZoneIds []string
 
 	// Timeouts
 	TimeoutRead  time.Duration
@@ -112,6 +115,12 @@ func (cfg *Config) ParseFields(fields []string) error {
 	case "monitoring_token":
 		cfg.Token = fields[1]
 		log.Printf("cfg: Setting Token")
+	case "monitoring_private_zones":
+		cfg.ZoneIds = strings.Split(fields[1], ",")
+		for i := range cfg.ZoneIds {
+			cfg.ZoneIds[i] = strings.TrimSpace(cfg.ZoneIds[i])
+		}
+		log.Printf("cfg: Setting Zones: %s", strings.Join(cfg.ZoneIds, ", "))
 	case "monitoring_endpoints":
 		cfg.Addresses = strings.Split(fields[1], ",")
 		cfg.UseSrv = false
@@ -121,8 +130,18 @@ func (cfg *Config) ParseFields(fields []string) error {
 	return nil
 }
 
+func (cfg *Config) Validate() error {
+	if len(cfg.ZoneIds) == 0 {
+		return ErrorNoZones
+	}
+	if len(cfg.Token) == 0 {
+		return ErrorNoToken
+	}
+	return nil
+}
+
 func (cfg *Config) SetPrivateZones(zones []string) {
-	cfg.PrivateZones = zones
+	cfg.ZoneIds = zones
 }
 
 func (cfg *Config) GetReadDeadline(offset time.Duration) time.Time {

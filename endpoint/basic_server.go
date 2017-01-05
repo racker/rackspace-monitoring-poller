@@ -174,16 +174,6 @@ func (s *BasicServer) consumeFrame(ctx context.Context, c *utils.SmartConn, fram
 		agentErrors := s.AgentTracker.ProcessHello(*handshakeReq, c)
 		go watchForAgentErrors(ctx, agentErrors, c)
 
-	case protocol.MethodPollerRegister:
-		pollerRegisterReq := &protocol.PollerRegister{FrameMsg: *frame}
-		err := json.Unmarshal(frame.RawParams, &pollerRegisterReq.Params)
-		if err != nil {
-			logUnmarshalError(frame, c)
-			return err
-		}
-
-		s.AgentTracker.ProcessPollerRegister(*pollerRegisterReq)
-
 	case protocol.MethodCheckMetricsPost:
 		metricsPostReq := &protocol.MetricsPostRequest{FrameMsg: *frame}
 		err := json.Unmarshal(frame.RawParams, &metricsPostReq.Params)
