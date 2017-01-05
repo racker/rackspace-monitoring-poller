@@ -40,7 +40,7 @@ type ConnectionStream struct {
 	conns   map[string]*Connection
 	wg      sync.WaitGroup
 
-	scheduler *Scheduler
+	scheduler map[string]*Scheduler
 }
 
 var (
@@ -49,14 +49,17 @@ var (
 
 func NewConnectionStream(config *config.Config, rootCAs *x509.CertPool) *ConnectionStream {
 	stream := &ConnectionStream{
-		config:  config,
-		rootCAs: rootCAs,
+		config:    config,
+		rootCAs:   rootCAs,
+		scheduler: make(map[string]*Scheduler),
 	}
 	stream.ctx = context.Background()
 	stream.conns = make(map[string]*Connection)
 	stream.stopCh = make(chan struct{}, 1)
-	stream.scheduler = NewScheduler("pzA", stream)
-	go stream.scheduler.run()
+	for _, pz := range config.ZoneIds {
+		stream.scheduler[pz] = NewScheduler(pz, stream)
+		go stream.scheduler[pz].run()
+	}
 	return stream
 }
 
@@ -81,7 +84,7 @@ func (cs *ConnectionStream) StopNotify() chan struct{} {
 	return cs.stopCh
 }
 
-func (cs *ConnectionStream) GetScheduler() *Scheduler {
+func (cs *ConnectionStream) GetScheduler() map[string]*Scheduler {
 	return cs.scheduler
 }
 

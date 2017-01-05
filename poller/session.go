@@ -170,7 +170,8 @@ func (s *Session) handleFrame(f *protocol.FrameMsg) {
 	case protocol.MethodEmpty: // Responses do not have a method name
 		s.handleResponse(f)
 	case protocol.MethodPollerChecksAdd:
-		s.connection.GetStream().GetScheduler().Input() <- f
+		// in process of being modified
+		// s.connection.GetStream().GetScheduler().Input() <- f
 	case protocol.MethodHostInfoGet:
 		go s.handleHostInfo(f)
 	case protocol.MethodPollerChecksEnd:
