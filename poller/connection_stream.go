@@ -38,6 +38,7 @@ type ConnectionStreamInterface interface {
 	Stop()
 	StopNotify() chan struct{}
 	GetScheduler() *Scheduler
+	GetContext() context.Context
 	SendMetrics(crs *check.CheckResultSet) error
 	Connect()
 	WaitCh() <-chan struct{}
@@ -83,6 +84,10 @@ func (cs *ConnectionStream) GetConfig() *config.Config {
 	return cs.config
 }
 
+func (cs *ConnectionStream) GetContext() context.Context {
+	return cs.ctx
+}
+
 func (cs *ConnectionStream) RegisterConnection(qry string, conn ConnectionInterface) error {
 	cs.connsMu.Lock()
 	defer cs.connsMu.Unlock()
@@ -116,10 +121,10 @@ func (cs *ConnectionStream) GetScheduler() map[string]*Scheduler {
 }
 
 func (cs *ConnectionStream) SendMetrics(crs *check.CheckResultSet) error {
-	if cs.conns == nil {
+	if cs.GetConnections() == nil {
 		return errors.New(NoConnections)
 	}
-	for _, conn := range cs.conns {
+	for _, conn := range cs.GetConnections() {
 		// TODO make this better
 		conn.GetConnection().GetSession().Send(check.NewMetricsPostRequest(crs))
 		break
@@ -170,7 +175,7 @@ func (cs *ConnectionStream) connectByHost(addr string) {
 	defer cs.wg.Done()
 	for {
 		conn := NewConnection(addr, csi.GetConfig().Guid, cs)
-		err := conn.Connect(cs.ctx, cs.buildTlsConfig(addr))
+		err := conn.Connect(cs.GetContext(), cs.buildTlsConfig(addr))
 		if err != nil {
 			goto conn_error
 		}
@@ -186,7 +191,7 @@ func (cs *ConnectionStream) connectByHost(addr string) {
 		log.Debugf("  connection sleeping %v", ReconnectTimeout)
 		for {
 			select {
-			case <-cs.ctx.Done():
+			case <-cs.GetContext().Done():
 				log.Infof("connection close")
 				return
 			case <-time.After(ReconnectTimeout):

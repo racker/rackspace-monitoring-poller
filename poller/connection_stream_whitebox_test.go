@@ -254,7 +254,6 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 				scheduler: tt.scheduler,
 			}
 			if tt.expectedErr {
-				log.Println("aqui")
 				//mockSession.EXPECT().Send(gomock.Any()).Times(0)
 				assert.Error(t, cs.SendMetrics(tt.crs))
 			} else {
@@ -262,10 +261,6 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 				mockSession.EXPECT().Send(gomock.Any()).Times(int(math.Min(float64(len(tt.conns)), 1)))
 				assert.NoError(t, cs.SendMetrics(tt.crs))
 			}
-			// wait for 25 milliseconds for the test to run through everything
-			// WARNING: this could be flaky; however, it passed 100 iterations locally
-			// this is something to watch
-			time.Sleep(25 * time.Millisecond)
 		})
 	}
 }
