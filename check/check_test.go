@@ -104,6 +104,10 @@ func AssertMetrics(t *testing.T, expected []*ExpectedMetric, actual map[string]*
 	}
 }
 
+// Timebox is used for putting a time bounds around a chunk of code, given as the function boxed.
+// NOTE that if the duration d elapses, then boxed will be left to run off in its go-routine...it can't be
+// forcefully terminated.
+// This function can be used outside of a unit test context by passing nil for t
 func Timebox(t *testing.T, d time.Duration, boxed func(t *testing.T)) {
 	timer := time.NewTimer(d)
 	completed := make(chan int)
@@ -115,7 +119,9 @@ func Timebox(t *testing.T, d time.Duration, boxed func(t *testing.T)) {
 
 	select {
 	case <-timer.C:
-		t.Fatal("Timebox expired")
+		if t != nil {
+			t.Fatal("Timebox expired")
+		}
 	case <-completed:
 		timer.Stop()
 	}

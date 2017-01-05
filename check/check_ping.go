@@ -22,6 +22,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	protocol "github.com/racker/rackspace-monitoring-poller/protocol/check"
 	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
+	"github.com/racker/rackspace-monitoring-poller/utils"
 	ping "github.com/sparrc/go-ping"
 	"time"
 )
@@ -50,30 +51,30 @@ func (ch *PingCheck) Run() (*CheckResultSet, error) {
 		return nil, err
 	}
 
-	pinger, err := ping.NewPinger(targetIp)
+	pinger, err := PingerFactory(targetIp)
 	if err != nil {
 		log.WithField("targetIp", targetIp).
 			Error("Failed to create pinger")
 		return nil, err
 	}
 
-	pinger.Count = int(ch.Details.Count)
-	pinger.Timeout = ch.GetTimeoutDuration()
+	pinger.SetCount(int(ch.Details.Count))
+	pinger.SetTimeout(ch.GetTimeoutDuration())
 
-	pinger.OnRecv = func(pkt *ping.Packet) {
+	pinger.SetOnRecv(func(pkt *ping.Packet) {
 		log.WithFields(log.Fields{
 			"id":    ch.GetId(),
 			"bytes": pkt.Nbytes,
 			"seq":   pkt.Seq,
 			"rtt":   pkt.Rtt,
 		}).Debug("Received ping packet")
-	}
+	})
 
 	log.WithFields(log.Fields{
 		"id":         ch.GetId(),
-		"count":      pinger.Count,
+		"count":      pinger.Count(),
 		"timeoutSec": ch.Timeout,
-		"timeoutDur": pinger.Timeout,
+		"timeoutDur": pinger.Timeout(),
 	}).Debug("Starting pinger")
 
 	// blocking
@@ -83,13 +84,18 @@ func (ch *PingCheck) Run() (*CheckResultSet, error) {
 
 	cr := NewCheckResult(
 		metric.NewPercentMetricFromInt("available", "", stats.PacketsRecv, stats.PacketsSent),
-		metric.NewMetric("average", "", metric.MetricFloat, float64(stats.AvgRtt/time.Second), metric.UnitSeconds),
+		metric.NewMetric("average", "", metric.MetricFloat, utils.ScaleFractionalDuration(stats.AvgRtt, time.Second), metric.UnitSeconds),
 		metric.NewMetric("count", "", metric.MetricNumber, stats.PacketsSent, ""),
-		metric.NewMetric("maximum", "", metric.MetricFloat, float64(stats.MaxRtt/time.Second), metric.UnitSeconds),
-		metric.NewMetric("minimum", "", metric.MetricFloat, float64(stats.MinRtt/time.Second), metric.UnitSeconds),
+		metric.NewMetric("maximum", "", metric.MetricFloat, utils.ScaleFractionalDuration(stats.MaxRtt, time.Second), metric.UnitSeconds),
+		metric.NewMetric("minimum", "", metric.MetricFloat, utils.ScaleFractionalDuration(stats.MinRtt, time.Second), metric.UnitSeconds),
 	)
 	crs := NewCheckResultSet(ch, cr)
-	crs.SetStateAvailable()
+	if stats.PacketsSent == 0 {
+		log.Warn("No ping packets were sent, likely due to lack of permission")
+		crs.SetStateUnavailable()
+	} else {
+		crs.SetStateAvailable()
+	}
 
 	log.WithFields(log.Fields{
 		"id":     ch.GetId(),
