@@ -17,6 +17,8 @@
 package check_test
 
 import (
+	"context"
+	"encoding/json"
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	"github.com/stretchr/testify/assert"
@@ -60,6 +62,37 @@ func TestCheckBase_GetWaitPeriod(t *testing.T) {
 	cb.Period = 5
 
 	assert.Equal(t, 5*time.Second, cb.GetWaitPeriod())
+}
+
+func TestCheckBase_Cancel(t *testing.T) {
+
+	root := context.Background()
+	cancelCtx, cancelFunc := context.WithCancel(root)
+
+	ch := check.NewCheck(json.RawMessage(`{
+	  "id":"chPzATCP",
+	  "zone_id":"pzA",
+	  "entity_id":"enAAAAIPV4",
+	  "details":{"port":0,"ssl":false},
+	  "type":"remote.tcp",
+	  "timeout":1,
+	  "period":30,
+	  "ip_addresses":{"default":"127.0.0.1"},
+	  "target_alias":"default",
+	  "target_hostname":"",
+	  "target_resolver":"",
+	  "disabled":true
+	  }`), cancelCtx, cancelFunc)
+	require.NotNil(t, ch)
+
+	// I know, looks weird, but pre-cancel it since channels are cool like that
+	ch.Cancel()
+	// and this timebox should finish immediately
+	completed := Timebox(t, 100*time.Millisecond, func(t *testing.T) {
+		<-ch.Done()
+	})
+
+	assert.True(t, completed, "cancellation channel never notified")
 }
 
 type ExpectedMetric struct {

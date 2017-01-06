@@ -17,6 +17,7 @@
 package check_test
 
 import (
+	"context"
 	"fmt"
 	"github.com/golang/mock/gomock"
 	"github.com/racker/rackspace-monitoring-poller/check"
@@ -56,7 +57,7 @@ func TestPingCheck_ConfirmType(t *testing.T) {
 	const timeout = 15
 
 	checkData := fmt.Sprintf(checkDataTemplate, count, timeout)
-	c := check.NewCheck([]byte(checkData))
+	c := check.NewCheck([]byte(checkData), context.Background(), func() {})
 
 	assert.IsType(t, &check.PingCheck{}, c)
 }
@@ -79,7 +80,7 @@ func TestPingCheck_PingerConfigured(t *testing.T) {
 	mock.EXPECT().Statistics().Return(statistics)
 
 	checkData := fmt.Sprintf(checkDataTemplate, count, timeout)
-	c := check.NewCheck([]byte(checkData))
+	c := check.NewCheck([]byte(checkData), context.Background(), func() {})
 
 	// Run check since need to induce pinger usage
 	crs, err := c.Run()
@@ -111,7 +112,7 @@ func TestPingCheck_Success(t *testing.T) {
 	mock.EXPECT().Statistics().Return(statistics)
 
 	checkData := fmt.Sprintf(checkDataTemplate, count, timeout)
-	c := check.NewCheck([]byte(checkData))
+	c := check.NewCheck([]byte(checkData), context.Background(), func() {})
 
 	// Run check
 	crs, err := c.Run()
@@ -152,7 +153,7 @@ func TestPingCheck_Drops(t *testing.T) {
 	mock.EXPECT().Statistics().Return(statistics)
 
 	checkData := fmt.Sprintf(checkDataTemplate, count, timeout)
-	c := check.NewCheck([]byte(checkData))
+	c := check.NewCheck([]byte(checkData), context.Background(), func() {})
 
 	assert.IsType(t, &check.PingCheck{}, c)
 
@@ -194,7 +195,7 @@ func TestPingCheck_NoPermissionToPing(t *testing.T) {
 	mock.EXPECT().Statistics().Return(statistics)
 
 	checkData := fmt.Sprintf(checkDataTemplate, count, timeout)
-	c := check.NewCheck([]byte(checkData))
+	c := check.NewCheck([]byte(checkData), context.Background(), func() {})
 
 	assert.IsType(t, &check.PingCheck{}, c)
 

@@ -53,6 +53,7 @@
 package check
 
 import (
+	"context"
 	"errors"
 	log "github.com/Sirupsen/logrus"
 	protocheck "github.com/racker/rackspace-monitoring-poller/protocol/check"
@@ -73,12 +74,18 @@ type Check interface {
 	GetTimeout() uint64
 	GetTimeoutDuration() time.Duration
 	SetTimeout(timeout uint64)
+	Cancel()
+	Done() <-chan struct{}
 	Run() (*CheckResultSet, error)
 }
 
 // CheckBase provides an abstract implementation of the Check interface leaving Run to be implemented.
 type CheckBase struct {
 	protocheck.CheckIn
+	// context is primarily provided to enable watching for cancellation of this particular check
+	context context.Context
+	// cancel is associated with the context and can be invoked to initiate the cancellation
+	cancel context.CancelFunc
 }
 
 // GetTargetIP obtains the specific IP address selected for this check.
@@ -134,6 +141,14 @@ func (ch *CheckBase) SetTimeout(timeout uint64) {
 
 func (ch *CheckBase) GetWaitPeriod() time.Duration {
 	return time.Duration(ch.Period) * time.Second
+}
+
+func (ch *CheckBase) Cancel() {
+	ch.cancel()
+}
+
+func (ch *CheckBase) Done() <-chan struct{} {
+	return ch.context.Done()
 }
 
 func (ch *CheckBase) PrintDefaults() {

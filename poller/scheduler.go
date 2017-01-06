@@ -62,7 +62,14 @@ func (s *Scheduler) Close() {
 func (s *Scheduler) runCheck(ch check.Check) {
 	// Spread the checks out over 30 seconds
 	jitter := rand.Intn(CheckSpreadInMilliseconds) + 1
+
+	log.WithFields(log.Fields{
+		"check":      ch.GetId(),
+		"jitterMs":   jitter,
+		"waitPeriod": ch.GetWaitPeriod(),
+	}).Debug("Starting check")
 	time.Sleep(time.Duration(jitter) * time.Millisecond)
+
 	for {
 		select {
 		case <-time.After(ch.GetWaitPeriod()):
@@ -72,7 +79,8 @@ func (s *Scheduler) runCheck(ch check.Check) {
 			} else {
 				s.SendMetrics(crs)
 			}
-		case <-s.ctx.Done():
+		case <-ch.Done(): // session cancellation is propagated since check context is child of session context
+			log.WithField("check", ch.GetId()).Debug("Check or session has been cancelled")
 			return
 		}
 	}
@@ -86,11 +94,15 @@ func (s *Scheduler) Register(ch check.Check) {
 	s.checks[ch.GetId()] = ch
 }
 
-func (s *Scheduler) run() {
+func (s *Scheduler) runFrameConsumer() {
 	for {
 		select {
 		case f := <-s.input:
-			ch := check.NewCheck(f.GetRawParams())
+
+			// TODO Later this will probably need to handle check cancellations in which case it can call ch.Cancel()
+
+			checkCtx, cancelFunc := context.WithCancel(s.ctx)
+			ch := check.NewCheck(f.GetRawParams(), checkCtx, cancelFunc)
 			if ch == nil {
 				log.Printf("Invalid Check")
 				continue

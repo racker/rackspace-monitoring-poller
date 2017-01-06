@@ -17,14 +17,18 @@
 package check
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 )
 
 // Given a received check request, this will unmarshal the request into one of the known polymorphic types.
 // This method needs to be updated to add to the known types.
-func NewCheck(rawParams json.RawMessage) Check {
-	checkBase := &CheckBase{}
+func NewCheck(rawParams json.RawMessage, checkCtx context.Context, cancel context.CancelFunc) Check {
+	checkBase := &CheckBase{
+		context: checkCtx,
+		cancel:  cancel,
+	}
 	err := json.Unmarshal(rawParams, &checkBase)
 	if err != nil {
 		log.Printf("Error unmarshalling checkbase")
