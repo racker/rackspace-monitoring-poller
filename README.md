@@ -77,11 +77,14 @@ go get github.com/golang/mock/mockgen
 With `$GOPATH/bin` in your `PATH`, run 
 
 ```
-mockgen -package=PKG -destination=PKG/obj_mock_test.go github.com/racker/rackspace-monitoring-poller/PKG Object
+mockgen -package={PKG} -destination={PKG}/{obj}_mock_test.go github.com/racker/rackspace-monitoring-poller/{PKG} {Object}
 ```
 
 where `PKG` is the sub-package that contains `Object` to mock. The file itself is named with `obj` as the snakecase
 normalization of `Object`.
+
+Don't forget to re-run `mockgen` when a mocked interface is altered since test-time compilation errors will result
+from incomplete interface implementations.
 
 Please note that due to https://github.com/golang/mock/issues/30 you may need to manually scrub the imports of 
 the generated file.
