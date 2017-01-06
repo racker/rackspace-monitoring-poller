@@ -59,7 +59,7 @@ func NewConnectionStream(config *config.Config, rootCAs *x509.CertPool) *Connect
 	stream.stopCh = make(chan struct{}, 1)
 	for _, pz := range config.ZoneIds {
 		stream.scheduler[pz] = NewScheduler(pz, stream)
-		go stream.scheduler[pz].run()
+		go stream.scheduler[pz].runFrameConsumer()
 	}
 	return stream
 }

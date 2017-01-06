@@ -134,7 +134,7 @@ func TestTCPRunSuccess(t *testing.T) {
 	  "target_resolver":"",
 	  "disabled":false
 	  }`, listenPort)
-	check := check.NewCheck([]byte(checkData))
+	check := check.NewCheck([]byte(checkData), context.Background(), func() {})
 
 	// Run check
 	crs, err := check.Run()
@@ -181,7 +181,7 @@ func TestTCPRunFailureClosedPort(t *testing.T) {
 	  "target_resolver":"",
 	  "disabled":false
 	  }`, listenPort)
-	check := check.NewCheck([]byte(checkData))
+	check := check.NewCheck([]byte(checkData), context.Background(), func() {})
 
 	// Run check
 	crs, err := check.Run()

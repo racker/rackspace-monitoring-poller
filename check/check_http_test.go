@@ -57,7 +57,7 @@ func TestHTTPSuccess(t *testing.T) {
 	  "target_resolver":"",
 	  "disabled":false
 	  }`, ts.URL)
-	check := check.NewCheck([]byte(checkData))
+	check := check.NewCheck([]byte(checkData), context.Background(), func() {})
 
 	// Run check
 	crs, err := check.Run()
@@ -99,7 +99,7 @@ func TestHTTPSuccessIncludeBodyAndHeaders(t *testing.T) {
 	  "target_resolver":"",
 	  "disabled":false
 	  }`, ts.URL)
-	check := check.NewCheck([]byte(checkData))
+	check := check.NewCheck([]byte(checkData), context.Background(), func() {})
 
 	// Run check
 	crs, err := check.Run()
@@ -151,7 +151,7 @@ func TestHTTPSuccessBodyMatch(t *testing.T) {
 	  "target_resolver":"",
 	  "disabled":false
 	  }`, ts.URL)
-	check := check.NewCheck([]byte(checkData))
+	check := check.NewCheck([]byte(checkData), context.Background(), func() {})
 
 	// Run check
 	crs, err := check.Run()
@@ -215,7 +215,7 @@ func TestHTTPClosed(t *testing.T) {
 	  "target_resolver":"",
 	  "disabled":false
 	  }`, ts.URL)
-	check := check.NewCheck([]byte(checkData))
+	check := check.NewCheck([]byte(checkData), context.Background(), func() {})
 
 	// Run check
 	crs, err := check.Run()
@@ -253,7 +253,7 @@ func TestHTTPTimeout(t *testing.T) {
 	  "target_resolver":"",
 	  "disabled":false
 	  }`, ts.URL)
-	check := check.NewCheck([]byte(checkData))
+	check := check.NewCheck([]byte(checkData), context.Background(), func() {})
 
 	// Run check
 	crs, err := check.Run()
