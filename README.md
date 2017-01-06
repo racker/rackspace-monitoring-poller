@@ -36,7 +36,7 @@ With CA powers, create a server certificate/key replacing `localhost` and `127.0
 
 ```
 docker run -it -v $(pwd)/data/ca:/ca -v $(pwd)/data/server-certs:/certs itzg/cert-helper \
-  create -server -cn localhost:55000 -alt IP:127.0.0.1
+  create -server -cn localhost -alt IP:127.0.0.1
 ```
 
 When running the `serve` command, your CA certificate will be specified by setting the environment variable `DEV_CA`

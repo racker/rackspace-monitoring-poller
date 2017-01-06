@@ -23,3 +23,11 @@ type NowTimestampMillisFunc func() int64
 var NowTimestampMillis NowTimestampMillisFunc = func() int64 {
 	return time.Now().UnixNano() / int64(time.Millisecond)
 }
+
+// ScaleFractionalDuration is primarily useful when scaling durations that are "sub second", but more generally
+// it's when duration is smaller than targetUnits. In that case, a fractional value is much more meangingful than
+// a 0, which is what would happen with plain duration (i.e. integer) division. targetUnits should really be
+// one of the Duration constants, such as time.Second.
+func ScaleFractionalDuration(duration time.Duration, targetUnits time.Duration) float64 {
+	return float64(duration) / float64(targetUnits)
+}

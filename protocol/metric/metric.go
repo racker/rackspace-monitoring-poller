@@ -19,17 +19,6 @@ package metric
 
 import "errors"
 
-const (
-	MetricString = iota
-	MetricBool   = iota
-	MetricNumber = iota
-	MetricFloat  = iota
-)
-
-const (
-	UnitMilliseconds = "MILLISECONDS"
-)
-
 type Metric struct {
 	Type       int         `json:"-"` // does not export to json
 	TypeString string      `json:"type"`
@@ -64,6 +53,21 @@ func NewMetric(name, metricDimension string, internalMetricType int, value inter
 		Name:       name,
 		Value:      value,
 		Unit:       unit,
+	}
+	return metric
+}
+
+func NewPercentMetricFromInt(name, metricDimension string, portion, total int) *Metric {
+	if len(metricDimension) == 0 {
+		metricDimension = "none"
+	}
+	metric := &Metric{
+		Type:       MetricFloat,
+		TypeString: UnitToString(MetricFloat),
+		Dimension:  metricDimension,
+		Name:       name,
+		Value:      float64(100*portion) / float64(total),
+		Unit:       UnitPercent,
 	}
 	return metric
 }
