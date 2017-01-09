@@ -141,10 +141,19 @@ func TestConnectionStream_Connect(t *testing.T) {
 				SrvQueries: tt.serverQueries(),
 			}, nil)
 			go cs.Connect()
-			// clean up after awhile
-			time.Sleep(100 * time.Millisecond)
 
-			cs.Stop()
+			go func() {
+				time.Sleep(25 * time.Millisecond)
+				cs.Stop()
+			}()
+
+			select {
+			case <-cs.StopNotify():
+				assert.True(t, true, "blah")
+			case <-time.After(1 * time.Minute):
+				assert.Fail(t, "fail")
+			}
+
 		})
 	}
 }

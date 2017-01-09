@@ -37,7 +37,7 @@ type ConnectionStreamInterface interface {
 	RegisterConnection(qry string, conn ConnectionInterface) error
 	Stop()
 	StopNotify() chan struct{}
-	GetScheduler() *Scheduler
+	GetScheduler() map[string]*Scheduler
 	GetContext() context.Context
 	SendMetrics(crs *check.CheckResultSet) error
 	Connect()

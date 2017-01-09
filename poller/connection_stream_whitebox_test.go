@@ -56,7 +56,7 @@ func TestConnectionStream_Stop(t *testing.T) {
 		connsMu     sync.Mutex
 		conns       map[string]ConnectionInterface
 		wg          sync.WaitGroup
-		scheduler   *Scheduler
+		scheduler   map[string]*Scheduler
 		expectedErr bool
 	}{
 		{
@@ -105,19 +105,27 @@ func TestConnectionStream_Stop(t *testing.T) {
 				scheduler: tt.scheduler,
 			}
 			if tt.expectedErr {
-				log.Println("aqui")
 				mockConn.EXPECT().Close().Times(0)
 			} else {
-				log.Println(len(tt.conns))
 				mockConn.EXPECT().Close().Times(len(tt.conns))
 			}
+
 			go cs.Stop()
-			// wait for 25 milliseconds for the test to run through everything
-			// WARNING: this could be flaky; however, it passed 100 iterations locally
-			// this is something to watch
-			time.Sleep(25 * time.Millisecond)
 		})
 	}
+}
+
+func TestConnection_StopNotify(t *testing.T) {
+	cs := NewConnectionStream(config.NewConfig("test-guid", false), nil)
+	assert.Equal(t, cs.(*ConnectionStream).stopCh, cs.StopNotify())
+}
+
+func TestConnection_WaitCh(t *testing.T) {
+	cs := NewConnectionStream(config.NewConfig("test-guid", false), nil)
+	result := Timebox(t, 25*time.Millisecond, func(t *testing.T) {
+		<-cs.WaitCh()
+	})
+	assert.True(t, result, "wait channel never notified")
 }
 
 func TestConnection_GetScheduler(t *testing.T) {
@@ -129,6 +137,7 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockSession := NewMockSessionInterface(mockCtrl)
+	cancelCtx, cancelFunc := context.WithCancel(context.Background())
 
 	tests := []struct {
 		name        string
@@ -138,7 +147,7 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 		connsMu     sync.Mutex
 		conns       map[string]ConnectionInterface
 		wg          sync.WaitGroup
-		scheduler   *Scheduler
+		scheduler   map[string]*Scheduler
 		crs         *check.CheckResultSet
 		expectedErr bool
 	}{
@@ -164,7 +173,7 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 	  "target_hostname":"",
 	  "target_resolver":"",
 	  "disabled":false
-				}`)),
+				}`), cancelCtx, cancelFunc),
 			},
 			expectedErr: false,
 		},
@@ -193,7 +202,7 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 	  "target_hostname":"",
 	  "target_resolver":"",
 	  "disabled":false
-				}`)),
+				}`), cancelCtx, cancelFunc),
 			},
 			expectedErr: false,
 		},
@@ -215,7 +224,7 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 	  "target_hostname":"",
 	  "target_resolver":"",
 	  "disabled":false
-				}`)),
+				}`), cancelCtx, cancelFunc),
 			},
 			expectedErr: false,
 		},
@@ -238,7 +247,7 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 	  "target_hostname":"",
 	  "target_resolver":"",
 	  "disabled":false
-				}`)),
+				}`), cancelCtx, cancelFunc),
 			},
 		},
 	}
@@ -263,4 +272,48 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Timebox is used for putting a time bounds around a chunk of code, given as the function boxed.
+// NOTE that if the duration d elapses, then boxed will be left to run off in its go-routine...it can't be
+// forcefully terminated.
+// This function can be used outside of a unit test context by passing nil for t
+// Returns true if boxed finished before duration d elapsed.
+func Timebox(t *testing.T, d time.Duration, boxed func(t *testing.T)) bool {
+	timer := time.NewTimer(d)
+	completed := make(chan struct{})
+	log.Println("test ", boxed)
+
+	go func() {
+		boxed(t)
+		close(completed)
+	}()
+
+	select {
+	case <-timer.C:
+		log.Println("timer.C")
+		if t != nil {
+			t.Fatal("Timebox expired")
+		}
+		return false
+	case <-completed:
+		log.Println("completed")
+		timer.Stop()
+		return true
+	}
+}
+
+func TestTimebox_Quick(t *testing.T) {
+	result := Timebox(t, 1*time.Second, func(t *testing.T) {
+		time.Sleep(1 * time.Millisecond)
+	})
+	assert.True(t, result)
+}
+
+func TestTimebox_TimesOut(t *testing.T) {
+	result := Timebox(nil, 1*time.Millisecond, func(t *testing.T) {
+		time.Sleep(100 * time.Millisecond)
+	})
+
+	assert.False(t, result)
 }
