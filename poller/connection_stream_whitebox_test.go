@@ -109,8 +109,10 @@ func TestConnectionStream_Stop(t *testing.T) {
 			} else {
 				mockConn.EXPECT().Close().Times(len(tt.conns))
 			}
-
-			go cs.Stop()
+			go func() {
+				cs.Stop()
+				time.Sleep(25 * time.Millisecond)
+			}()
 		})
 	}
 }
