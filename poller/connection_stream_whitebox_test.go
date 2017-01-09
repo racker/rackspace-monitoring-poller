@@ -6,8 +6,6 @@ import (
 
 	"context"
 
-	"log"
-
 	"time"
 
 	"math"
@@ -109,10 +107,13 @@ func TestConnectionStream_Stop(t *testing.T) {
 			} else {
 				mockConn.EXPECT().Close().Times(len(tt.conns))
 			}
-			go func() {
-				cs.Stop()
-				time.Sleep(25 * time.Millisecond)
-			}()
+
+			timer := time.NewTimer(25 * time.Millisecond)
+
+			select {
+			case <-timer.C:
+				go cs.Stop()
+			}
 		})
 	}
 }
@@ -284,7 +285,6 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 func Timebox(t *testing.T, d time.Duration, boxed func(t *testing.T)) bool {
 	timer := time.NewTimer(d)
 	completed := make(chan struct{})
-	log.Println("test ", boxed)
 
 	go func() {
 		boxed(t)
@@ -293,29 +293,12 @@ func Timebox(t *testing.T, d time.Duration, boxed func(t *testing.T)) bool {
 
 	select {
 	case <-timer.C:
-		log.Println("timer.C")
 		if t != nil {
 			t.Fatal("Timebox expired")
 		}
 		return false
 	case <-completed:
-		log.Println("completed")
 		timer.Stop()
 		return true
 	}
-}
-
-func TestTimebox_Quick(t *testing.T) {
-	result := Timebox(t, 1*time.Second, func(t *testing.T) {
-		time.Sleep(1 * time.Millisecond)
-	})
-	assert.True(t, result)
-}
-
-func TestTimebox_TimesOut(t *testing.T) {
-	result := Timebox(nil, 1*time.Millisecond, func(t *testing.T) {
-		time.Sleep(100 * time.Millisecond)
-	})
-
-	assert.False(t, result)
 }
