@@ -103,7 +103,6 @@ func dialContextWithDialer(ctx context.Context, dialer *net.Dialer, network, add
 	}
 
 	conn := tls.Client(rawConn, config)
-
 	errChannel := make(chan error, 1)
 
 	go func() {
@@ -116,9 +115,7 @@ func dialContextWithDialer(ctx context.Context, dialer *net.Dialer, network, add
 			rawConn.Close()
 			return nil, err
 		}
-
 		return conn, nil
-
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
@@ -149,7 +146,7 @@ func (ch *TCPCheck) Run() (*CheckResultSet, error) {
 
 	// Connection
 	if ch.Details.UseSSL {
-		TLSconfig := &tls.Config{}
+		TLSconfig := &tls.Config{InsecureSkipVerify: true}
 		conn, err = dialContextWithDialer(ctx, nd, "tcp", addr, TLSconfig)
 	} else {
 		conn, err = dialContextWithDialer(ctx, nd, "tcp", addr, nil)
@@ -220,6 +217,13 @@ func (ch *TCPCheck) Run() (*CheckResultSet, error) {
 	}
 	endtime = utils.NowTimestampMillis()
 	cr.AddMetric(metric.NewMetric("duration", "", metric.MetricNumber, endtime-starttime, metric.UnitMilliseconds))
+
+	// TLS Metrics
+	if ch.Details.UseSSL {
+		tlsConn := conn.(*tls.Conn)
+		ch.AddTLSMetrics(cr, tlsConn.ConnectionState())
+	}
+
 	crs.Add(cr)
 	crs.SetStateAvailable()
 	crs.SetStatusSuccess()
