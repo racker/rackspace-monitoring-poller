@@ -23,26 +23,15 @@ import (
 	"net"
 	"time"
 
-	"errors"
-
 	log "github.com/Sirupsen/logrus"
 )
 
-type ConnectionInterface interface {
-	GetStream() ConnectionStreamInterface
-	GetSession() SessionInterface
-	SetReadDeadline(deadline time.Time)
-	SetWriteDeadline(deadline time.Time)
-	Connect(ctx context.Context, tlsConfig *tls.Config) error
-	Close()
-	Wait()
-	GetConnection() *Connection
-}
+// EleConnection implements Connection
+// See Connection interface for more information
+type EleConnection struct {
+	stream ConnectionStream
 
-type Connection struct {
-	stream ConnectionStreamInterface
-
-	session SessionInterface
+	session Session
 	conn    io.ReadWriteCloser
 
 	address string
@@ -51,8 +40,11 @@ type Connection struct {
 	connectionTimeout time.Duration
 }
 
-func NewConnection(address string, guid string, stream ConnectionStreamInterface) ConnectionInterface {
-	return &Connection{
+// NewConnection instantiates a new EleConnection
+// It sets up the address, unique guid, and connection timeout
+// for this conneciton
+func NewConnection(address string, guid string, stream ConnectionStream) Connection {
+	return &EleConnection{
 		address:           address,
 		guid:              guid,
 		stream:            stream,
@@ -60,35 +52,53 @@ func NewConnection(address string, guid string, stream ConnectionStreamInterface
 	}
 }
 
-func (conn *Connection) GetConnection() *Connection {
-	return conn
+// GetGUID is a getter method to retrieve connection's guid
+func (conn *EleConnection) GetGUID() string {
+	return conn.guid
 }
 
-func (conn *Connection) GetStream() ConnectionStreamInterface {
+// GetConnection is a getter method for the ReadWriteCloser used
+// for streaming data
+func (conn *EleConnection) GetConnection() io.ReadWriteCloser {
+	return conn.conn
+}
+
+// GetStream is a getter method to retrieve connection's stream
+func (conn *EleConnection) GetStream() ConnectionStream {
 	return conn.stream
 }
 
-func (conn *Connection) GetSession() SessionInterface {
+// GetSession is a getter method to retrieve connection's session
+func (conn *EleConnection) GetSession() Session {
 	return conn.session
 }
 
-func (conn *Connection) SetReadDeadline(deadline time.Time) {
+// SetReadDeadline sets up the read deadline for a socket.
+// read deadline - time spent reading response for future calls
+func (conn *EleConnection) SetReadDeadline(deadline time.Time) {
 	socket, ok := conn.conn.(*net.TCPConn)
 	if ok {
 		socket.SetReadDeadline(deadline)
 	}
 }
 
-func (conn *Connection) SetWriteDeadline(deadline time.Time) {
+// SetWriteDeadline sets up the write deadline for a socket.
+// write deadline - time spent writing request to socket for future calls
+func (conn *EleConnection) SetWriteDeadline(deadline time.Time) {
 	socket, ok := conn.conn.(*net.TCPConn)
 	if ok {
 		socket.SetWriteDeadline(deadline)
 	}
 }
 
-func (conn *Connection) Connect(ctx context.Context, tlsConfig *tls.Config) error {
+// Connect sets up a tcp connection with connection defined address
+// and passed in tlsConfig
+// If context is not set, ErrUndefinedContext is returned
+// The end result of this function is a usable connection ready to
+// send data.
+func (conn *EleConnection) Connect(ctx context.Context, tlsConfig *tls.Config) error {
 	if ctx == nil {
-		return errors.New(UndefinedContext)
+		return ErrUndefinedContext
 	}
 	log.WithFields(log.Fields{
 		"address": conn.address,
@@ -105,10 +115,12 @@ func (conn *Connection) Connect(ctx context.Context, tlsConfig *tls.Config) erro
 	return nil
 }
 
-func (conn *Connection) Close() {
-	conn.session.Close()
+// Close closes the session
+func (conn *EleConnection) Close() {
+	conn.GetSession().Close()
 }
 
-func (conn *Connection) Wait() {
-	conn.session.Wait()
+// Wait sets the connection session to wait for a new request
+func (conn *EleConnection) Wait() {
+	conn.GetSession().Wait()
 }

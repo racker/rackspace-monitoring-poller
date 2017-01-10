@@ -25,27 +25,14 @@ import (
 	"sync"
 	"time"
 
-	"errors"
-
 	log "github.com/Sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/config"
 )
 
-type ConnectionStreamInterface interface {
-	GetConfig() *config.Config
-	RegisterConnection(qry string, conn ConnectionInterface) error
-	Stop()
-	StopNotify() chan struct{}
-	GetScheduler() map[string]*Scheduler
-	GetContext() context.Context
-	SendMetrics(crs *check.CheckResultSet) error
-	Connect()
-	WaitCh() <-chan struct{}
-	GetConnections() map[string]ConnectionInterface
-}
-
-type ConnectionStream struct {
+// EleConnectionStream implements ConnectionStream
+// See ConnectionStream for more information
+type EleConnectionStream struct {
 	ctx     context.Context
 	rootCAs *x509.CertPool
 
@@ -53,57 +40,64 @@ type ConnectionStream struct {
 	config *config.Config
 
 	connsMu sync.Mutex
-	conns   map[string]ConnectionInterface
+	conns   map[string]Connection
 	wg      sync.WaitGroup
 
 	// map is the private zone ID as a string
-	scheduler map[string]*Scheduler
+	schedulers map[string]Scheduler
 }
 
-var (
-	ReconnectTimeout = 25 * time.Second
-)
-
-func NewConnectionStream(config *config.Config, rootCAs *x509.CertPool) ConnectionStreamInterface {
-	stream := &ConnectionStream{
-		config:    config,
-		rootCAs:   rootCAs,
-		scheduler: make(map[string]*Scheduler),
+// NewConnectionStream instantiates a new EleConnectionStream
+// It sets up the contexts and the schedules based on configured private zones
+func NewConnectionStream(config *config.Config, rootCAs *x509.CertPool) ConnectionStream {
+	stream := &EleConnectionStream{
+		config:     config,
+		rootCAs:    rootCAs,
+		schedulers: make(map[string]Scheduler),
 	}
 	stream.ctx = context.Background()
-	stream.conns = make(map[string]ConnectionInterface)
+	stream.conns = make(map[string]Connection)
 	stream.stopCh = make(chan struct{}, 1)
 	for _, pz := range config.ZoneIds {
-		stream.scheduler[pz] = NewScheduler(pz, stream)
-		go stream.scheduler[pz].runFrameConsumer()
+		stream.schedulers[pz] = NewScheduler(pz, stream)
+		go stream.schedulers[pz].RunFrameConsumer()
 	}
 	return stream
 }
 
-func (cs *ConnectionStream) GetConfig() *config.Config {
+// GetConfig retrieves ConnectionStream configuration
+func (cs *EleConnectionStream) GetConfig() *config.Config {
 	return cs.config
 }
 
-func (cs *ConnectionStream) GetContext() context.Context {
+// GetContext retrieves ConnectionStream context
+func (cs *EleConnectionStream) GetContext() context.Context {
 	return cs.ctx
 }
 
-func (cs *ConnectionStream) RegisterConnection(qry string, conn ConnectionInterface) error {
+// RegisterConnection sets up a new connection and adds it to
+// connection stream
+// If no connection list has been initialized, this method will
+// return an InvalidConnectionStreamError.  If that's the case,
+// please instantiate a new connection stream via NewConnectionStream function
+func (cs *EleConnectionStream) RegisterConnection(qry string, conn Connection) error {
 	cs.connsMu.Lock()
 	defer cs.connsMu.Unlock()
 	if cs.conns == nil {
-		return errors.New(InvalidConnectionStream)
+		return ErrInvalidConnectionStream
 	}
 	cs.conns[qry] = conn
 	log.Warningf("%v", cs.conns)
 	return nil
 }
 
-func (cs *ConnectionStream) GetConnections() map[string]ConnectionInterface {
+// GetConnections returns a map of connections set up in the stream
+func (cs *EleConnectionStream) GetConnections() map[string]Connection {
 	return cs.conns
 }
 
-func (cs *ConnectionStream) Stop() {
+// Stop explicitly stops all connections in the stream and notifies the channel
+func (cs *EleConnectionStream) Stop() {
 	if cs.conns == nil {
 		return
 	}
@@ -113,28 +107,39 @@ func (cs *ConnectionStream) Stop() {
 	cs.stopCh <- struct{}{}
 }
 
-func (cs *ConnectionStream) StopNotify() chan struct{} {
+// StopNotify returns a stop channel
+func (cs *EleConnectionStream) StopNotify() chan struct{} {
 	return cs.stopCh
 }
 
-func (cs *ConnectionStream) GetScheduler() map[string]*Scheduler {
-	return cs.scheduler
+// GetSchedulers returns a map of schedulers set up for the stream
+func (cs *EleConnectionStream) GetSchedulers() map[string]Scheduler {
+	return cs.schedulers
 }
 
-func (cs *ConnectionStream) SendMetrics(crs *check.CheckResultSet) error {
+// SendMetrics sends a CheckResultSet via the first connection it can
+// retrieve in the connection list
+func (cs *EleConnectionStream) SendMetrics(crs *check.CheckResultSet) error {
 	if cs.GetConnections() == nil {
-		return errors.New(NoConnections)
+		return ErrNoConnections
 	}
 	for _, conn := range cs.GetConnections() {
 		// TODO make this better
-		conn.GetConnection().GetSession().Send(check.NewMetricsPostRequest(crs))
+		conn.GetSession().Send(check.NewMetricsPostRequest(crs))
 		break
 	}
 	return nil
 
 }
 
-func (cs *ConnectionStream) Connect() {
+// Connect connects to configured endpoints.
+// There are 2 ways to connect:
+// 1. You can utilize SRV records defined in the configuration
+// to dynamically find endpoints
+// 2. You can explicitly specify endpoint addresses and connect
+// to them directly
+// DEFAULT: Using SRV records
+func (cs *EleConnectionStream) Connect() {
 	if cs.GetConfig().UseSrv {
 		for _, qry := range cs.GetConfig().SrvQueries {
 			cs.wg.Add(1)
@@ -148,7 +153,8 @@ func (cs *ConnectionStream) Connect() {
 	}
 }
 
-func (cs *ConnectionStream) WaitCh() <-chan struct{} {
+// WaitCh sets up a channel
+func (cs *EleConnectionStream) WaitCh() <-chan struct{} {
 	c := make(chan struct{}, 1)
 	go func() {
 		cs.wg.Wait()
@@ -157,7 +163,7 @@ func (cs *ConnectionStream) WaitCh() <-chan struct{} {
 	return c
 }
 
-func (cs *ConnectionStream) connectBySrv(qry string) {
+func (cs *EleConnectionStream) connectBySrv(qry string) {
 	_, addrs, err := net.LookupSRV("", "", qry)
 	if err != nil {
 		log.Errorf("SRV Lookup Failure : %v", err)
@@ -171,12 +177,12 @@ func (cs *ConnectionStream) connectBySrv(qry string) {
 	cs.connectByHost(addr)
 }
 
-func (cs *ConnectionStream) connectByHost(addr string) {
-	var csi ConnectionStreamInterface = cs
+func (cs *EleConnectionStream) connectByHost(addr string) {
+	var csi ConnectionStream = cs
 	defer cs.wg.Done()
 	for {
 		conn := NewConnection(addr, csi.GetConfig().Guid, cs)
-		err := conn.Connect(cs.GetContext(), cs.buildTlsConfig(addr))
+		err := conn.Connect(cs.GetContext(), cs.buildTLSConfig(addr))
 		if err != nil {
 			goto conn_error
 		}
@@ -202,7 +208,7 @@ func (cs *ConnectionStream) connectByHost(addr string) {
 	}
 }
 
-func (cs *ConnectionStream) buildTlsConfig(addr string) *tls.Config {
+func (cs *EleConnectionStream) buildTLSConfig(addr string) *tls.Config {
 	host, _, _ := net.SplitHostPort(addr)
 	conf := &tls.Config{
 		InsecureSkipVerify: cs.rootCAs == nil,

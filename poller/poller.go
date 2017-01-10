@@ -17,8 +17,86 @@
 // Package poller contains the poller/agent side connectivity and coordination logic.
 package poller
 
-const (
-	UndefinedContext        string = "Context is undefined"
-	InvalidConnectionStream string = "ConnectionStream has not been properly set up.  Re-initialize"
-	NoConnections           string = "No connections"
+import (
+	"context"
+	"crypto/tls"
+	"io"
+	"time"
+
+	"errors"
+
+	"github.com/racker/rackspace-monitoring-poller/check"
+	"github.com/racker/rackspace-monitoring-poller/config"
+	"github.com/racker/rackspace-monitoring-poller/protocol"
 )
+
+var (
+	// ReconnectTimeout sets up 25 second timeout for reconnection
+	ReconnectTimeout = 25 * time.Second
+	// ErrInvalidConnectionStream used when conneciton stream is not properly initialized
+	ErrInvalidConnectionStream = errors.New("ConnectionStream has not been properly set up.  Re-initialize")
+	// ErrNoConnections used when no connections were set up in the stream
+	ErrNoConnections = errors.New("No connections")
+	// ErrUndefinedContext used when passed in context in Connect is undefined
+	ErrUndefinedContext = errors.New("Context is undefined")
+)
+
+const (
+	// CheckSpreadInMilliseconds sets up jitter time so as not
+	// to send all requests at the same time
+	CheckSpreadInMilliseconds = 30000
+)
+
+// ConnectionStream interface wraps the necessary information to
+// register, connect, and send data in connections.
+// It is the main factory for connection handling
+type ConnectionStream interface {
+	GetConfig() *config.Config
+	RegisterConnection(qry string, conn Connection) error
+	Stop()
+	StopNotify() chan struct{}
+	GetSchedulers() map[string]Scheduler
+	GetContext() context.Context
+	SendMetrics(crs *check.CheckResultSet) error
+	Connect()
+	WaitCh() <-chan struct{}
+	GetConnections() map[string]Connection
+}
+
+// Connection interface wraps the methods required to manage a
+// single connection.
+type Connection interface {
+	GetStream() ConnectionStream
+	GetSession() Session
+	SetReadDeadline(deadline time.Time)
+	SetWriteDeadline(deadline time.Time)
+	Connect(ctx context.Context, tlsConfig *tls.Config) error
+	Close()
+	Wait()
+	GetConnection() io.ReadWriteCloser
+	GetGUID() string
+}
+
+// Session interface wraps the methods required to manage a
+// session in a connection.  It includes authentication, request/
+// response timeout management, and transferring data
+type Session interface {
+	Auth()
+	Send(msg protocol.Frame)
+	Respond(msg protocol.Frame)
+	SetHeartbeatInterval(timeout uint64)
+	GetReadDeadline() time.Time
+	GetWriteDeadline() time.Time
+	Close()
+	Wait()
+}
+
+// Scheduler interface wraps the methods that schedule
+// metric setup and sending
+type Scheduler interface {
+	Input() chan protocol.Frame
+	Close()
+	SendMetrics(crs *check.CheckResultSet)
+	Register(ch check.Check)
+	RunFrameConsumer()
+}

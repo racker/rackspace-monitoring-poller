@@ -23,13 +23,13 @@ func TestNewConnection(t *testing.T) {
 	type args struct {
 		address string
 		guid    string
-		stream  poller.ConnectionStreamInterface
+		stream  poller.ConnectionStream
 	}
-	var testStream = &poller.ConnectionStream{}
+	var testStream = &poller.EleConnectionStream{}
 	tests := []struct {
 		name     string
 		args     args
-		expected *poller.ConnectionStream
+		expected *poller.EleConnectionStream
 	}{
 		{
 			name: "Happy path",
@@ -58,7 +58,7 @@ func TestConnection_Connect(t *testing.T) {
 		name               string
 		url                func() string
 		guid               string
-		stream             poller.ConnectionStreamInterface
+		stream             poller.ConnectionStream
 		expectedErr        bool
 		expectedErrMessage string
 		ctx                context.Context

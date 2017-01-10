@@ -22,12 +22,12 @@ func TestConnectionStream_GetConfig(t *testing.T) {
 	}
 	tests := []struct {
 		name     string
-		cs       *ConnectionStream
+		cs       *EleConnectionStream
 		expected *config.Config
 	}{
 		{
 			name: "Happy path",
-			cs: &ConnectionStream{
+			cs: &EleConnectionStream{
 				config: testConfig,
 			},
 			expected: testConfig,
@@ -44,7 +44,7 @@ func TestConnectionStream_GetConfig(t *testing.T) {
 func TestConnectionStream_Stop(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
-	mockConn := NewMockConnectionInterface(mockCtrl)
+	mockConn := NewMockConnection(mockCtrl)
 
 	tests := []struct {
 		name        string
@@ -52,16 +52,17 @@ func TestConnectionStream_Stop(t *testing.T) {
 		stopCh      chan struct{}
 		config      *config.Config
 		connsMu     sync.Mutex
-		conns       map[string]ConnectionInterface
+		conns       map[string]Connection
 		wg          sync.WaitGroup
-		scheduler   map[string]*Scheduler
+		schedulers  map[string]Scheduler
 		expectedErr bool
 	}{
 		{
 			name:   "Happy path - one connection",
 			ctx:    context.Background(),
+			stopCh: make(chan struct{}, 1),
 			config: &config.Config{},
-			conns: map[string]ConnectionInterface{
+			conns: map[string]Connection{
 				"test-query": mockConn,
 			},
 			expectedErr: false,
@@ -69,8 +70,9 @@ func TestConnectionStream_Stop(t *testing.T) {
 		{
 			name:   "Happy path - two connections",
 			ctx:    context.Background(),
+			stopCh: make(chan struct{}, 1),
 			config: &config.Config{},
-			conns: map[string]ConnectionInterface{
+			conns: map[string]Connection{
 				"test-query":         mockConn,
 				"another-test-query": mockConn,
 			},
@@ -79,13 +81,15 @@ func TestConnectionStream_Stop(t *testing.T) {
 		{
 			name:        "No connections",
 			ctx:         context.Background(),
+			stopCh:      make(chan struct{}, 1),
 			config:      &config.Config{},
-			conns:       map[string]ConnectionInterface{},
+			conns:       map[string]Connection{},
 			expectedErr: false,
 		},
 		{
 			name:        "Connections set to nil",
 			ctx:         context.Background(),
+			stopCh:      make(chan struct{}, 1),
 			config:      &config.Config{},
 			conns:       nil,
 			expectedErr: true,
@@ -93,14 +97,14 @@ func TestConnectionStream_Stop(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cs := &ConnectionStream{
-				ctx:       tt.ctx,
-				stopCh:    tt.stopCh,
-				config:    tt.config,
-				connsMu:   tt.connsMu,
-				conns:     tt.conns,
-				wg:        tt.wg,
-				scheduler: tt.scheduler,
+			cs := &EleConnectionStream{
+				ctx:        tt.ctx,
+				stopCh:     tt.stopCh,
+				config:     tt.config,
+				connsMu:    tt.connsMu,
+				conns:      tt.conns,
+				wg:         tt.wg,
+				schedulers: tt.schedulers,
 			}
 			if tt.expectedErr {
 				mockConn.EXPECT().Close().Times(0)
@@ -120,7 +124,7 @@ func TestConnectionStream_Stop(t *testing.T) {
 
 func TestConnection_StopNotify(t *testing.T) {
 	cs := NewConnectionStream(config.NewConfig("test-guid", false), nil)
-	assert.Equal(t, cs.(*ConnectionStream).stopCh, cs.StopNotify())
+	assert.Equal(t, cs.(*EleConnectionStream).stopCh, cs.StopNotify())
 }
 
 func TestConnection_WaitCh(t *testing.T) {
@@ -133,13 +137,13 @@ func TestConnection_WaitCh(t *testing.T) {
 
 func TestConnection_GetScheduler(t *testing.T) {
 	cs := NewConnectionStream(config.NewConfig("test-guid", false), nil)
-	assert.Equal(t, cs.(*ConnectionStream).scheduler, cs.GetScheduler())
+	assert.Equal(t, cs.(*EleConnectionStream).schedulers, cs.GetSchedulers())
 }
 
 func TestConnectionStream_SendMetrics(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
-	mockSession := NewMockSessionInterface(mockCtrl)
+	mockSession := NewMockSession(mockCtrl)
 	cancelCtx, cancelFunc := context.WithCancel(context.Background())
 
 	tests := []struct {
@@ -148,9 +152,9 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 		stopCh      chan struct{}
 		config      *config.Config
 		connsMu     sync.Mutex
-		conns       map[string]ConnectionInterface
+		conns       map[string]Connection
 		wg          sync.WaitGroup
-		scheduler   map[string]*Scheduler
+		schedulers  map[string]Scheduler
 		crs         *check.CheckResultSet
 		expectedErr bool
 	}{
@@ -158,8 +162,8 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 			name:   "Happy path - one session",
 			ctx:    context.Background(),
 			config: &config.Config{},
-			conns: map[string]ConnectionInterface{
-				"test-query": &Connection{
+			conns: map[string]Connection{
+				"test-query": &EleConnection{
 					session: mockSession,
 				},
 			},
@@ -184,11 +188,11 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 			name:   "Happy path - two connections",
 			ctx:    context.Background(),
 			config: &config.Config{},
-			conns: map[string]ConnectionInterface{
-				"test-query": &Connection{
+			conns: map[string]Connection{
+				"test-query": &EleConnection{
 					session: mockSession,
 				},
-				"another-test-query": &Connection{
+				"another-test-query": &EleConnection{
 					session: mockSession,
 				},
 			},
@@ -213,7 +217,7 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 			name:   "No connections",
 			ctx:    context.Background(),
 			config: &config.Config{},
-			conns:  map[string]ConnectionInterface{},
+			conns:  map[string]Connection{},
 			crs: &check.CheckResultSet{
 				Check: check.NewCheck([]byte(`{
 	  "id":"chPzAHTTP",
@@ -256,14 +260,14 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cs := &ConnectionStream{
-				ctx:       tt.ctx,
-				stopCh:    tt.stopCh,
-				config:    tt.config,
-				connsMu:   tt.connsMu,
-				conns:     tt.conns,
-				wg:        tt.wg,
-				scheduler: tt.scheduler,
+			cs := &EleConnectionStream{
+				ctx:        tt.ctx,
+				stopCh:     tt.stopCh,
+				config:     tt.config,
+				connsMu:    tt.connsMu,
+				conns:      tt.conns,
+				wg:         tt.wg,
+				schedulers: tt.schedulers,
 			}
 			if tt.expectedErr {
 				//mockSession.EXPECT().Send(gomock.Any()).Times(0)

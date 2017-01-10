@@ -46,22 +46,22 @@ func TestConnectionStream_Register(t *testing.T) {
 	tests := []struct {
 		name        string
 		queryString string
-		conn        poller.ConnectionInterface
-		cs          poller.ConnectionStreamInterface
+		conn        poller.Connection
+		cs          poller.ConnectionStream
 		expectedErr bool
 	}{
 		{
 			name:        "Happy path",
 			queryString: "test-query",
-			conn:        &poller.Connection{},
+			conn:        &poller.EleConnection{},
 			cs:          poller.NewConnectionStream(&config.Config{}, nil),
 			expectedErr: false,
 		},
 		{
 			name:        "Empty stream",
 			queryString: "test-query",
-			conn:        &poller.Connection{},
-			cs:          &poller.ConnectionStream{},
+			conn:        &poller.EleConnection{},
+			cs:          &poller.EleConnectionStream{},
 			expectedErr: true,
 		},
 	}

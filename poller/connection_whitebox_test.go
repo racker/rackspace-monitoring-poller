@@ -12,15 +12,15 @@ import (
 )
 
 func TestConnection_GetStream(t *testing.T) {
-	var testStream = &ConnectionStream{}
+	var testStream = &EleConnectionStream{}
 	tests := []struct {
 		name       string
-		connection ConnectionInterface
-		expected   ConnectionStreamInterface
+		connection Connection
+		expected   ConnectionStream
 	}{
 		{
 			name: "Happy path",
-			connection: &Connection{
+			connection: &EleConnection{
 				stream: testStream,
 			},
 			expected: testStream,
@@ -37,8 +37,8 @@ func TestConnection_GetStream(t *testing.T) {
 
 func TestConnection_SetReadDeadline(t *testing.T) {
 	type fields struct {
-		stream            ConnectionStreamInterface
-		session           *Session
+		stream            ConnectionStream
+		session           Session
 		conn              io.ReadWriteCloser
 		address           string
 		guid              string
@@ -52,7 +52,7 @@ func TestConnection_SetReadDeadline(t *testing.T) {
 		{
 			name: "Happy path",
 			fields: fields{
-				stream:            &ConnectionStream{},
+				stream:            &EleConnectionStream{},
 				conn:              &net.TCPConn{},
 				address:           "test",
 				guid:              "test",
@@ -62,7 +62,7 @@ func TestConnection_SetReadDeadline(t *testing.T) {
 		{
 			name: "Wrong interface",
 			fields: fields{
-				stream:            &ConnectionStream{},
+				stream:            &EleConnectionStream{},
 				conn:              &net.UDPConn{},
 				address:           "test",
 				guid:              "test",
@@ -73,7 +73,7 @@ func TestConnection_SetReadDeadline(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			conn := &Connection{
+			conn := &EleConnection{
 				address:           tt.fields.address,
 				conn:              tt.fields.conn,
 				stream:            tt.fields.stream,
@@ -88,8 +88,8 @@ func TestConnection_SetReadDeadline(t *testing.T) {
 
 func TestConnection_SetWriteDeadline(t *testing.T) {
 	type fields struct {
-		stream            ConnectionStreamInterface
-		session           *Session
+		stream            ConnectionStream
+		session           Session
 		conn              io.ReadWriteCloser
 		address           string
 		guid              string
@@ -103,7 +103,7 @@ func TestConnection_SetWriteDeadline(t *testing.T) {
 		{
 			name: "Happy path",
 			fields: fields{
-				stream:            &ConnectionStream{},
+				stream:            &EleConnectionStream{},
 				conn:              &net.TCPConn{},
 				address:           "test",
 				guid:              "test",
@@ -113,7 +113,7 @@ func TestConnection_SetWriteDeadline(t *testing.T) {
 		{
 			name: "Wrong interface",
 			fields: fields{
-				stream:            &ConnectionStream{},
+				stream:            &EleConnectionStream{},
 				conn:              &net.UDPConn{},
 				address:           "test",
 				guid:              "test",
@@ -124,7 +124,7 @@ func TestConnection_SetWriteDeadline(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			conn := &Connection{
+			conn := &EleConnection{
 				address:           tt.fields.address,
 				conn:              tt.fields.conn,
 				stream:            tt.fields.stream,
@@ -140,19 +140,19 @@ func TestConnection_SetWriteDeadline(t *testing.T) {
 func TestConnection_Close(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
-	mockSession := NewMockSessionInterface(mockCtrl)
+	mockSession := NewMockSession(mockCtrl)
 
 	tests := []struct {
 		name              string
-		stream            *ConnectionStream
-		session           *MockSessionInterface
+		stream            *EleConnectionStream
+		session           *MockSession
 		address           string
 		guid              string
 		connectionTimeout time.Duration
 	}{
 		{
 			name:              "Happy path",
-			stream:            &ConnectionStream{},
+			stream:            &EleConnectionStream{},
 			session:           mockSession,
 			address:           "test-addr",
 			guid:              "test-guid",
@@ -161,7 +161,7 @@ func TestConnection_Close(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			conn := &Connection{
+			conn := &EleConnection{
 				stream:            tt.stream,
 				session:           tt.session,
 				address:           tt.address,
@@ -177,19 +177,19 @@ func TestConnection_Close(t *testing.T) {
 func TestConnection_Wait(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
-	mockSession := NewMockSessionInterface(mockCtrl)
+	mockSession := NewMockSession(mockCtrl)
 
 	tests := []struct {
 		name              string
-		stream            *ConnectionStream
-		session           *MockSessionInterface
+		stream            *EleConnectionStream
+		session           *MockSession
 		address           string
 		guid              string
 		connectionTimeout time.Duration
 	}{
 		{
 			name:              "Happy path",
-			stream:            &ConnectionStream{},
+			stream:            &EleConnectionStream{},
 			session:           mockSession,
 			address:           "test-addr",
 			guid:              "test-guid",
@@ -198,7 +198,7 @@ func TestConnection_Wait(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			conn := &Connection{
+			conn := &EleConnection{
 				stream:            tt.stream,
 				session:           tt.session,
 				address:           tt.address,
@@ -212,13 +212,15 @@ func TestConnection_Wait(t *testing.T) {
 }
 
 func TestGetConnection(t *testing.T) {
-	conn := &Connection{
+	tcpConn := &net.TCPConn{}
+
+	conn := &EleConnection{
 		address: "test",
-		conn:    &net.TCPConn{},
+		conn:    tcpConn,
 		guid:    "test-guid",
 	}
 
 	got := conn.GetConnection()
 
-	assert.Equal(t, conn, got, fmt.Sprintf("Expected %v but got %v", conn, got))
+	assert.Equal(t, tcpConn, got, fmt.Sprintf("Expected %v but got %v", tcpConn, got))
 }
