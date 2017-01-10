@@ -338,4 +338,8 @@ func TestHTTP_TLS(t *testing.T) {
 	if cert_dns_names != "example.com" {
 		t.Fatal("invalid dns names")
 	}
+	cert_error, _ := crs.Get(0).GetMetric("cert_error").ToString()
+	if !strings.Contains(cert_error, "certificate signed by unknown authority") {
+		t.Fatal("certificate should have unknown authority")
+	}
 }
