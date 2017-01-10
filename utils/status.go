@@ -47,6 +47,11 @@ func (sl *StatusLine) Add(key string, value interface{}) {
 	sl.strings = append(sl.strings, fmt.Sprintf("%s=%v", key, value))
 }
 
+// AddOption adds an option to the statusline
+func (sl *StatusLine) AddOption(key string) {
+	sl.strings = append(sl.strings, key)
+}
+
 // String stringifies the object
 func (sl *StatusLine) String() string {
 	return strings.Join(sl.strings, ",")

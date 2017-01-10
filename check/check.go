@@ -160,11 +160,36 @@ func (ch *CheckBase) Done() <-chan struct{} {
 	return ch.context.Done()
 }
 
-func (ch *CheckBase) AddTLSMetrics(cr *CheckResult, state tls.ConnectionState) {
+type TLSMetrics struct {
+	Verified bool
+}
+
+func (ch *CheckBase) AddTLSMetrics(cr *CheckResult, state tls.ConnectionState) (*TLSMetrics, error) {
+	tlsMetrics := &TLSMetrics{}
 	if len(state.PeerCertificates) == 0 {
-		return
+		return tlsMetrics, nil
 	}
+	// Validate certificate chain
 	cert := state.PeerCertificates[0]
+	opts := x509.VerifyOptions{
+		Roots:         nil,
+		CurrentTime:   time.Now(),
+		DNSName:       state.ServerName,
+		Intermediates: x509.NewCertPool(),
+	}
+	for i, cert := range state.PeerCertificates {
+		if i == 0 {
+			continue
+		}
+		opts.Intermediates.AddCert(cert)
+	}
+	_, err := cert.Verify(opts)
+	if err != nil {
+		tlsMetrics.Verified = false
+		cr.AddMetric(metric.NewMetric("cert_error", "", metric.MetricString, err.Error(), ""))
+	} else {
+		tlsMetrics.Verified = true
+	}
 	// SERIAL
 	cr.AddMetric(metric.NewMetric("cert_serial", "", metric.MetricNumber, cert.SerialNumber, ""))
 	if len(cert.OCSPServer) > 0 {
@@ -226,6 +251,7 @@ func (ch *CheckBase) AddTLSMetrics(cr *CheckResult, state tls.ConnectionState) {
 		cipherSuite = "TLS_ECDHE_RSA_WITH_RC4_128_SHA"
 	case tls.TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA:
 		cipherSuite = "TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA"
+
 	case tls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA:
 		cipherSuite = "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA"
 	case tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA:
@@ -256,6 +282,7 @@ func (ch *CheckBase) AddTLSMetrics(cr *CheckResult, state tls.ConnectionState) {
 	// START TIME
 	cr.AddMetric(metric.NewMetric("cert_start", "", metric.MetricNumber, cert.NotBefore.Unix(), ""))
 	cr.AddMetric(metric.NewMetric("cert_end", "", metric.MetricNumber, cert.NotAfter.Unix(), ""))
+	return tlsMetrics, nil
 }
 
 func (ch *CheckBase) readLimit(conn io.Reader, limit int64) ([]byte, error) {
