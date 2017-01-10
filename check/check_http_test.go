@@ -292,7 +292,7 @@ func TestHTTPInvalidUrl(t *testing.T) {
 	}
 }
 
-func TestHTTPTLS(t *testing.T) {
+func TestHTTP_TLS(t *testing.T) {
 	ts := httptest.NewTLSServer(http.HandlerFunc(staticResponse))
 	defer ts.Close()
 
