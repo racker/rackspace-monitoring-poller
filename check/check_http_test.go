@@ -268,3 +268,27 @@ func TestHTTPTimeout(t *testing.T) {
 
 	cancel()
 }
+
+func TestHTTPInvalidUrl(t *testing.T) {
+	// Create Check
+	checkData := fmt.Sprintf(`{
+	  "id":"chPzAHTTPTimeout",
+	  "zone_id":"pzA",
+	  "details":{"url":"%s"},
+	  "type":"remote.http",
+	  "timeout":1,
+	  "period":30,
+	  "ip_addresses":{"default":"127.0.0.1"},
+	  "target_alias":"default",
+	  "target_hostname":"",
+	  "target_resolver":"",
+	  "disabled":false
+	}`, "http://192.168.0.%31/")
+	check := check.NewCheck([]byte(checkData), context.Background(), func() {})
+
+	// Run check
+	_, err := check.Run()
+	if err == nil {
+		t.Fatal("should have errored")
+	}
+}
