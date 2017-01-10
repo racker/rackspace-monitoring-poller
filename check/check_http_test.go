@@ -1,6 +1,5 @@
 //
-// Copyright 2016 Rackspace
-//
+// Copyright 2016 Rackspace //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -290,5 +289,53 @@ func TestHTTPInvalidUrl(t *testing.T) {
 	_, err := check.Run()
 	if err == nil {
 		t.Fatal("should have errored")
+	}
+}
+
+func TestHTTP_TLS(t *testing.T) {
+	ts := httptest.NewTLSServer(http.HandlerFunc(staticResponse))
+	defer ts.Close()
+
+	// Create Check
+	checkData := fmt.Sprintf(`{
+	  "id":"TestTTPTLS",
+	  "zone_id":"pzA",
+	  "details":{"url":"%s"},
+	  "type":"remote.http",
+	  "timeout":1,
+	  "period":30,
+	  "ip_addresses":{"default":"127.0.0.1"},
+	  "target_alias":"default",
+	  "target_hostname":"",
+	  "target_resolver":"",
+	  "disabled":false
+	}`, ts.URL)
+	check := check.NewCheck([]byte(checkData), context.Background(), func() {})
+
+	// Run check
+	crs, err := check.Run()
+	if err != nil {
+		t.Fatal("should not have errored; %s", err.Error())
+	}
+
+	issuer, _ := crs.Get(0).GetMetric("cert_issuer").ToString()
+	if issuer != "/O=Acme Co" {
+		t.Fatal("invalid issuer")
+	}
+	subject, _ := crs.Get(0).GetMetric("cert_subject").ToString()
+	if subject != "/O=Acme Co" {
+		t.Fatal("invalid subject")
+	}
+	cert_start, _ := crs.Get(0).GetMetric("cert_start").ToInt64()
+	if cert_start != 0 {
+		t.Fatal("invalid start time")
+	}
+	cert_end, _ := crs.Get(0).GetMetric("cert_end").ToInt64()
+	if cert_end != 3600000000 {
+		t.Fatal("invalid end time")
+	}
+	cert_dns_names, _ := crs.Get(0).GetMetric("cert_subject_alternate_names").ToString()
+	if cert_dns_names != "example.com" {
+		t.Fatal("invalid dns names")
 	}
 }
