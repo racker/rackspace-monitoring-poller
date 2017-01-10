@@ -66,6 +66,10 @@ func NewHTTPCheck(base *CheckBase) Check {
 
 func (ch *HTTPCheck) parseTLS(cr *CheckResult, resp *http.Response) {
 	cert := resp.TLS.PeerCertificates[0]
+	if cert == nil {
+		return
+	}
+	// SERIAL
 	cr.AddMetric(metric.NewMetric("cert_serial", "", metric.MetricNumber, cert.SerialNumber, ""))
 	if len(cert.OCSPServer) > 0 {
 		cr.AddMetric(metric.NewMetric("cert_ocsp", "", metric.MetricNumber, cert.OCSPServer[0], ""))
@@ -87,6 +91,7 @@ func (ch *HTTPCheck) parseTLS(cr *CheckResult, resp *http.Response) {
 		cr.AddMetric(metric.NewMetric("cert_bits", "", metric.MetricNumber, "0", ""))
 		cr.AddMetric(metric.NewMetric("cert_type", "", metric.MetricNumber, "-", ""))
 	}
+	// CERT SIG ALGO
 	cr.AddMetric(metric.NewMetric("cert_sig_algo", "", metric.MetricNumber, strings.ToLower(cert.SignatureAlgorithm.String()), ""))
 	var sslVersion string
 	switch resp.TLS.Version {
@@ -99,10 +104,10 @@ func (ch *HTTPCheck) parseTLS(cr *CheckResult, resp *http.Response) {
 	case tls.VersionTLS12:
 		sslVersion = "tls1.2"
 	}
+	// SESSION VERSION
 	cr.AddMetric(metric.NewMetric("ssl_session_version", "", metric.MetricNumber, sslVersion, ""))
 	var cipherSuite string
 	switch resp.TLS.CipherSuite {
-
 	case tls.TLS_RSA_WITH_RC4_128_SHA:
 		cipherSuite = "TLS_RSA_WITH_RC4_128_SHA"
 	case tls.TLS_RSA_WITH_3DES_EDE_CBC_SHA:
@@ -140,8 +145,21 @@ func (ch *HTTPCheck) parseTLS(cr *CheckResult, resp *http.Response) {
 	default:
 		cipherSuite = "-"
 	}
+	// SESSION CIPHER
 	cr.AddMetric(metric.NewMetric("ssl_session_cipher", "", metric.MetricNumber, cipherSuite, ""))
-	//TODO Fill in the rest of the SSL info
+	// ISSUER
+	if issuer, err := utils.GetDNFromCert(cert.Issuer, "/"); err == nil {
+		cr.AddMetric(metric.NewMetric("cert_issuer", "", metric.MetricString, issuer, ""))
+	}
+	// SUBJECT
+	if subject, err := utils.GetDNFromCert(cert.Subject, "/"); err == nil {
+		cr.AddMetric(metric.NewMetric("cert_subject", "", metric.MetricString, subject, ""))
+	}
+	// ALTERNATE NAMES
+	cr.AddMetric(metric.NewMetric("cert_subject_alternate_names", "", metric.MetricString, strings.Join(cert.DNSNames, ", "), ""))
+	// START TIME
+	cr.AddMetric(metric.NewMetric("cert_start", "", metric.MetricNumber, cert.NotBefore.Unix(), ""))
+	cr.AddMetric(metric.NewMetric("cert_end", "", metric.MetricNumber, cert.NotAfter.Unix(), ""))
 }
 
 func disableRedirects(req *http.Request, via []*http.Request) error {
