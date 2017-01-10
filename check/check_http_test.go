@@ -318,27 +318,29 @@ func TestHTTP_TLS(t *testing.T) {
 		t.Fatal("should not have errored; %s", err.Error())
 	}
 
-	issuer, _ := crs.Get(0).GetMetric("cert_issuer").ToString()
+	// Validate
+	cr := crs.Get(0)
+	issuer, _ := cr.GetMetric("cert_issuer").ToString()
 	if issuer != "/O=Acme Co" {
 		t.Fatal("invalid issuer")
 	}
-	subject, _ := crs.Get(0).GetMetric("cert_subject").ToString()
+	subject, _ := cr.GetMetric("cert_subject").ToString()
 	if subject != "/O=Acme Co" {
 		t.Fatal("invalid subject")
 	}
-	cert_start, _ := crs.Get(0).GetMetric("cert_start").ToInt64()
+	cert_start, _ := cr.GetMetric("cert_start").ToInt64()
 	if cert_start != 0 {
 		t.Fatal("invalid start time")
 	}
-	cert_end, _ := crs.Get(0).GetMetric("cert_end").ToInt64()
+	cert_end, _ := cr.GetMetric("cert_end").ToInt64()
 	if cert_end != 3600000000 {
 		t.Fatal("invalid end time")
 	}
-	cert_dns_names, _ := crs.Get(0).GetMetric("cert_subject_alternate_names").ToString()
+	cert_dns_names, _ := cr.GetMetric("cert_subject_alternate_names").ToString()
 	if cert_dns_names != "example.com" {
 		t.Fatal("invalid dns names")
 	}
-	cert_error, _ := crs.Get(0).GetMetric("cert_error").ToString()
+	cert_error, _ := cr.GetMetric("cert_error").ToString()
 	if !strings.Contains(cert_error, "certificate signed by unknown authority") {
 		t.Fatal("certificate should have unknown authority")
 	}
