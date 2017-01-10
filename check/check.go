@@ -224,6 +224,8 @@ func (ch *CheckBase) AddTLSMetrics(cr *CheckResult, state tls.ConnectionState) (
 		sslVersion = "tls1.1"
 	case tls.VersionTLS12:
 		sslVersion = "tls1.2"
+	default:
+		sslVersion = "-"
 	}
 	// SESSION VERSION
 	cr.AddMetric(metric.NewMetric("ssl_session_version", "", metric.MetricNumber, sslVersion, ""))
