@@ -30,8 +30,6 @@ import (
 	protocol "github.com/racker/rackspace-monitoring-poller/protocol/check"
 	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	"github.com/racker/rackspace-monitoring-poller/utils"
-	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptrace"
@@ -241,8 +239,7 @@ func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
 	defer resp.Body.Close()
 
 	// Read Body
-	limitReader := io.LimitReader(resp.Body, MaxHttpResponseBodyLength)
-	body, err := ioutil.ReadAll(limitReader)
+	body, err := ch.readLimit(resp.Body, MaxHttpResponseBodyLength)
 	if err != nil {
 		crs.SetStatus(err.Error())
 		crs.SetStateUnavailable()
@@ -252,33 +249,32 @@ func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
 
 	// Parse Body
 	if len(ch.Details.Body) > 0 {
-		if re, err := regexp.Compile(ch.Details.Body); err == nil {
-			if m := re.FindSubmatch(body); m != nil {
-				cr.AddMetric(metric.NewMetric("body_match", "", metric.MetricString, string(m[1]), ""))
-			} else {
-				cr.AddMetric(metric.NewMetric("body_match", "", metric.MetricString, "", ""))
-			}
-		} else {
+		re, err := regexp.Compile(ch.Details.Body)
+		if err != nil {
 			crs.SetStatus(err.Error())
 			crs.SetStateUnavailable()
 			return crs, nil
+		}
+		if m := re.FindSubmatch(body); m != nil {
+			cr.AddMetric(metric.NewMetric("body_match", "", metric.MetricString, string(m[1]), ""))
+		} else {
+			cr.AddMetric(metric.NewMetric("body_match", "", metric.MetricString, "", ""))
 		}
 	}
 
 	// Body Matches
 	for key, regex := range ch.Details.BodyMatches {
-		if re, err := regexp.Compile(regex); err == nil {
-			if m := re.FindSubmatch(body); m != nil {
-				cr.AddMetric(metric.NewMetric(fmt.Sprintf("body_match_%s", key), "", metric.MetricString, string(m[1]), ""))
-			} else {
-				cr.AddMetric(metric.NewMetric(fmt.Sprintf("body_match_%s", key), "", metric.MetricString, "", ""))
-			}
-		} else {
+		re, err := regexp.Compile(regex)
+		if err != nil {
 			crs.SetStatus(err.Error())
 			crs.SetStateUnavailable()
 			return crs, nil
 		}
-
+		if m := re.FindSubmatch(body); m != nil {
+			cr.AddMetric(metric.NewMetric(fmt.Sprintf("body_match_%s", key), "", metric.MetricString, string(m[1]), ""))
+		} else {
+			cr.AddMetric(metric.NewMetric(fmt.Sprintf("body_match_%s", key), "", metric.MetricString, "", ""))
+		}
 	}
 
 	truncated := resp.ContentLength - int64(len(body))
@@ -288,8 +284,6 @@ func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
 	cr.AddMetric(metric.NewMetric("duration", "", metric.MetricNumber, endtime-starttime, "milliseconds"))
 	cr.AddMetric(metric.NewMetric("bytes", "", metric.MetricNumber, len(body), "bytes"))
 	cr.AddMetric(metric.NewMetric("truncated", "", metric.MetricNumber, truncated, "bytes"))
-
-	// TODO: BODY MATCHES
 
 	if ch.Details.IncludeBody {
 		cr.AddMetric(metric.NewMetric("body", "", metric.MetricString, string(body), ""))

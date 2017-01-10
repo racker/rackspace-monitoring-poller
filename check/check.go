@@ -57,6 +57,7 @@ import (
 	"errors"
 	log "github.com/Sirupsen/logrus"
 	protocheck "github.com/racker/rackspace-monitoring-poller/protocol/check"
+	"io"
 	"time"
 )
 
@@ -149,6 +150,16 @@ func (ch *CheckBase) Cancel() {
 
 func (ch *CheckBase) Done() <-chan struct{} {
 	return ch.context.Done()
+}
+
+func (ch *CheckBase) readLimit(conn io.Reader, limit int64) ([]byte, error) {
+	bytes := make([]byte, limit)
+	bio := io.LimitReader(conn, limit)
+	count, err := bio.Read(bytes)
+	if err != nil && err != io.EOF {
+		return nil, err
+	}
+	return bytes[:count], nil
 }
 
 func (ch *CheckBase) PrintDefaults() {

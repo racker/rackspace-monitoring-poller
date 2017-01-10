@@ -72,16 +72,6 @@ func (ch *TCPCheck) readLine(conn io.Reader) ([]byte, error) {
 	return line, nil
 }
 
-func (ch *TCPCheck) readLimit(conn io.Reader, limit int64) ([]byte, error) {
-	bytes := make([]byte, limit)
-	bio := io.LimitReader(conn, limit)
-	count, err := bio.Read(bytes)
-	if err != nil {
-		return nil, err
-	}
-	return bytes[:count], nil
-}
-
 func calculateTimeout(dialer *net.Dialer) time.Duration {
 	timeout := dialer.Timeout
 
@@ -153,6 +143,7 @@ func (ch *TCPCheck) Run() (*CheckResultSet, error) {
 	ctx := context.Background()
 	timeout := ch.GetTimeoutDuration()
 	nd := &net.Dialer{
+
 		Timeout: timeout,
 	}
 
