@@ -60,10 +60,6 @@ func NewHTTPCheck(base *CheckBase) Check {
 	return check
 }
 
-func (ch *HTTPCheck) parseTLS(cr *CheckResult, resp *http.Response) {
-	ch.AddTLSMetrics(cr, *resp.TLS)
-}
-
 func disableRedirects(req *http.Request, via []*http.Request) error {
 	return http.ErrUseLastResponse
 }
@@ -211,7 +207,7 @@ func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
 
 	// TLS
 	if resp.TLS != nil {
-		ch.parseTLS(cr, resp)
+		ch.AddTLSMetrics(cr, *resp.TLS)
 	}
 
 	// Status Line
