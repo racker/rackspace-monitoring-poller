@@ -19,22 +19,27 @@ package poller
 import (
 	"context"
 	"encoding/json"
-	log "github.com/Sirupsen/logrus"
-	"github.com/racker/rackspace-monitoring-poller/hostinfo"
-	"github.com/racker/rackspace-monitoring-poller/protocol"
 	"io"
 	"sync"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/racker/rackspace-monitoring-poller/hostinfo"
+	"github.com/racker/rackspace-monitoring-poller/protocol"
 )
 
+// CompletionFrame is a pointer to a request with a specified
+// method used for the request
 type CompletionFrame struct {
-	Id     uint64
+	ID     uint64
 	Method string
 }
 
-type Session struct {
+// EleSession implements Session interface
+// See Session for more information
+type EleSession struct {
 	// reference to the connection
-	connection *Connection
+	connection Connection
 
 	// Used to cancel all go routines
 	ctx    context.Context
@@ -59,11 +64,11 @@ type Session struct {
 	heartbeatInterval time.Duration
 }
 
-func newSession(ctx context.Context, connection *Connection) *Session {
-	session := &Session{
+func newSession(ctx context.Context, connection Connection) Session {
+	session := &EleSession{
 		connection:        connection,
-		enc:               json.NewEncoder(connection.conn),
-		dec:               json.NewDecoder(connection.conn),
+		enc:               json.NewEncoder(connection.GetConnection()),
+		dec:               json.NewDecoder(connection.GetConnection()),
 		seq:               1,
 		sendCh:            make(chan protocol.Frame, 128),
 		heartbeatInterval: time.Duration(40 * time.Second),
@@ -79,31 +84,37 @@ func newSession(ctx context.Context, connection *Connection) *Session {
 	return session
 }
 
-func (s *Session) Auth() {
+// Auth sends a handshake request with token, agent id, name,
+// and process version
+func (s *EleSession) Auth() {
 	cfg := s.connection.GetStream().GetConfig()
 	s.Send(protocol.NewHandshakeRequest(cfg))
 }
 
-func (s *Session) Send(msg protocol.Frame) {
+// Send method sets up the session id, endpoint, and source
+// and sends the request
+func (s *EleSession) Send(msg protocol.Frame) {
 	msg.SetId(&s.seq)
 	msg.SetTarget("endpoint")
-	msg.SetSource(s.connection.guid)
+	msg.SetSource(s.connection.GetGUID())
 	s.sendCh <- msg
 }
 
-func (s *Session) SendResponse(msg protocol.Frame) {
+func (s *EleSession) Respond(msg protocol.Frame) {
 	msg.SetTarget("endpoint")
-	msg.SetSource(s.connection.guid)
+	msg.SetSource(s.connection.GetGUID())
 	s.sendCh <- msg
 }
 
-func (s *Session) SetHeartbeatInterval(timeout uint64) {
+// SetHeartbeatInterval sets up session interval to use
+// for a request
+func (s *EleSession) SetHeartbeatInterval(timeout uint64) {
 	duration := time.Duration(timeout) * time.Millisecond
 	log.Debugf("setting heartbeat interval %v", duration)
 	s.heartbeatInterval = time.Duration(duration)
 }
 
-func (s *Session) getCompletionRequest(resp protocol.Frame) *CompletionFrame {
+func (s *EleSession) getCompletionRequest(resp protocol.Frame) *CompletionFrame {
 	s.completionsMu.Lock()
 	req, ok := s.completions[resp.GetId()]
 	if !ok {
@@ -115,7 +126,7 @@ func (s *Session) getCompletionRequest(resp protocol.Frame) *CompletionFrame {
 	return req
 }
 
-func (s *Session) handleResponse(resp *protocol.FrameMsg) {
+func (s *EleSession) handleResponse(resp *protocol.FrameMsg) {
 	if req := s.getCompletionRequest(resp); req != nil {
 		switch req.Method {
 		case protocol.MethodHandshakeHello:
@@ -131,16 +142,18 @@ func (s *Session) handleResponse(resp *protocol.FrameMsg) {
 	}
 }
 
-func (s *Session) GetReadDeadline() time.Time {
+// GetReadDeadline adds sessions's heartbeat interval to configured read deadline
+func (s *EleSession) GetReadDeadline() time.Time {
 	return s.connection.GetStream().GetConfig().GetReadDeadline(s.heartbeatInterval)
 }
 
-func (s *Session) GetWriteDeadline() time.Time {
+// GetWriteDeadline adds sessions's heartbeat interval to configured write deadline
+func (s *EleSession) GetWriteDeadline() time.Time {
 	return s.connection.GetStream().GetConfig().GetWriteDeadline(s.heartbeatInterval)
 }
 
 // runs it it's own go routine
-func (s *Session) read(ctx context.Context) {
+func (s *EleSession) read(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -163,7 +176,7 @@ done:
 }
 
 // runs it it's own go routine
-func (s *Session) handleFrame(f *protocol.FrameMsg) {
+func (s *EleSession) handleFrame(f *protocol.FrameMsg) {
 	js, _ := f.Encode()
 	log.Debugf("RECV: %s", js)
 	switch f.GetMethod() {
@@ -180,19 +193,19 @@ func (s *Session) handleFrame(f *protocol.FrameMsg) {
 	}
 }
 
-func (s *Session) handleHostInfo(f *protocol.FrameMsg) {
+func (s *EleSession) handleHostInfo(f *protocol.FrameMsg) {
 	if hinfo := hostinfo.NewHostInfo(f.GetRawParams()); hinfo != nil {
 		cr, err := hinfo.Run()
 		if err != nil {
 		} else {
 			response := hostinfo.NewHostInfoResponse(cr, f, hinfo)
-			s.SendResponse(response)
+			s.Respond(response)
 		}
 	}
 }
 
 // runs it it's own go routine
-func (s *Session) heartbeat(ctx context.Context) {
+func (s *EleSession) heartbeat(ctx context.Context) {
 	log.Debug("heartbeat starting")
 	for {
 		select {
@@ -206,15 +219,15 @@ done:
 	log.Debug("heartbeat exiting")
 }
 
-func (s *Session) addCompletion(frame protocol.Frame) {
-	cFrame := &CompletionFrame{Id: frame.GetId(), Method: frame.GetMethod()}
+func (s *EleSession) addCompletion(frame protocol.Frame) {
+	cFrame := &CompletionFrame{ID: frame.GetId(), Method: frame.GetMethod()}
 	s.completionsMu.Lock()
 	defer s.completionsMu.Unlock()
-	s.completions[cFrame.Id] = cFrame
+	s.completions[cFrame.ID] = cFrame
 }
 
 // runs it it's own go routine
-func (s *Session) send(ctx context.Context) {
+func (s *EleSession) send(ctx context.Context) {
 	log.Debug("send starting")
 	for {
 		select {
@@ -229,12 +242,12 @@ func (s *Session) send(ctx context.Context) {
 				goto done
 			}
 			log.Debugf("SEND: %s", data)
-			_, err = s.connection.conn.Write(data)
+			_, err = s.connection.(*EleConnection).GetConnection().Write(data)
 			if err != nil {
 				s.exitError(err)
 				goto done
 			}
-			_, err = s.connection.conn.Write([]byte{'\r', '\n'})
+			_, err = s.connection.GetConnection().Write([]byte{'\r', '\n'})
 			if err != nil {
 				s.exitError(err)
 				goto done
@@ -246,7 +259,7 @@ done:
 	s.Close()
 }
 
-func (s *Session) exitError(err error) {
+func (s *EleSession) exitError(err error) {
 	log.Warn("Session exiting with error", err)
 	s.shutdownLock.Lock()
 	if s.error == nil {
@@ -256,7 +269,8 @@ func (s *Session) exitError(err error) {
 	s.Close()
 }
 
-func (s *Session) Close() {
+// Close shuts down session's context and closes session
+func (s *EleSession) Close() {
 	s.shutdownLock.Lock()
 	if s.shutdown {
 		s.shutdownLock.Unlock()
@@ -267,6 +281,7 @@ func (s *Session) Close() {
 	s.cancel()
 }
 
-func (s *Session) Wait() {
+// Wait waits for the context to complete
+func (s *EleSession) Wait() {
 	<-s.ctx.Done()
 }

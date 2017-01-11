@@ -19,83 +19,14 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"net"
+	"strings"
+	"testing"
+
 	log "github.com/Sirupsen/logrus"
 	check "github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/utils"
-	"net"
-	"strings"
-	"sync"
-	"testing"
-	"time"
 )
-
-type BannerServer struct {
-	HandleConnection func(conn net.Conn)
-
-	waitGroup *sync.WaitGroup
-	ctx       context.Context
-	cancel    context.CancelFunc
-}
-
-func NewBannerServer() *BannerServer {
-	server := &BannerServer{}
-	server.waitGroup = &sync.WaitGroup{}
-	server.ctx, server.cancel = context.WithCancel(context.Background())
-	server.HandleConnection = server.serve
-	return server
-}
-
-func (s *BannerServer) Stop() {
-	s.cancel()
-	s.waitGroup.Wait()
-}
-
-func (s *BannerServer) Serve(listener net.Listener) {
-	conn, err := listener.Accept()
-	if nil != err {
-		if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
-			return
-		}
-	}
-	log.Debug(conn.RemoteAddr(), "connected")
-	s.waitGroup.Add(1)
-	go s.serve(conn)
-}
-
-func (s *BannerServer) ServeTLS(listener net.Listener) {
-	conn, err := listener.Accept()
-	if err != nil {
-		if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
-			return
-		}
-	}
-	s.waitGroup.Add(1)
-	go s.serve(conn)
-}
-
-func (s *BannerServer) serve(conn net.Conn) {
-	defer s.waitGroup.Done()
-	defer conn.Close()
-	for {
-		select {
-		case <-s.ctx.Done():
-			log.Debug("disconnecting", conn.RemoteAddr())
-			return
-		default:
-		}
-		buf := make([]byte, 4096)
-		conn.SetDeadline(time.Now().Add(1e9))
-		conn.Write([]byte("SSH-2.0-OpenSSH_7.3\n"))
-		conn.SetDeadline(time.Now().Add(1 * time.Second))
-		if _, err := conn.Read(buf); nil != err {
-			if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
-				continue
-			}
-			return
-		}
-		return
-	}
-}
 
 func ValidateMetrics(t *testing.T, metrics []string, cr *check.CheckResult) {
 	for _, metricName := range metrics {
@@ -113,7 +44,7 @@ func TestTCP_TLSRunSuccess(t *testing.T) {
 	listenPort := tlsListener.Addr().(*net.TCPAddr).Port
 
 	// Start TCP Server
-	server := NewBannerServer()
+	server := utils.NewBannerServer()
 	go server.ServeTLS(tlsListener)
 
 	// Create Check
@@ -184,7 +115,7 @@ func TestTCPRunSuccess(t *testing.T) {
 	listenPort := listener.Addr().(*net.TCPAddr).Port
 
 	// Start TCP Server
-	server := NewBannerServer()
+	server := utils.NewBannerServer()
 	go server.Serve(listener)
 
 	// Create Check

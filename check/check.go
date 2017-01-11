@@ -60,13 +60,15 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
+
+	"io"
+	"strings"
+	"time"
+
 	log "github.com/Sirupsen/logrus"
 	protocheck "github.com/racker/rackspace-monitoring-poller/protocol/check"
 	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	"github.com/racker/rackspace-monitoring-poller/utils"
-	"io"
-	"strings"
-	"time"
 )
 
 // Check is an interface required to be implemented by all checks.
@@ -87,6 +89,8 @@ type Check interface {
 	Done() <-chan struct{}
 	Run() (*CheckResultSet, error)
 }
+
+var WaitPeriodTimeMeasurement = time.Second
 
 // CheckBase provides an abstract implementation of the Check interface leaving Run to be implemented.
 type CheckBase struct {
@@ -149,7 +153,7 @@ func (ch *CheckBase) SetTimeout(timeout uint64) {
 }
 
 func (ch *CheckBase) GetWaitPeriod() time.Duration {
-	return time.Duration(ch.Period) * time.Second
+	return time.Duration(ch.Period) * WaitPeriodTimeMeasurement
 }
 
 func (ch *CheckBase) Cancel() {

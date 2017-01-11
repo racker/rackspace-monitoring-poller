@@ -18,48 +18,66 @@ package poller
 
 import (
 	"context"
+	"math/rand"
+	"time"
+
 	log "github.com/Sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/protocol"
-	"math/rand"
-	"time"
 )
 
-const (
-	CheckSpreadInMilliseconds = 30000
-)
-
-type Scheduler struct {
+// EleScheduler implements Scheduler interface.
+// See Scheduler for more information.
+type EleScheduler struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	zoneId string
+	zoneID string
 	checks map[string]check.Check
 	input  chan protocol.Frame
 
-	stream *ConnectionStream
+	stream ConnectionStream
 }
 
-func NewScheduler(zoneId string, stream *ConnectionStream) *Scheduler {
-	s := &Scheduler{
+// NewScheduler instantiates a new Scheduler.  It sets up checks,
+// context, and passed in zoneid
+func NewScheduler(zoneID string, stream ConnectionStream) Scheduler {
+	s := &EleScheduler{
 		checks: make(map[string]check.Check),
 		input:  make(chan protocol.Frame, 1024),
 		stream: stream,
-		zoneId: zoneId,
+		zoneID: zoneID,
 	}
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	return s
 }
 
-func (s *Scheduler) Input() chan protocol.Frame {
+// GetZoneID is a getter method to retrieve zone id
+func (s *EleScheduler) GetZoneID() string {
+	return s.zoneID
+}
+
+// GetContext is a getter method to retrieve cancelable context
+func (s *EleScheduler) GetContext() (ctx context.Context, cancel context.CancelFunc) {
+	return s.ctx, s.cancel
+}
+
+// GetChecks is a getter method to retrieve check map
+func (s *EleScheduler) GetChecks() map[string]check.Check {
+	return s.checks
+}
+
+// GetInput returns protocol.Frame channel
+func (s *EleScheduler) GetInput() chan protocol.Frame {
 	return s.input
 }
 
-func (s *Scheduler) Close() {
+// Close cancels the context and closes the connection
+func (s *EleScheduler) Close() {
 	s.cancel()
 }
 
-func (s *Scheduler) runCheck(ch check.Check) {
+func (s *EleScheduler) runCheck(ch check.Check) {
 	// Spread the checks out over 30 seconds
 	jitter := rand.Intn(CheckSpreadInMilliseconds) + 1
 
@@ -67,9 +85,8 @@ func (s *Scheduler) runCheck(ch check.Check) {
 		"check":      ch.GetId(),
 		"jitterMs":   jitter,
 		"waitPeriod": ch.GetWaitPeriod(),
-	}).Debug("Starting check")
+	}).Info("Starting check")
 	time.Sleep(time.Duration(jitter) * time.Millisecond)
-
 	for {
 		select {
 		case <-time.After(ch.GetWaitPeriod()):
@@ -80,24 +97,32 @@ func (s *Scheduler) runCheck(ch check.Check) {
 				s.SendMetrics(crs)
 			}
 		case <-ch.Done(): // session cancellation is propagated since check context is child of session context
-			log.WithField("check", ch.GetId()).Debug("Check or session has been cancelled")
+			log.WithField("check", ch.GetId()).Info("Check or session has been cancelled")
 			return
 		}
 	}
 }
 
-func (s *Scheduler) SendMetrics(crs *check.CheckResultSet) {
+// SendMetrics sends metrics passed in crs parameter via the stream
+func (s *EleScheduler) SendMetrics(crs *check.CheckResultSet) {
 	s.stream.SendMetrics(crs)
 }
 
-func (s *Scheduler) Register(ch check.Check) {
+// Register registers the passed in ch check in the checks list
+func (s *EleScheduler) Register(ch check.Check) error {
+	if ch == nil {
+		return ErrCheckEmpty
+	}
 	s.checks[ch.GetId()] = ch
+	return nil
 }
 
-func (s *Scheduler) runFrameConsumer() {
+// RunFrameConsumer method runs the check.  It sets up the new check
+// and sends it.
+func (s *EleScheduler) RunFrameConsumer() {
 	for {
 		select {
-		case f := <-s.input:
+		case f := <-s.GetInput():
 
 			// TODO Later this will probably need to handle check cancellations in which case it can call ch.Cancel()
 
