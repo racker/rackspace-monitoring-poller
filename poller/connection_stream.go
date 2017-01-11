@@ -119,7 +119,7 @@ func (cs *EleConnectionStream) GetSchedulers() map[string]Scheduler {
 
 // SendMetrics sends a CheckResultSet via the first connection it can
 // retrieve in the connection list
-func (cs *EleConnectionStream) SendMetrics(crs *check.CheckResultSet) error {
+func (cs *EleConnectionStream) SendMetrics(crs *check.ResultSet) error {
 	if cs.GetConnections() == nil {
 		return ErrNoConnections
 	}

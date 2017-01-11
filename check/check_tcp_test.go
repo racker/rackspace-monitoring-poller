@@ -28,7 +28,7 @@ import (
 	"github.com/racker/rackspace-monitoring-poller/utils"
 )
 
-func ValidateMetrics(t *testing.T, metrics []string, cr *check.CheckResult) {
+func ValidateMetrics(t *testing.T, metrics []string, cr *check.Result) {
 	for _, metricName := range metrics {
 		if metric := cr.GetMetric(metricName); metric == nil {
 			log.Fatal("metric " + metricName + " does not exist")
@@ -191,7 +191,7 @@ func TestTCPRunFailureClosedPort(t *testing.T) {
 
 	// Validate Metrics
 	//   - will be unavailable
-	if crs.Available == true {
+	if crs.Available {
 		t.Fatal("status must be not success")
 	}
 

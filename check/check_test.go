@@ -29,9 +29,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCheckBase_GetTargetIP(t *testing.T) {
+func TestBase_GetTargetIP(t *testing.T) {
 
-	cb := &check.CheckBase{}
+	cb := &check.Base{}
 
 	cb.IpAddresses = map[string]string{
 		"host1": "192.168.0.1",
@@ -44,9 +44,9 @@ func TestCheckBase_GetTargetIP(t *testing.T) {
 	assert.Equal(t, "192.168.0.1", result)
 }
 
-func TestCheckBase_GetTargetIP_mismatch(t *testing.T) {
+func TestBase_GetTargetIP_mismatch(t *testing.T) {
 
-	cb := &check.CheckBase{}
+	cb := &check.Base{}
 
 	cb.IpAddresses = map[string]string{
 		"host1": "192.168.0.1",
@@ -58,15 +58,15 @@ func TestCheckBase_GetTargetIP_mismatch(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestCheckBase_GetWaitPeriod(t *testing.T) {
-	cb := &check.CheckBase{}
+func TestBase_GetWaitPeriod(t *testing.T) {
+	cb := &check.Base{}
 
 	cb.Period = 5
 
 	assert.Equal(t, 5*time.Second, cb.GetWaitPeriod())
 }
 
-func TestCheckBase_Cancel(t *testing.T) {
+func TestBase_Cancel(t *testing.T) {
 
 	root := context.Background()
 	cancelCtx, cancelFunc := context.WithCancel(root)

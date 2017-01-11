@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-// HTTP Check
+// Package check for HTTP
 package check
 
 import (
@@ -22,10 +22,6 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	protocol "github.com/racker/rackspace-monitoring-poller/protocol/check"
-	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
-	"github.com/racker/rackspace-monitoring-poller/utils"
 	"net"
 	"net/http"
 	"net/http/httptrace"
@@ -33,27 +29,32 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	log "github.com/Sirupsen/logrus"
+	protocol "github.com/racker/rackspace-monitoring-poller/protocol/check"
+	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
+	"github.com/racker/rackspace-monitoring-poller/utils"
 )
 
 var (
-	// MaxHttpResponseBodyLength Maxiumum Allowed Body Length
-	MaxHttpResponseBodyLength = int64(512 * 1024)
+	// MaxHTTPResponseBodyLength Maxiumum Allowed Body Length
+	MaxHTTPResponseBodyLength = int64(512 * 1024)
 	// UserAgent the header value to send for the user agent
 	UserAgent = "Rackspace Monitoring Poller/1.0 (https://monitoring.api.rackspacecloud.com/)"
 )
 
 // HTTPCheck conveys HTTP checks
 type HTTPCheck struct {
-	CheckBase
+	Base
 	protocol.HTTPCheckDetails
 }
 
-// Constructor for an HTTP Check
-func NewHTTPCheck(base *CheckBase) Check {
-	check := &HTTPCheck{CheckBase: *base}
+// NewHTTPCheck - Constructor for an HTTP Check
+func NewHTTPCheck(base *Base) Check {
+	check := &HTTPCheck{Base: *base}
 	err := json.Unmarshal(*base.RawDetails, &check.Details)
 	if err != nil {
-		log.Error("Error unmarshalling checkbase")
+		log.Error("Error unmarshalling base")
 		return nil
 	}
 	check.PrintDefaults()
@@ -64,7 +65,10 @@ func disableRedirects(req *http.Request, via []*http.Request) error {
 	return http.ErrUseLastResponse
 }
 
-func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
+// Run method implements Check.Run method for HTTP
+// please see Check interface for more information
+func (ch *HTTPCheck) Run() (*ResultSet, error) {
+	// TODO: refactor.  High cyclomatic complexity (21)
 	log.WithFields(log.Fields{
 		"type": ch.CheckType,
 		"id":   ch.Id,
@@ -74,8 +78,8 @@ func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
 	defer cancel()
 
 	sl := utils.NewStatusLine()
-	cr := NewCheckResult()
-	crs := NewCheckResultSet(ch, cr)
+	cr := NewResult()
+	crs := NewResultSet(ch, cr)
 	starttime := utils.NowTimestampMillis()
 
 	// Parse URL and Replace Host with IP
@@ -155,7 +159,7 @@ func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
 	defer resp.Body.Close()
 
 	// Read Body
-	body, err := ch.readLimit(resp.Body, MaxHttpResponseBodyLength)
+	body, err := ch.readLimit(resp.Body, MaxHTTPResponseBodyLength)
 	if err != nil {
 		crs.SetStatus(err.Error())
 		crs.SetStateUnavailable()
@@ -194,7 +198,7 @@ func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
 	}
 
 	truncated := resp.ContentLength - int64(len(body))
-	codeStr := strconv.FormatInt(int64(resp.StatusCode), 10)
+	codeStr := strconv.Itoa(resp.StatusCode)
 
 	cr.AddMetric(metric.NewMetric("code", "", metric.MetricString, codeStr, ""))
 	cr.AddMetric(metric.NewMetric("duration", "", metric.MetricNumber, endtime-starttime, "milliseconds"))
@@ -208,7 +212,7 @@ func (ch *HTTPCheck) Run() (*CheckResultSet, error) {
 	// TLS
 	if resp.TLS != nil {
 		if metrics, err := ch.AddTLSMetrics(cr, *resp.TLS); err == nil {
-			if metrics.Verified == false {
+			if !metrics.Verified {
 				sl.AddOption("sslerror")
 			}
 		}

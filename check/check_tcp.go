@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-// TCP Check
+// Package check for TCP
 package check
 
 import (
@@ -22,29 +22,34 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
-	log "github.com/Sirupsen/logrus"
-	protocol "github.com/racker/rackspace-monitoring-poller/protocol/check"
-	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
-	"github.com/racker/rackspace-monitoring-poller/utils"
 	"io"
 	"net"
 	"regexp"
 	"strconv"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
+	protocol "github.com/racker/rackspace-monitoring-poller/protocol/check"
+	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
+	"github.com/racker/rackspace-monitoring-poller/utils"
 )
 
 const (
+	// MaxTCPBannerLength sets the maximum tcp banner lines
 	MaxTCPBannerLength = int(80)
-	MaxTCPBodyLength   = int64(1024)
+	// MaxTCPBodyLength sets the maximum tcp request body
+	MaxTCPBodyLength = int64(1024)
 )
 
+// TCPCheck conveys TCP checks
 type TCPCheck struct {
-	CheckBase
+	Base
 	protocol.TCPCheckDetails
 }
 
-func NewTCPCheck(base *CheckBase) Check {
-	check := &TCPCheck{CheckBase: *base}
+// NewTCPCheck - Constructor for an TCP Check
+func NewTCPCheck(base *Base) Check {
+	check := &TCPCheck{Base: *base}
 	err := json.Unmarshal(*base.RawDetails, &check.Details)
 	if err != nil {
 		log.Error("Error unmarshalling TCPCheck")
@@ -54,6 +59,8 @@ func NewTCPCheck(base *CheckBase) Check {
 	return check
 }
 
+// GenerateAddress function creates an address
+// from check port and target ip
 func (ch *TCPCheck) GenerateAddress() (string, error) {
 	portStr := strconv.FormatUint(ch.Details.Port, 10)
 	ip, err := ch.GetTargetIP()
@@ -121,13 +128,16 @@ func dialContextWithDialer(ctx context.Context, dialer *net.Dialer, network, add
 	}
 }
 
-func (ch *TCPCheck) Run() (*CheckResultSet, error) {
+// Run method implements Check.Run method for TCP
+// please see Check interface for more information
+func (ch *TCPCheck) Run() (*ResultSet, error) {
+	// TODO: refactor - cyclomatic complexity is high (16)
 	var conn net.Conn
 	var err error
 	var endtime int64
 
-	cr := NewCheckResult()
-	crs := NewCheckResultSet(ch, cr)
+	cr := NewResult()
+	crs := NewResultSet(ch, cr)
 	starttime := utils.NowTimestampMillis()
 	addr, _ := ch.GenerateAddress()
 	log.WithFields(log.Fields{
@@ -166,6 +176,9 @@ func (ch *TCPCheck) Run() (*CheckResultSet, error) {
 
 	// Send Body
 	if len(ch.Details.SendBody) > 0 {
+		// TODO: this can throw an exception and stop the flow
+		// do we want to test for error and log/continue or break
+		// and return HTTP 500?
 		io.WriteString(conn, ch.Details.SendBody)
 	}
 
@@ -221,6 +234,9 @@ func (ch *TCPCheck) Run() (*CheckResultSet, error) {
 	// TLS Metrics
 	if ch.Details.UseSSL {
 		tlsConn := conn.(*tls.Conn)
+		// TODO: this can throw an exception and stop the flow
+		// do we want to test for error and log/continue or break
+		// and return HTTP 500?
 		ch.AddTLSMetrics(cr, tlsConn.ConnectionState())
 	}
 

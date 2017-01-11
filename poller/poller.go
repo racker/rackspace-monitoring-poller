@@ -56,7 +56,7 @@ type ConnectionStream interface {
 	StopNotify() chan struct{}
 	GetSchedulers() map[string]Scheduler
 	GetContext() context.Context
-	SendMetrics(crs *check.CheckResultSet) error
+	SendMetrics(crs *check.ResultSet) error
 	Connect()
 	WaitCh() <-chan struct{}
 	GetConnections() map[string]Connection
@@ -95,7 +95,7 @@ type Session interface {
 type Scheduler interface {
 	GetInput() chan protocol.Frame
 	Close()
-	SendMetrics(crs *check.CheckResultSet)
+	SendMetrics(crs *check.ResultSet)
 	Register(ch check.Check) error
 	RunFrameConsumer()
 	GetZoneID() string

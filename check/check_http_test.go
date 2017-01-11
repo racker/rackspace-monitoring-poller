@@ -66,7 +66,7 @@ func TestHTTPSuccess(t *testing.T) {
 	}
 
 	// Validate Metrics
-	if crs.Available == false {
+	if !crs.Available {
 		t.Fatal("availability should be true")
 	}
 
@@ -108,7 +108,7 @@ func TestHTTPSuccessIncludeBodyAndHeaders(t *testing.T) {
 	}
 
 	// Validate Metrics
-	if crs.Available == false {
+	if !crs.Available {
 		t.Fatal("availability should be true")
 	}
 
@@ -160,7 +160,7 @@ func TestHTTPSuccessBodyMatch(t *testing.T) {
 	}
 
 	// Validate Metrics
-	if crs.Available == false {
+	if !crs.Available {
 		t.Fatal("availability should be true")
 	}
 
@@ -224,7 +224,7 @@ func TestHTTPClosed(t *testing.T) {
 	}
 
 	// Validate Metrics
-	if crs.Available == true {
+	if crs.Available {
 		t.Fatal("availability should be false")
 	}
 }
@@ -262,7 +262,7 @@ func TestHTTPTimeout(t *testing.T) {
 	}
 
 	// Validate Metrics
-	if crs.Available == true {
+	if crs.Available {
 		t.Fatal("availability should be false")
 	}
 
@@ -316,7 +316,7 @@ func TestHTTP_TLS(t *testing.T) {
 	// Run check
 	crs, err := check.Run()
 	if err != nil {
-		t.Fatal("should not have errored; %s", err.Error())
+		t.Fatalf("should not have errored; %s", err.Error())
 	}
 
 	// Validate

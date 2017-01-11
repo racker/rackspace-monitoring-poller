@@ -35,7 +35,7 @@ func NewHostInfoCpu(base *hostinfo.HostInfoBase) HostInfo {
 	return &HostInfoCpu{HostInfoBase: *base}
 }
 
-func (*HostInfoCpu) Run() (*check.CheckResultSet, error) {
+func (*HostInfoCpu) Run() (*check.ResultSet, error) {
 	log.Println("Running CPU")
 	stats, err := cpu.Times(true)
 	if err != nil {
@@ -46,9 +46,9 @@ func (*HostInfoCpu) Run() (*check.CheckResultSet, error) {
 		return nil, err
 	}
 	coreCount, _ := cpu.Counts(true)
-	crs := check.NewCheckResultSet(nil, nil)
+	crs := check.NewResultSet(nil, nil)
 	for i, cpu := range info {
-		cr := check.NewCheckResult()
+		cr := check.NewResult()
 		cr.AddMetrics(
 			metric.NewMetric("name", "", metric.MetricString, fmt.Sprintf("cpu.%d", i), ""),
 			metric.NewMetric("model", "", metric.MetricString, cpu.ModelName, ""),
@@ -71,7 +71,7 @@ func (*HostInfoCpu) Run() (*check.CheckResultSet, error) {
 	return crs, nil
 }
 
-func (*HostInfoCpu) BuildResult(crs *check.CheckResultSet) interface{} {
+func (*HostInfoCpu) BuildResult(crs *check.ResultSet) interface{} {
 	result := &hostinfo.HostInfoCpuResult{}
 	result.Timestamp = utils.NowTimestampMillis()
 	if crs == nil {

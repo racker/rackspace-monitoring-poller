@@ -68,7 +68,7 @@ func TestEleScheduler_SendMetrics(t *testing.T) {
 	mockStream := poller.NewMockConnectionStream(mockCtrl)
 	schedule := poller.NewScheduler("pzAwesome", mockStream)
 	mockStream.EXPECT().SendMetrics(gomock.Any()).Times(1)
-	schedule.SendMetrics(&check.CheckResultSet{})
+	schedule.SendMetrics(&check.ResultSet{})
 }
 
 func TestEleScheduler_Register(t *testing.T) {
@@ -119,7 +119,7 @@ func TestEleScheduler_Register(t *testing.T) {
 				for checkId, _ := range s.GetChecks() {
 					checkList = append(checkList, checkId)
 				}
-				assert.Contains(t, checkList, tt.ch.GetId())
+				assert.Contains(t, checkList, tt.ch.GetID())
 			}
 		})
 	}

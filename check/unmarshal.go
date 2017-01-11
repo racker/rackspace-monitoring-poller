@@ -22,10 +22,12 @@ import (
 	"log"
 )
 
-// Given a received check request, this will unmarshal the request into one of the known polymorphic types.
+// NewCheck - Given a received check request, this will unmarshal the request into one of the known polymorphic types.
 // This method needs to be updated to add to the known types.
 func NewCheck(rawParams json.RawMessage, checkCtx context.Context, cancel context.CancelFunc) Check {
-	checkBase := &CheckBase{
+	// TODO: there's a lint check that fails because context is not the first parameter specified.
+	// leaving it to discussion on whether that's the pattern we want to go towards
+	checkBase := &Base{
 		context: checkCtx,
 		cancel:  cancel,
 	}

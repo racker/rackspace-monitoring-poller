@@ -38,13 +38,13 @@ func NewHostInfoFilesystem(base *hostinfo.HostInfoBase) HostInfo {
 	return &HostInfoFilesystem{HostInfoBase: *base}
 }
 
-func (*HostInfoFilesystem) Run() (*check.CheckResultSet, error) {
+func (*HostInfoFilesystem) Run() (*check.ResultSet, error) {
 	log.Debug("Running Filesystem")
-	crs := check.NewCheckResultSet(nil, nil)
+	crs := check.NewResultSet(nil, nil)
 	partitions, _ := disk.Partitions(false)
 	for _, part := range partitions {
 		if usage, err := disk.Usage(part.Mountpoint); err == nil {
-			cr := check.NewCheckResult()
+			cr := check.NewResult()
 			cr.AddMetrics(
 				metric.NewMetric("dir_name", "", metric.MetricString, part.Mountpoint, ""),
 				metric.NewMetric("dev_name", "", metric.MetricString, part.Device, ""),
@@ -64,7 +64,7 @@ func (*HostInfoFilesystem) Run() (*check.CheckResultSet, error) {
 	return crs, nil
 }
 
-func (*HostInfoFilesystem) BuildResult(crs *check.CheckResultSet) interface{} {
+func (*HostInfoFilesystem) BuildResult(crs *check.ResultSet) interface{} {
 	result := &hostinfo.HostInfoFilesystemResult{}
 	result.Timestamp = utils.NowTimestampMillis()
 	if crs == nil {

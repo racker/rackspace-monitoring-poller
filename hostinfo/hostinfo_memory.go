@@ -38,7 +38,7 @@ func NewHostInfoMemory(base *hostinfo.HostInfoBase) HostInfo {
 	return &HostInfoMemory{HostInfoBase: *base}
 }
 
-func (*HostInfoMemory) Run() (*check.CheckResultSet, error) {
+func (*HostInfoMemory) Run() (*check.ResultSet, error) {
 	log.Debug("Running Memory")
 	v, err := mem.VirtualMemory()
 	if err != nil {
@@ -48,8 +48,8 @@ func (*HostInfoMemory) Run() (*check.CheckResultSet, error) {
 	if err != nil {
 		return nil, err
 	}
-	crs := check.NewCheckResultSet(nil, nil)
-	cr := check.NewCheckResult()
+	crs := check.NewResultSet(nil, nil)
+	cr := check.NewResult()
 	cr.AddMetrics(
 		metric.NewMetric("UsedPercentage", "", metric.MetricFloat, v.UsedPercent, ""),
 		metric.NewMetric("Free", "", metric.MetricNumber, v.Free, ""),
@@ -64,7 +64,7 @@ func (*HostInfoMemory) Run() (*check.CheckResultSet, error) {
 	return crs, nil
 }
 
-func (hi *HostInfoMemory) BuildResult(crs *check.CheckResultSet) interface{} {
+func (hi *HostInfoMemory) BuildResult(crs *check.ResultSet) interface{} {
 	result := &hostinfo.HostInfoMemoryResult{}
 	result.Timestamp = utils.NowTimestampMillis()
 	if crs == nil {

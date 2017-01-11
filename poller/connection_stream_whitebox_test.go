@@ -156,7 +156,7 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 		conns       map[string]Connection
 		wg          sync.WaitGroup
 		schedulers  map[string]Scheduler
-		crs         *check.CheckResultSet
+		crs         *check.ResultSet
 		expectedErr bool
 	}{
 		{
@@ -168,7 +168,7 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 					session: mockSession,
 				},
 			},
-			crs: &check.CheckResultSet{
+			crs: &check.ResultSet{
 				Check: check.NewCheck([]byte(`{
 	  "id":"chPzAHTTP",
 	  "zone_id":"pzA",
@@ -197,7 +197,7 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 					session: mockSession,
 				},
 			},
-			crs: &check.CheckResultSet{
+			crs: &check.ResultSet{
 				Check: check.NewCheck([]byte(`{
 	  "id":"chPzAHTTP",
 	  "zone_id":"pzA",
@@ -219,7 +219,7 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 			ctx:    context.Background(),
 			config: &config.Config{},
 			conns:  map[string]Connection{},
-			crs: &check.CheckResultSet{
+			crs: &check.ResultSet{
 				Check: check.NewCheck([]byte(`{
 	  "id":"chPzAHTTP",
 	  "zone_id":"pzA",
@@ -242,7 +242,7 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 			config:      &config.Config{},
 			conns:       nil,
 			expectedErr: true,
-			crs: &check.CheckResultSet{
+			crs: &check.ResultSet{
 				Check: check.NewCheck([]byte(`{
 	  "id":"chPzAHTTP",
 	  "zone_id":"pzA",
