@@ -125,7 +125,7 @@ func TestEleScheduler_Register(t *testing.T) {
 }
 
 func TestEleScheduler_RunFrameConsumer(t *testing.T) {
-	t.Skipf("Skipped for now due to metrics being called twice.  Need to validate that's not a bug")
+	//t.Skipf("Skipped for now due to metrics being called twice.  Need to validate that's not a bug")
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockStream := poller.NewMockConnectionStream(mockCtrl)
@@ -144,7 +144,8 @@ func TestEleScheduler_RunFrameConsumer(t *testing.T) {
 	// set up jitter
 	poller.CheckSpreadInMilliseconds = 100
 
-	go schedule.RunFrameConsumer()
+	// NOTE: period is set to 90 seconds so that the check
+	// only runs once in the jitter period (jitter is set to 100 ms)
 	schedule.GetInput() <- &protocol.FrameMsg{
 		FrameMsgCommon: protocol.FrameMsgCommon{
 			Id: 123,
@@ -156,7 +157,7 @@ func TestEleScheduler_RunFrameConsumer(t *testing.T) {
 	  "details":{"port":0,"ssl":false},
 	  "type":"remote.tcp",
 	  "timeout":1,
-	  "period":30,
+	  "period":90,
 	  "ip_addresses":{"default":"127.0.0.1"},
 	  "target_alias":"default",
 	  "target_hostname":"",
@@ -164,6 +165,8 @@ func TestEleScheduler_RunFrameConsumer(t *testing.T) {
 	  "disabled":true
 	  }`),
 	}
+	go schedule.RunFrameConsumer()
+
 	// wait for jitter amount of time (and add 100 milliseconds to catch the other close)
 	time.Sleep(200 * time.Millisecond)
 

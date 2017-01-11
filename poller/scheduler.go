@@ -87,7 +87,6 @@ func (s *EleScheduler) runCheck(ch check.Check) {
 		"waitPeriod": ch.GetWaitPeriod(),
 	}).Info("Starting check")
 	time.Sleep(time.Duration(jitter) * time.Millisecond)
-	//TODO: looks like we're sending out 2 checks
 	for {
 		select {
 		case <-time.After(ch.GetWaitPeriod()):
@@ -98,7 +97,6 @@ func (s *EleScheduler) runCheck(ch check.Check) {
 				s.SendMetrics(crs)
 			}
 		case <-ch.Done(): // session cancellation is propagated since check context is child of session context
-			// TODO: seems like this isn't called every time when I try to close the context
 			log.WithField("check", ch.GetId()).Info("Check or session has been cancelled")
 			return
 		}
