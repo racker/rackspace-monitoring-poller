@@ -125,7 +125,6 @@ func TestEleScheduler_Register(t *testing.T) {
 }
 
 func TestEleScheduler_RunFrameConsumer(t *testing.T) {
-	//t.Skipf("Skipped for now due to metrics being called twice.  Need to validate that's not a bug")
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockStream := poller.NewMockConnectionStream(mockCtrl)
@@ -157,7 +156,7 @@ func TestEleScheduler_RunFrameConsumer(t *testing.T) {
 	  "details":{"port":0,"ssl":false},
 	  "type":"remote.tcp",
 	  "timeout":1,
-	  "period":90,
+	  "period":120,
 	  "ip_addresses":{"default":"127.0.0.1"},
 	  "target_alias":"default",
 	  "target_hostname":"",
