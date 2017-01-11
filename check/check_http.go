@@ -211,10 +211,9 @@ func (ch *HTTPCheck) Run() (*ResultSet, error) {
 
 	// TLS
 	if resp.TLS != nil {
-		if metrics, err := ch.AddTLSMetrics(cr, *resp.TLS); err == nil {
-			if !metrics.Verified {
-				sl.AddOption("sslerror")
-			}
+		metrics := ch.AddTLSMetrics(cr, *resp.TLS)
+		if !metrics.Verified {
+			sl.AddOption("sslerror")
 		}
 	}
 

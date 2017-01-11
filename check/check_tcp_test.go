@@ -62,7 +62,7 @@ func TestTCP_TLSRunSuccess(t *testing.T) {
 	  "target_resolver":"",
 	  "disabled":false
 	  }`, listenPort)
-	check := check.NewCheck([]byte(checkData), context.Background(), func() {})
+	check := check.NewCheck(context.Background(), []byte(checkData), func() {})
 
 	// Run check
 	crs, err := check.Run()
@@ -133,7 +133,7 @@ func TestTCPRunSuccess(t *testing.T) {
 	  "target_resolver":"",
 	  "disabled":false
 	  }`, listenPort)
-	check := check.NewCheck([]byte(checkData), context.Background(), func() {})
+	check := check.NewCheck(context.Background(), []byte(checkData), func() {})
 
 	// Run check
 	crs, err := check.Run()
@@ -181,7 +181,7 @@ func TestTCPRunFailureClosedPort(t *testing.T) {
 	  "target_resolver":"",
 	  "disabled":false
 	  }`, listenPort)
-	check := check.NewCheck([]byte(checkData), context.Background(), func() {})
+	check := check.NewCheck(context.Background(), []byte(checkData), func() {})
 
 	// Run check
 	crs, err := check.Run()

@@ -55,22 +55,22 @@ type States struct {
 	Status string
 }
 
-// SetStateAvailable is a setter method that updates state to available
+// SetStateAvailable updates state to available
 func (st *States) SetStateAvailable() {
 	st.State = StateAvailable
 }
 
-// SetStateUnavailable is a setter method that updates state to unavailable
+// SetStateUnavailable updates state to unavailable
 func (st *States) SetStateUnavailable() {
 	st.State = StateUnavailable
 }
 
-// SetStatusUnknown is a setter method that updates status to unknown
+// SetStatusUnknown updates status to unknown
 func (st *States) SetStatusUnknown() {
 	st.Status = StatusUnknownError
 }
 
-// SetStatusSuccess is a setter method that updates status to success
+// SetStatusSuccess updates status to success
 func (st *States) SetStatusSuccess() {
 	st.Status = StatusSuccess
 }

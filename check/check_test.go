@@ -71,7 +71,7 @@ func TestBase_Cancel(t *testing.T) {
 	root := context.Background()
 	cancelCtx, cancelFunc := context.WithCancel(root)
 
-	ch := check.NewCheck(json.RawMessage(`{
+	ch := check.NewCheck(cancelCtx, json.RawMessage(`{
 	  "id":"chPzATCP",
 	  "zone_id":"pzA",
 	  "entity_id":"enAAAAIPV4",
@@ -84,7 +84,7 @@ func TestBase_Cancel(t *testing.T) {
 	  "target_hostname":"",
 	  "target_resolver":"",
 	  "disabled":true
-	  }`), cancelCtx, cancelFunc)
+	  }`), cancelFunc)
 	require.NotNil(t, ch)
 
 	// I know, looks weird, but pre-cancel it since channels are cool like that

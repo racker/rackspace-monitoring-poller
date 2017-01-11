@@ -19,14 +19,15 @@ package check_test
 import (
 	"context"
 	"fmt"
+	"testing"
+	"time"
+
 	"github.com/golang/mock/gomock"
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	"github.com/sparrc/go-ping"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 const checkDataTemplate = `{
@@ -57,7 +58,7 @@ func TestPingCheck_ConfirmType(t *testing.T) {
 	const timeout = 15
 
 	checkData := fmt.Sprintf(checkDataTemplate, count, timeout)
-	c := check.NewCheck([]byte(checkData), context.Background(), func() {})
+	c := check.NewCheck(context.Background(), []byte(checkData), func() {})
 
 	assert.IsType(t, &check.PingCheck{}, c)
 }
@@ -80,7 +81,7 @@ func TestPingCheck_PingerConfigured(t *testing.T) {
 	mock.EXPECT().Statistics().Return(statistics)
 
 	checkData := fmt.Sprintf(checkDataTemplate, count, timeout)
-	c := check.NewCheck([]byte(checkData), context.Background(), func() {})
+	c := check.NewCheck(context.Background(), []byte(checkData), func() {})
 
 	// Run check since need to induce pinger usage
 	crs, err := c.Run()
@@ -112,7 +113,7 @@ func TestPingCheck_Success(t *testing.T) {
 	mock.EXPECT().Statistics().Return(statistics)
 
 	checkData := fmt.Sprintf(checkDataTemplate, count, timeout)
-	c := check.NewCheck([]byte(checkData), context.Background(), func() {})
+	c := check.NewCheck(context.Background(), []byte(checkData), func() {})
 
 	// Run check
 	crs, err := c.Run()
@@ -153,7 +154,7 @@ func TestPingCheck_Drops(t *testing.T) {
 	mock.EXPECT().Statistics().Return(statistics)
 
 	checkData := fmt.Sprintf(checkDataTemplate, count, timeout)
-	c := check.NewCheck([]byte(checkData), context.Background(), func() {})
+	c := check.NewCheck(context.Background(), []byte(checkData), func() {})
 
 	assert.IsType(t, &check.PingCheck{}, c)
 
@@ -195,7 +196,7 @@ func TestPingCheck_NoPermissionToPing(t *testing.T) {
 	mock.EXPECT().Statistics().Return(statistics)
 
 	checkData := fmt.Sprintf(checkDataTemplate, count, timeout)
-	c := check.NewCheck([]byte(checkData), context.Background(), func() {})
+	c := check.NewCheck(context.Background(), []byte(checkData), func() {})
 
 	assert.IsType(t, &check.PingCheck{}, c)
 

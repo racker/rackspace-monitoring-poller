@@ -52,23 +52,22 @@ func NewConnection(address string, guid string, stream ConnectionStream) Connect
 	}
 }
 
-// GetGUID is a getter method to retrieve connection's guid
+// GetGUID retrieves connection's guid
 func (conn *EleConnection) GetGUID() string {
 	return conn.guid
 }
 
-// GetConnection is a getter method for the ReadWriteCloser used
-// for streaming data
+// GetConnection returns ReadWriteCloser used for streaming data
 func (conn *EleConnection) GetConnection() io.ReadWriteCloser {
 	return conn.conn
 }
 
-// GetStream is a getter method to retrieve connection's stream
+// GetStream retrieves connection's stream
 func (conn *EleConnection) GetStream() ConnectionStream {
 	return conn.stream
 }
 
-// GetSession is a getter method to retrieve connection's session
+// GetSession retrieves connection's session
 func (conn *EleConnection) GetSession() Session {
 	return conn.session
 }

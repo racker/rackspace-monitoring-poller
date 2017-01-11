@@ -179,7 +179,12 @@ func (ch *TCPCheck) Run() (*ResultSet, error) {
 		// TODO: this can throw an exception and stop the flow
 		// do we want to test for error and log/continue or break
 		// and return HTTP 500?
-		io.WriteString(conn, ch.Details.SendBody)
+		_, err := io.WriteString(conn, ch.Details.SendBody)
+		if err != nil {
+			crs.SetStatus(err.Error())
+			crs.SetStateUnavailable()
+			return crs, nil
+		}
 	}
 
 	// Banner Match
@@ -234,9 +239,6 @@ func (ch *TCPCheck) Run() (*ResultSet, error) {
 	// TLS Metrics
 	if ch.Details.UseSSL {
 		tlsConn := conn.(*tls.Conn)
-		// TODO: this can throw an exception and stop the flow
-		// do we want to test for error and log/continue or break
-		// and return HTTP 500?
 		ch.AddTLSMetrics(cr, tlsConn.ConnectionState())
 	}
 

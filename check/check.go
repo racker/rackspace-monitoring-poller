@@ -119,44 +119,44 @@ func (ch *Base) GetTargetIP() (string, error) {
 
 }
 
-// GetID is a getter method that returns check's id
+// GetID  returns check's id
 func (ch *Base) GetID() string {
 	return ch.Id
 }
 
-// SetID is a setter method that sets check's id to provided id
+// SetID sets check's id to provided id
 func (ch *Base) SetID(id string) {
 	ch.Id = id
 }
 
-// GetCheckType is a getter method that returns check's type
+// GetCheckType returns check's type
 func (ch *Base) GetCheckType() string {
 	return ch.CheckType
 }
 
-// SetCheckType is a setter method that sets check's checktype to
+// SetCheckType sets check's checktype to
 // to provided check type
 func (ch *Base) SetCheckType(checkType string) {
 	ch.CheckType = checkType
 }
 
-// GetPeriod is a getter method that returns check's period
+// GetPeriod returns check's period
 func (ch *Base) GetPeriod() uint64 {
 	return ch.Period
 }
 
-// SetPeriod is a setter method that sets check's period to
+// SetPeriod sets check's period to
 // to provided period
 func (ch *Base) SetPeriod(period uint64) {
 	ch.Period = period
 }
 
-// GetEntityID is a getter method that returns check's entity id
+// GetEntityID  returns check's entity id
 func (ch *Base) GetEntityID() string {
 	return ch.EntityId
 }
 
-// GetTimeout is a getter method that returns check's timeout
+// GetTimeout returns check's timeout
 func (ch *Base) GetTimeout() uint64 {
 	return ch.Timeout
 }
@@ -166,13 +166,12 @@ func (ch *Base) SetTimeout(timeout uint64) {
 
 }
 
-// GetTimeoutDuration is a getter method that returns check's timeout
-// in seconds
+// GetTimeoutDuration returns check's timeout in seconds
 func (ch *Base) GetTimeoutDuration() time.Duration {
 	return time.Duration(ch.Timeout) * time.Second
 }
 
-// GetWaitPeriod is a getter method that return's check's period in
+// GetWaitPeriod returns check's period in
 // provided time measurements.  Defaulted to seconds
 func (ch *Base) GetWaitPeriod() time.Duration {
 	return time.Duration(ch.Period) * WaitPeriodTimeMeasurement
@@ -197,11 +196,11 @@ type TLSMetrics struct {
 // It then returns a list of tls metrics with optional Verified parameter
 // that depends on whether the certificate was successfully signed (based on provided tls
 // connection state)
-func (ch *Base) AddTLSMetrics(cr *Result, state tls.ConnectionState) (*TLSMetrics, error) {
+func (ch *Base) AddTLSMetrics(cr *Result, state tls.ConnectionState) *TLSMetrics {
 	// TODO: refactor.  Cyclomatic complexity of 35
 	tlsMetrics := &TLSMetrics{}
 	if len(state.PeerCertificates) == 0 {
-		return tlsMetrics, nil
+		return tlsMetrics
 	}
 	// Validate certificate chain
 	cert := state.PeerCertificates[0]
@@ -318,7 +317,7 @@ func (ch *Base) AddTLSMetrics(cr *Result, state tls.ConnectionState) (*TLSMetric
 	// START TIME
 	cr.AddMetric(metric.NewMetric("cert_start", "", metric.MetricNumber, cert.NotBefore.Unix(), ""))
 	cr.AddMetric(metric.NewMetric("cert_end", "", metric.MetricNumber, cert.NotAfter.Unix(), ""))
-	return tlsMetrics, nil
+	return tlsMetrics
 }
 
 func (ch *Base) readLimit(conn io.Reader, limit int64) ([]byte, error) {

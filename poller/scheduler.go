@@ -52,17 +52,17 @@ func NewScheduler(zoneID string, stream ConnectionStream) Scheduler {
 	return s
 }
 
-// GetZoneID is a getter method to retrieve zone id
+// GetZoneID retrieves zone id
 func (s *EleScheduler) GetZoneID() string {
 	return s.zoneID
 }
 
-// GetContext is a getter method to retrieve cancelable context
+// GetContext retrieves cancelable context
 func (s *EleScheduler) GetContext() (ctx context.Context, cancel context.CancelFunc) {
 	return s.ctx, s.cancel
 }
 
-// GetChecks is a getter method to retrieve check map
+// GetChecks retrieves check map
 func (s *EleScheduler) GetChecks() map[string]check.Check {
 	return s.checks
 }
