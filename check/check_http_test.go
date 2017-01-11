@@ -17,11 +17,12 @@ package check_test
 import (
 	"context"
 	"fmt"
-	check "github.com/racker/rackspace-monitoring-poller/check"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	check "github.com/racker/rackspace-monitoring-poller/check"
 )
 
 const (

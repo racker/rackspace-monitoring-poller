@@ -13,6 +13,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/config"
+	"github.com/racker/rackspace-monitoring-poller/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -129,7 +130,7 @@ func TestConnection_StopNotify(t *testing.T) {
 
 func TestConnection_WaitCh(t *testing.T) {
 	cs := NewConnectionStream(config.NewConfig("test-guid", false), nil)
-	result := Timebox(t, 25*time.Millisecond, func(t *testing.T) {
+	result := utils.Timebox(t, 25*time.Millisecond, func(t *testing.T) {
 		<-cs.WaitCh()
 	})
 	assert.True(t, result, "wait channel never notified")
@@ -278,31 +279,5 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 				assert.NoError(t, cs.SendMetrics(tt.crs))
 			}
 		})
-	}
-}
-
-// Timebox is used for putting a time bounds around a chunk of code, given as the function boxed.
-// NOTE that if the duration d elapses, then boxed will be left to run off in its go-routine...it can't be
-// forcefully terminated.
-// This function can be used outside of a unit test context by passing nil for t
-// Returns true if boxed finished before duration d elapsed.
-func Timebox(t *testing.T, d time.Duration, boxed func(t *testing.T)) bool {
-	timer := time.NewTimer(d)
-	completed := make(chan struct{})
-
-	go func() {
-		boxed(t)
-		close(completed)
-	}()
-
-	select {
-	case <-timer.C:
-		if t != nil {
-			t.Fatal("Timebox expired")
-		}
-		return false
-	case <-completed:
-		timer.Stop()
-		return true
 	}
 }

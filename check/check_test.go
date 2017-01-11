@@ -24,6 +24,7 @@ import (
 
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
+	"github.com/racker/rackspace-monitoring-poller/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -89,7 +90,7 @@ func TestCheckBase_Cancel(t *testing.T) {
 	// I know, looks weird, but pre-cancel it since channels are cool like that
 	ch.Cancel()
 	// and this timebox should finish immediately
-	completed := Timebox(t, 100*time.Millisecond, func(t *testing.T) {
+	completed := utils.Timebox(t, 100*time.Millisecond, func(t *testing.T) {
 		<-ch.Done()
 	})
 
@@ -136,45 +137,4 @@ func AssertMetrics(t *testing.T, expected []*ExpectedMetric, actual map[string]*
 		assert.Equal(t, m.Unit, actualM.Unit, "unit of %s", m.Name)
 
 	}
-}
-
-// Timebox is used for putting a time bounds around a chunk of code, given as the function boxed.
-// NOTE that if the duration d elapses, then boxed will be left to run off in its go-routine...it can't be
-// forcefully terminated.
-// This function can be used outside of a unit test context by passing nil for t
-// Returns true if boxed finished before duration d elapsed.
-func Timebox(t *testing.T, d time.Duration, boxed func(t *testing.T)) bool {
-	timer := time.NewTimer(d)
-	completed := make(chan struct{})
-
-	go func() {
-		boxed(t)
-		close(completed)
-	}()
-
-	select {
-	case <-timer.C:
-		if t != nil {
-			t.Fatal("Timebox expired")
-		}
-		return false
-	case <-completed:
-		timer.Stop()
-		return true
-	}
-}
-
-func TestTimebox_Quick(t *testing.T) {
-	result := Timebox(t, 1*time.Second, func(t *testing.T) {
-		time.Sleep(1 * time.Millisecond)
-	})
-	assert.True(t, result)
-}
-
-func TestTimebox_TimesOut(t *testing.T) {
-	result := Timebox(nil, 1*time.Millisecond, func(t *testing.T) {
-		time.Sleep(100 * time.Millisecond)
-	})
-
-	assert.False(t, result)
 }
