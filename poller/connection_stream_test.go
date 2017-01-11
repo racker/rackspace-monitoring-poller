@@ -20,6 +20,10 @@ func TestNewConnectionStream(t *testing.T) {
 	testConfig := &config.Config{
 		AgentId: "awesome agent",
 	}
+	multipleZoneIdsConfig := &config.Config{
+		AgentId: "awesome agent",
+		ZoneIds: []string{"zone one", "zone two"},
+	}
 	tests := []struct {
 		name     string
 		config   *config.Config
@@ -31,6 +35,12 @@ func TestNewConnectionStream(t *testing.T) {
 			config:   testConfig,
 			rootCA:   x509.NewCertPool(),
 			expected: testConfig,
+		},
+		{
+			name:     "Multiple ZoneIds",
+			config:   multipleZoneIdsConfig,
+			rootCA:   x509.NewCertPool(),
+			expected: multipleZoneIdsConfig,
 		},
 	}
 	for _, tt := range tests {

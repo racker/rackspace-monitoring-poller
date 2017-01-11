@@ -52,8 +52,23 @@ func NewScheduler(zoneID string, stream ConnectionStream) Scheduler {
 	return s
 }
 
-// Input returns protocol.Frame channel
-func (s *EleScheduler) Input() chan protocol.Frame {
+// GetZoneID is a getter method to retrieve zone id
+func (s *EleScheduler) GetZoneID() string {
+	return s.zoneID
+}
+
+// GetContext is a getter method to retrieve cancelable context
+func (s *EleScheduler) GetContext() (ctx context.Context, cancel context.CancelFunc) {
+	return s.ctx, s.cancel
+}
+
+// GetChecks is a getter method to retrieve check map
+func (s *EleScheduler) GetChecks() map[string]check.Check {
+	return s.checks
+}
+
+// GetInput returns protocol.Frame channel
+func (s *EleScheduler) GetInput() chan protocol.Frame {
 	return s.input
 }
 
@@ -70,9 +85,9 @@ func (s *EleScheduler) runCheck(ch check.Check) {
 		"check":      ch.GetId(),
 		"jitterMs":   jitter,
 		"waitPeriod": ch.GetWaitPeriod(),
-	}).Debug("Starting check")
+	}).Info("Starting check")
 	time.Sleep(time.Duration(jitter) * time.Millisecond)
-
+	//TODO: looks like we're sending out 2 checks
 	for {
 		select {
 		case <-time.After(ch.GetWaitPeriod()):
@@ -83,7 +98,8 @@ func (s *EleScheduler) runCheck(ch check.Check) {
 				s.SendMetrics(crs)
 			}
 		case <-ch.Done(): // session cancellation is propagated since check context is child of session context
-			log.WithField("check", ch.GetId()).Debug("Check or session has been cancelled")
+			// TODO: seems like this isn't called every time when I try to close the context
+			log.WithField("check", ch.GetId()).Info("Check or session has been cancelled")
 			return
 		}
 	}
@@ -95,8 +111,12 @@ func (s *EleScheduler) SendMetrics(crs *check.CheckResultSet) {
 }
 
 // Register registers the passed in ch check in the checks list
-func (s *EleScheduler) Register(ch check.Check) {
+func (s *EleScheduler) Register(ch check.Check) error {
+	if ch == nil {
+		return ErrCheckEmpty
+	}
 	s.checks[ch.GetId()] = ch
+	return nil
 }
 
 // RunFrameConsumer method runs the check.  It sets up the new check
@@ -104,7 +124,7 @@ func (s *EleScheduler) Register(ch check.Check) {
 func (s *EleScheduler) RunFrameConsumer() {
 	for {
 		select {
-		case f := <-s.input:
+		case f := <-s.GetInput():
 
 			// TODO Later this will probably need to handle check cancellations in which case it can call ch.Cancel()
 

@@ -39,9 +39,8 @@ var (
 	ErrNoConnections = errors.New("No connections")
 	// ErrUndefinedContext used when passed in context in Connect is undefined
 	ErrUndefinedContext = errors.New("Context is undefined")
-)
-
-const (
+	// ErrCheckEmpty used when a check is nil or empty
+	ErrCheckEmpty = errors.New("Check is empty")
 	// CheckSpreadInMilliseconds sets up jitter time so as not
 	// to send all requests at the same time
 	CheckSpreadInMilliseconds = 30000
@@ -94,9 +93,12 @@ type Session interface {
 // Scheduler interface wraps the methods that schedule
 // metric setup and sending
 type Scheduler interface {
-	Input() chan protocol.Frame
+	GetInput() chan protocol.Frame
 	Close()
 	SendMetrics(crs *check.CheckResultSet)
-	Register(ch check.Check)
+	Register(ch check.Check) error
 	RunFrameConsumer()
+	GetZoneID() string
+	GetContext() (ctx context.Context, cancel context.CancelFunc)
+	GetChecks() map[string]check.Check
 }
