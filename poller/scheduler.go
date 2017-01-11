@@ -127,7 +127,7 @@ func (s *EleScheduler) RunFrameConsumer() {
 			// TODO Later this will probably need to handle check cancellations in which case it can call ch.Cancel()
 
 			checkCtx, cancelFunc := context.WithCancel(s.ctx)
-			ch := check.NewCheck(f.GetRawParams(), checkCtx, cancelFunc)
+			ch := check.NewCheck(checkCtx, f.GetRawParams(), cancelFunc)
 			if ch == nil {
 				log.Printf("Invalid Check")
 				continue

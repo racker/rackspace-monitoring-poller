@@ -80,7 +80,7 @@ func TestEleScheduler_Register(t *testing.T) {
 	}{
 		{
 			name: "Happy path",
-			ch: check.NewCheck(json.RawMessage(`{
+			ch: check.NewCheck(cancelCtx, json.RawMessage(`{
 	  "id":"chPzATCP",
 	  "zone_id":"pzA",
 	  "entity_id":"enAAAAIPV4",
@@ -93,7 +93,7 @@ func TestEleScheduler_Register(t *testing.T) {
 	  "target_hostname":"",
 	  "target_resolver":"",
 	  "disabled":true
-			}`), cancelCtx, cancelFunc),
+			}`), cancelFunc),
 			expectedErr: false,
 		},
 		{

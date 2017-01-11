@@ -169,7 +169,7 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 				},
 			},
 			crs: &check.ResultSet{
-				Check: check.NewCheck([]byte(`{
+				Check: check.NewCheck(cancelCtx, []byte(`{
 	  "id":"chPzAHTTP",
 	  "zone_id":"pzA",
 	  "details":{"url":"localhost"},
@@ -181,7 +181,7 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 	  "target_hostname":"",
 	  "target_resolver":"",
 	  "disabled":false
-				}`), cancelCtx, cancelFunc),
+				}`), cancelFunc),
 			},
 			expectedErr: false,
 		},
@@ -198,7 +198,7 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 				},
 			},
 			crs: &check.ResultSet{
-				Check: check.NewCheck([]byte(`{
+				Check: check.NewCheck(cancelCtx, []byte(`{
 	  "id":"chPzAHTTP",
 	  "zone_id":"pzA",
 	  "details":{"url":"localhost"},
@@ -210,7 +210,7 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 	  "target_hostname":"",
 	  "target_resolver":"",
 	  "disabled":false
-				}`), cancelCtx, cancelFunc),
+				}`), cancelFunc),
 			},
 			expectedErr: false,
 		},
@@ -220,7 +220,7 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 			config: &config.Config{},
 			conns:  map[string]Connection{},
 			crs: &check.ResultSet{
-				Check: check.NewCheck([]byte(`{
+				Check: check.NewCheck(cancelCtx, []byte(`{
 	  "id":"chPzAHTTP",
 	  "zone_id":"pzA",
 	  "details":{"url":"localhost"},
@@ -232,7 +232,7 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 	  "target_hostname":"",
 	  "target_resolver":"",
 	  "disabled":false
-				}`), cancelCtx, cancelFunc),
+				}`), cancelFunc),
 			},
 			expectedErr: false,
 		},
@@ -243,7 +243,7 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 			conns:       nil,
 			expectedErr: true,
 			crs: &check.ResultSet{
-				Check: check.NewCheck([]byte(`{
+				Check: check.NewCheck(cancelCtx, []byte(`{
 	  "id":"chPzAHTTP",
 	  "zone_id":"pzA",
 	  "details":{"url":"localhost"},
@@ -255,7 +255,7 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 	  "target_hostname":"",
 	  "target_resolver":"",
 	  "disabled":false
-				}`), cancelCtx, cancelFunc),
+				}`), cancelFunc),
 			},
 		},
 	}
