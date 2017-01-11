@@ -14,7 +14,6 @@
 // limitations under the License.
 //
 
-// Package check for Result
 package check
 
 import (
@@ -22,17 +21,13 @@ import (
 )
 
 const (
-	// StateAvailable constant is set to available and used
-	// for setting states and statuses
+	// StateAvailable constant used for setting states and statuses
 	StateAvailable = "available"
-	// StateUnavailable constant is set to available and used
-	// for setting states and statuses
+	// StateUnavailable constant used for setting states and statuses
 	StateUnavailable = "unavailable"
-	// StatusSuccess constant is set to available and used
-	// for setting states and statuses
+	// StatusSuccess constant used for setting states and statuses
 	StatusSuccess = "success"
-	// StatusUnknownError constant is set to available and used
-	// for setting states and statuses
+	// StatusUnknownError constant used for setting states and statuses
 	StatusUnknownError = "unknown error"
 )
 

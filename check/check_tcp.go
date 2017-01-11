@@ -14,7 +14,6 @@
 // limitations under the License.
 //
 
-// Package check for TCP
 package check
 
 import (

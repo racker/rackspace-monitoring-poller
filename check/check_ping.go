@@ -14,7 +14,6 @@
 // limitations under the License.
 //
 
-// Package check for Ping
 package check
 
 import (
