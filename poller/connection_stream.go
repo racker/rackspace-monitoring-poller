@@ -153,7 +153,7 @@ func (cs *EleConnectionStream) Connect() {
 	}
 }
 
-// WaitCh sets up a channel
+// WaitCh provides a channel for waiting on connection establishment
 func (cs *EleConnectionStream) WaitCh() <-chan struct{} {
 	c := make(chan struct{}, 1)
 	go func() {
