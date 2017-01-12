@@ -37,10 +37,13 @@ type EleScheduler struct {
 	input  chan protocol.Frame
 
 	stream ConnectionStream
+
+	scheduler CheckScheduler
+	executor  CheckExecutor
 }
 
-// NewScheduler instantiates a new Scheduler.  It sets up checks,
-// context, and passed in zoneid
+// NewScheduler instantiates a new Scheduler with standard scheduling and executor behaviors.
+// It sets up checks, context, and passed in zoneid
 func NewScheduler(zoneID string, stream ConnectionStream) Scheduler {
 	s := &EleScheduler{
 		checks: make(map[string]check.Check),
@@ -48,6 +51,8 @@ func NewScheduler(zoneID string, stream ConnectionStream) Scheduler {
 		stream: stream,
 		zoneID: zoneID,
 	}
+	s.scheduler = s
+	s.executor = s
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	return s
 }
@@ -72,12 +77,19 @@ func (s *EleScheduler) GetInput() chan protocol.Frame {
 	return s.input
 }
 
+func (s *EleScheduler) SetCheckScheduler(checkScheduler CheckScheduler) {
+	s.scheduler = checkScheduler
+}
+func (s *EleScheduler) SetCheckExecutor(checkExecutor CheckExecutor) {
+	s.executor = checkExecutor
+}
+
 // Close cancels the context and closes the connection
 func (s *EleScheduler) Close() {
 	s.cancel()
 }
 
-func (s *EleScheduler) runCheck(ch check.Check) {
+func (s *EleScheduler) Schedule(ch check.Check) {
 	// Spread the checks out over 30 seconds
 	jitter := rand.Intn(CheckSpreadInMilliseconds) + 1
 
@@ -86,21 +98,31 @@ func (s *EleScheduler) runCheck(ch check.Check) {
 		"jitterMs":   jitter,
 		"waitPeriod": ch.GetWaitPeriod(),
 	}).Info("Starting check")
-	time.Sleep(time.Duration(jitter) * time.Millisecond)
-	for {
-		select {
-		case <-time.After(ch.GetWaitPeriod()):
-			crs, err := ch.Run()
-			if err != nil {
-				log.Errorf("Error running check: %v", err)
-			} else {
-				s.SendMetrics(crs)
+
+	go func() {
+		time.Sleep(time.Duration(jitter) * time.Millisecond)
+		for {
+			select {
+			case <-time.After(ch.GetWaitPeriod()):
+				s.executor.Execute(ch)
+
+			case <-ch.Done(): // session cancellation is propagated since check context is child of session context
+				log.WithField("check", ch.GetId()).Info("Check or session has been cancelled")
+				return
 			}
-		case <-ch.Done(): // session cancellation is propagated since check context is child of session context
-			log.WithField("check", ch.GetID()).Info("Check or session has been cancelled")
-			return
 		}
+
+	}()
+}
+
+func (s *EleScheduler) Execute(ch check.Check) {
+	crs, err := ch.Run()
+	if err != nil {
+		log.Errorf("Error running check: %v", err)
+	} else {
+		s.SendMetrics(crs)
 	}
+
 }
 
 // SendMetrics sends metrics passed in crs parameter via the stream
@@ -133,7 +155,7 @@ func (s *EleScheduler) RunFrameConsumer() {
 				continue
 			}
 			s.Register(ch)
-			go s.runCheck(ch)
+			s.scheduler.Schedule(ch)
 		case <-s.ctx.Done():
 			return
 		}

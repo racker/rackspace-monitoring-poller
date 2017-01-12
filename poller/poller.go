@@ -90,6 +90,16 @@ type Session interface {
 	Wait()
 }
 
+// CheckScheduler arranges the periodic invocation of the given Check
+type CheckScheduler interface {
+	Schedule(ch check.Check)
+}
+
+// CheckExecutor facilitates running a check and consuming the CheckResultSet
+type CheckExecutor interface {
+	Execute(ch check.Check)
+}
+
 // Scheduler interface wraps the methods that schedule
 // metric setup and sending
 type Scheduler interface {
@@ -101,4 +111,9 @@ type Scheduler interface {
 	GetZoneID() string
 	GetContext() (ctx context.Context, cancel context.CancelFunc)
 	GetChecks() map[string]check.Check
+
+	// SetCheckScheduler allows for installing an alternative behavior
+	SetCheckScheduler(checkScheduler CheckScheduler)
+	// SetCheckExecutor allows for installing an alternative behavior
+	SetCheckExecutor(checkExecutor CheckExecutor)
 }

@@ -128,25 +128,15 @@ func TestEleScheduler_Register(t *testing.T) {
 func TestEleScheduler_RunFrameConsumer(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
+
 	mockStream := poller.NewMockConnectionStream(mockCtrl)
-	mockStream.EXPECT().SendMetrics(gomock.Any())
-	schedule := poller.NewScheduler("pzAwesome", mockStream)
+	scheduler := poller.NewScheduler("pzAwesome", mockStream)
 
-	// set up wait period time measurement
-	bakWaitPeriodTimeMeasurement := check.WaitPeriodTimeMeasurement
-	bakCheckSpreadInMilliseconds := poller.CheckSpreadInMilliseconds
-	defer func() {
-		check.WaitPeriodTimeMeasurement = bakWaitPeriodTimeMeasurement
-		poller.CheckSpreadInMilliseconds = bakCheckSpreadInMilliseconds
-	}()
+	// inject our mock to eliminate concurrent scheduling
+	mockCheckScheduler := poller.NewMockCheckScheduler(mockCtrl)
+	scheduler.SetCheckScheduler(mockCheckScheduler)
 
-	check.WaitPeriodTimeMeasurement = time.Millisecond
-	// set up jitter
-	poller.CheckSpreadInMilliseconds = 100
-
-	// NOTE: period is set to 90 seconds so that the check
-	// only runs once in the jitter period (jitter is set to 100 ms)
-	schedule.GetInput() <- &protocol.FrameMsg{
+	scheduler.GetInput() <- &protocol.FrameMsg{
 		FrameMsgCommon: protocol.FrameMsgCommon{
 			Id: 123,
 		},
@@ -165,17 +155,11 @@ func TestEleScheduler_RunFrameConsumer(t *testing.T) {
 	  "disabled":true
 	  }`),
 	}
-	go schedule.RunFrameConsumer()
 
-	// wait for jitter amount of time (and add 100 milliseconds to catch the other close)
-	time.Sleep(200 * time.Millisecond)
-
-	// close session
-	schedule.Close()
-
-	ctx, _ := schedule.GetContext()
-	completed := utils.Timebox(t, 1000*time.Millisecond, func(t *testing.T) {
-		<-ctx.Done()
+	mockCheckScheduler.EXPECT().Schedule(check.ExpectedCheckType("remote.tcp")).Do(func(ch check.Check) {
+		// then close the frame consumer
+		scheduler.Close()
 	})
-	assert.True(t, completed, "cancellation channel never notified")
+
+	scheduler.RunFrameConsumer()
 }
