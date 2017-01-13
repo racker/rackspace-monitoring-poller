@@ -18,7 +18,6 @@ package commands
 
 import (
 	"github.com/racker/rackspace-monitoring-poller/endpoint"
-	"github.com/racker/rackspace-monitoring-poller/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -37,14 +36,5 @@ func init() {
 }
 
 func endpointCmdRun(cmd *cobra.Command, args []string) {
-	s, err := endpoint.NewEndpointServer(endpointConfigFilePath)
-
-	if err != nil {
-		utils.Die(err, "Invalid endpoint setup")
-	}
-
-	err = s.ListenAndServe()
-	if err != nil {
-		utils.Die(err, "Endpoint serving failed")
-	}
+	endpoint.Run(endpointConfigFilePath)
 }

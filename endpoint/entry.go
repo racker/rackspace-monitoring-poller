@@ -18,6 +18,7 @@ package endpoint
 
 import (
 	"github.com/racker/rackspace-monitoring-poller/config"
+	"github.com/racker/rackspace-monitoring-poller/utils"
 )
 
 func NewEndpointServer(configFilePath string) (EndpointServer, error) {
@@ -37,4 +38,18 @@ func NewEndpointServer(configFilePath string) (EndpointServer, error) {
 	server.UseMetricsRouter(NewMetricsRouter(config))
 
 	return server, nil
+}
+
+func Run(endpointConfigFilePath string) {
+	s, err := NewEndpointServer(endpointConfigFilePath)
+
+	if err != nil {
+		utils.Die(err, "Invalid endpoint setup")
+	}
+
+	err = s.ListenAndServe()
+	if err != nil {
+		utils.Die(err, "Endpoint serving failed")
+	}
+
 }
