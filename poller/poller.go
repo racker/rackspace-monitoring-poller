@@ -111,9 +111,4 @@ type Scheduler interface {
 	GetZoneID() string
 	GetContext() (ctx context.Context, cancel context.CancelFunc)
 	GetChecks() map[string]check.Check
-
-	// SetCheckScheduler allows for installing an alternative behavior
-	SetCheckScheduler(checkScheduler CheckScheduler)
-	// SetCheckExecutor allows for installing an alternative behavior
-	SetCheckExecutor(checkExecutor CheckExecutor)
 }

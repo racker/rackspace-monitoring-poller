@@ -45,16 +45,32 @@ type EleScheduler struct {
 // NewScheduler instantiates a new Scheduler with standard scheduling and executor behaviors.
 // It sets up checks, context, and passed in zoneid
 func NewScheduler(zoneID string, stream ConnectionStream) Scheduler {
+	return NewCustomScheduler(zoneID, stream, nil, nil)
+}
+
+// NewCustomScheduler instantiates a new Scheduler using NewScheduler but allows for more customization.
+func NewCustomScheduler(zoneID string, stream ConnectionStream, checkScheduler CheckScheduler, checkExecutor CheckExecutor) Scheduler {
 	s := &EleScheduler{
-		checks: make(map[string]check.Check),
-		input:  make(chan protocol.Frame, 1024),
-		stream: stream,
-		zoneID: zoneID,
+		checks:    make(map[string]check.Check),
+		input:     make(chan protocol.Frame, 1024),
+		stream:    stream,
+		zoneID:    zoneID,
+		scheduler: checkScheduler,
+		executor:  checkExecutor,
 	}
-	s.scheduler = s
-	s.executor = s
+
+	// by default we are our own scheduler/executor of checks
+	if s.scheduler == nil {
+		s.scheduler = s
+	}
+	if s.executor == nil {
+		s.executor = s
+	}
+
 	s.ctx, s.cancel = context.WithCancel(context.Background())
+
 	return s
+
 }
 
 // GetZoneID retrieves zone id
@@ -75,13 +91,6 @@ func (s *EleScheduler) GetChecks() map[string]check.Check {
 // GetInput returns protocol.Frame channel
 func (s *EleScheduler) GetInput() chan protocol.Frame {
 	return s.input
-}
-
-func (s *EleScheduler) SetCheckScheduler(checkScheduler CheckScheduler) {
-	s.scheduler = checkScheduler
-}
-func (s *EleScheduler) SetCheckExecutor(checkExecutor CheckExecutor) {
-	s.executor = checkExecutor
 }
 
 // Close cancels the context and closes the connection
