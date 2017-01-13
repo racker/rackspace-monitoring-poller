@@ -79,6 +79,7 @@ func (s *BannerServer) Serve(listener net.Listener) {
 		if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
 			return
 		}
+		log.WithField("err", err).Fatal("Unexpected error")
 	}
 	log.Debug(conn.RemoteAddr(), "connected")
 	s.waitGroup.Add(1)
@@ -91,6 +92,7 @@ func (s *BannerServer) ServeTLS(listener net.Listener) {
 		if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
 			return
 		}
+		log.WithField("err", err).Fatal("Unexpected error")
 	}
 	s.waitGroup.Add(1)
 	go s.serve(conn)

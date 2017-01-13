@@ -49,6 +49,7 @@ func NewScheduler(zoneID string, stream ConnectionStream) Scheduler {
 }
 
 // NewCustomScheduler instantiates a new Scheduler using NewScheduler but allows for more customization.
+// Nil can be passed to either checkScheduler and/or checkExecutor to enable the default behavior.
 func NewCustomScheduler(zoneID string, stream ConnectionStream, checkScheduler CheckScheduler, checkExecutor CheckExecutor) Scheduler {
 	s := &EleScheduler{
 		checks:    make(map[string]check.Check),
