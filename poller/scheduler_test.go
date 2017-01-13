@@ -183,6 +183,8 @@ func TestEleScheduler_RunFrameConsumer(t *testing.T) {
 	assert.True(t, completed, "cancellation channel never notified")
 }
 
+// This is a variant of TestEleScheduler_RunFrameConsumer that eliminates all use of go routines, but narrows the
+// scope of testing.
 func TestEleScheduler_FrameConsumer_Scheduling(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
