@@ -153,3 +153,7 @@ func (cfg *Config) GetWriteDeadline(offset time.Duration) time.Time {
 	offset = offset + cfg.TimeoutWrite
 	return time.Now().Add(time.Duration(offset * time.Second))
 }
+
+func IsUsingStaging() bool {
+	return os.Getenv(EnvStaging) == EnabledEnvOpt
+}

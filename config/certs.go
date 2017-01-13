@@ -19,7 +19,9 @@ package config
 import (
 	"crypto/x509"
 	"github.com/Sirupsen/logrus"
+	log "github.com/Sirupsen/logrus"
 	"io/ioutil"
+	"os"
 )
 
 // /C=US/ST=Texas/L=San Antonio/O=Rackspace US, Inc/OU=Cloud Monitoring/CN=monitoring-ca.rackspace.com
@@ -116,4 +118,22 @@ func LoadDevelopmentCAs(pemFilename string) *x509.CertPool {
 	}
 	return certPool
 
+}
+
+func LoadRootCAs(insecure bool, useStaging bool) *x509.CertPool {
+	if insecure {
+		log.Warn("Insecure TLS connectivity is enabled. Make sure you TRUST the farend host")
+		return nil
+	} else {
+		devCAPath := os.Getenv(EnvDevCA)
+		if useStaging {
+			log.Warn("Staging root CAs are in use")
+			return LoadStagingCAs()
+		} else if devCAPath != "" {
+			log.WithField("path", devCAPath).Warn("Development root CAs are in use")
+			return LoadDevelopmentCAs(devCAPath)
+		} else {
+			return LoadProductionCAs()
+		}
+	}
 }
