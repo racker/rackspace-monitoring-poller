@@ -19,6 +19,8 @@ package utils
 import (
 	log "github.com/Sirupsen/logrus"
 	"os"
+	"os/signal"
+	"syscall"
 )
 
 // Die prints messages and an error to stderr and then exit the process with status code 1.
@@ -31,4 +33,11 @@ func Die(err error, messages ...string) {
 	}
 	log.Errorf("Reason: %s", err.Error())
 	os.Exit(1)
+}
+
+// HandleInterrupts returns a channel that will get notified when a SIGTERM signal occurs
+func HandleInterrupts() chan os.Signal {
+	c := make(chan os.Signal, 2)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	return c
 }

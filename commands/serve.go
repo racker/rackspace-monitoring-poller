@@ -17,16 +17,9 @@
 package commands
 
 import (
-	"crypto/x509"
-	log "github.com/Sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/poller"
-	"github.com/racker/rackspace-monitoring-poller/utils"
-	"github.com/satori/go.uuid"
 	"github.com/spf13/cobra"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 var (
@@ -46,64 +39,6 @@ func init() {
 	ServeCmd.Flags().BoolVar(&insecure, "insecure", false, "Enabled ONLY during development and when connecting to a known farend")
 }
 
-func HandleInterrupts() chan os.Signal {
-	c := make(chan os.Signal, 2)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	return c
-}
-
-func LoadRootCAs(insecure bool, useStaging bool) *x509.CertPool {
-	if insecure {
-		log.Warn("Insecure TLS connectivity is enabled. Make sure you TRUST the farend host")
-		return nil
-	} else {
-		devCAPath := os.Getenv(config.EnvDevCA)
-		if useStaging {
-			log.Warn("Staging root CAs are in use")
-			return config.LoadStagingCAs()
-		} else if devCAPath != "" {
-			log.WithField("path", devCAPath).Warn("Development root CAs are in use")
-			return config.LoadDevelopmentCAs(devCAPath)
-		} else {
-			return config.LoadProductionCAs()
-		}
-	}
-}
-
-func IsUsingStaging() bool {
-	return os.Getenv(config.EnvStaging) == config.EnabledEnvOpt
-}
-
 func serveCmdRun(cmd *cobra.Command, args []string) {
-	guid := uuid.NewV4()
-	useStaging := IsUsingStaging()
-
-	cfg := config.NewConfig(guid.String(), useStaging)
-	if err := cfg.LoadFromFile(configFilePath); err != nil {
-		utils.Die(err, "Failed to load configuration")
-	}
-	if err := cfg.Validate(); err != nil {
-		utils.Die(err, "Failed to validate configuration")
-	}
-
-	log.WithField("guid", guid).Info("Assigned unique identifier")
-
-	rootCAs := LoadRootCAs(insecure, useStaging)
-	signalNotify := HandleInterrupts()
-	for {
-		stream := poller.NewConnectionStream(cfg, rootCAs)
-		stream.Connect()
-		waitCh := stream.WaitCh()
-		for {
-			select {
-			case <-waitCh:
-				break
-			case <-signalNotify:
-				log.Info("Shutdown...")
-				stream.Stop()
-			case <-stream.StopNotify():
-				return
-			}
-		}
-	}
+	poller.Run(configFilePath, insecure)
 }

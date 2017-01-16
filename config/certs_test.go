@@ -19,6 +19,7 @@ package config_test
 import (
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/stretchr/testify/assert"
+	"os"
 	"testing"
 )
 
@@ -71,4 +72,39 @@ func TestLoadDevelopmentCAs_missing(t *testing.T) {
 
 	pool := config.LoadDevelopmentCAs("testdata/does_not_exist.pem")
 	assert.Nil(pool)
+}
+
+func TestLoadRootCAs_tls_defaults(t *testing.T) {
+	assert := assert.New(t)
+
+	certPool := config.LoadRootCAs(false, false)
+	if assert.NotNil(certPool) {
+		assert.Len(certPool.Subjects(), 1)
+	}
+}
+
+func TestLoadRootCAs_tls_insecure(t *testing.T) {
+	assert := assert.New(t)
+
+	certPool := config.LoadRootCAs(true, false)
+	assert.Nil(certPool)
+}
+
+func TestLoadRootCAs_tls_staging(t *testing.T) {
+	assert := assert.New(t)
+
+	certPool := config.LoadRootCAs(false, true)
+	if assert.NotNil(certPool) {
+		assert.Len(certPool.Subjects(), 1)
+	}
+}
+
+func TestLoadRootCAs_tls_development(t *testing.T) {
+	assert := assert.New(t)
+
+	os.Setenv(config.EnvDevCA, "testdata/ca.pem")
+	certPool := config.LoadRootCAs(false, false)
+	if assert.NotNil(certPool) {
+		assert.Len(certPool.Subjects(), 1)
+	}
 }

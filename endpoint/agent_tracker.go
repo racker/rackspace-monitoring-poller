@@ -304,6 +304,12 @@ func (at *AgentTracker) handleGreetedAgent(greetedAgent *agent) {
 	at.agents[sourceId] = greetedAgent
 }
 
+// String renders the meaningful identifiers of this agent instance
+func (a agent) String() string {
+	return fmt.Sprintf("[id=%v, name=%v, processVersion=%v, bundleVersion=%v, features=%v, zones=%v]",
+		a.id, a.name, a.processVersion, a.bundleVersion, a.features, a.zones)
+}
+
 func (a *agent) sendTo(method string, params interface{}) {
 	msgId := atomic.AddUint64(&a.outMsgId, 1)
 
