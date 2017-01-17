@@ -14,10 +14,12 @@ install:
   - glide install
 
 script:
-  - go test -v $(glide novendor)
+  - go test -short -v $(glide novendor)
   - gox
     -osarch "linux/386 linux/amd64 darwin/amd64"
     -output="dist/{{.Dir}}_{{.OS}}_{{.Arch}}"
+  # integration tests need the latest rackspace-monitoring-poller built
+  - go test -v github.com/racker/rackspace-monitoring-poller/integrationcli
 after_script:
   - go get github.com/mattn/goveralls
   - bash combine-coverage.sh --coveralls

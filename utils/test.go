@@ -21,12 +21,18 @@ import (
 
 	"os"
 
+	"runtime"
+
 	"github.com/stretchr/testify/assert"
 )
 
 // PollerCommand is the program name for the poller.
 // Used for integration tests
-var PollerCommand = fmt.Sprintf("%s/src/github.com/racker/rackspace-monitoring-poller/rackspace-monitoring-poller", os.Getenv("GOPATH"))
+var PollerCommand = fmt.Sprintf("%s/src/github.com/racker/rackspace-monitoring-poller/dist/rackspace-monitoring-poller_%s_%s",
+	os.Getenv("GOPATH"),
+	runtime.GOOS,
+	runtime.GOARCH,
+)
 
 // Result is used to wrap integration test results
 // It wraps the command struct that sets up the required timeout
