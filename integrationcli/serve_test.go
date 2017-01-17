@@ -46,6 +46,15 @@ monitoring_private_zones pzA`, listenHost, listenPort))
 		t.Skip("Unable to write config file for happy path")
 	}
 
+	noAgentEndpointCfg := []byte(
+		fmt.Sprintf(`monitoring_token 0000000000000000000000000000000000000000000000000000000000000000.7777
+monitoring_endpoints %s:%d
+monitoring_private_zones pzA`, listenHost, listenPort))
+	err = ioutil.WriteFile("testdata/local-endpoint.noagent.cfg", noAgentEndpointCfg, 0644)
+	if err != nil {
+		t.Skip("Unable to write config file for no agent")
+	}
+
 	// Start TCP Server
 	server := utils.NewBannerServer()
 	go server.ServeTLS(tlsListener)
@@ -142,7 +151,7 @@ monitoring_private_zones pzA`, listenHost, listenPort))
 				},
 				&utils.OutputMessage{
 					Level: "info",
-					Msg:   "cfg: Setting Endpoints: somethingsomething:55000",
+					Msg:   fmt.Sprintf("cfg: Setting Endpoints: %s:%d", listenHost, listenPort),
 				},
 				&utils.OutputMessage{
 					Level: "info",
@@ -159,11 +168,7 @@ monitoring_private_zones pzA`, listenHost, listenPort))
 				&utils.OutputMessage{
 					Level:   "info",
 					Msg:     "Connecting to agent/poller endpoint",
-					Address: "somethingsomething:55000",
-				},
-				&utils.OutputMessage{
-					Level: "error",
-					Msg:   "Error: dial tcp: lookup somethingsomething: no such host",
+					Address: fmt.Sprintf("%s:%d", listenHost, listenPort),
 				},
 			},
 		},
@@ -248,7 +253,7 @@ monitoring_private_zones pzA`, listenHost, listenPort))
 				},
 			},
 		},
-		{
+		/*{
 			name: "Endpoint not found",
 			args: []string{
 				"serve", "--config",
@@ -289,7 +294,7 @@ monitoring_private_zones pzA`, listenHost, listenPort))
 					Msg:   "Error: dial tcp: lookup somethingsomething: no such host",
 				},
 			},
-		},
+		},*/
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
