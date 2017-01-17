@@ -22,12 +22,13 @@
 package main
 
 import (
-	log "github.com/Sirupsen/logrus"
-	"github.com/racker/rackspace-monitoring-poller/commands"
-	"github.com/spf13/cobra"
 	"math/rand"
 	"os"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/racker/rackspace-monitoring-poller/commands"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -40,14 +41,17 @@ var (
 	globalFlags struct {
 		Debug bool
 	}
+
+	// Formatter is a log formatter utilized for poller.  Defaulted to JSONFormatter
+	// due to simplicity for parsing by 3rd party logging tools
+	Formatter log.Formatter = &log.JSONFormatter{
+		TimestampFormat: time.RFC1123,
+	}
 )
 
 func init() {
 	rand.Seed(time.Now().UTC().UnixNano())
-	log.SetFormatter(&log.TextFormatter{
-		FullTimestamp:   true,
-		TimestampFormat: time.RFC1123,
-	})
+	log.SetFormatter(Formatter)
 	log.SetOutput(os.Stderr)
 	pollerCmd.PersistentFlags().BoolVar(&globalFlags.Debug, "debug", false, "Enable debug")
 }

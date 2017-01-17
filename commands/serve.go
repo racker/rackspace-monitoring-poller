@@ -17,6 +17,13 @@
 package commands
 
 import (
+	"crypto/x509"
+	"os"
+	"os/signal"
+	"syscall"
+
+	log "github.com/Sirupsen/logrus"
+
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/poller"
 	"github.com/spf13/cobra"

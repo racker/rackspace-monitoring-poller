@@ -1,0 +1,5 @@
+{
+  "CertFile": "testdata/server-certs/cert.pem",
+  "KeyFile":  "testdata/server-certs/key.pem",
+  "BindAddr": ":55000"
+}
