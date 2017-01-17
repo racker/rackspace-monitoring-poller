@@ -14,38 +14,6 @@ func TestStartEndpoint(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
 	}
-	/*
-			localCert, err := ioutil.ReadFile("testdata/server-certs/cert.pem")
-			if err != nil {
-				t.Skip("Unable to read cert.pem from testdata/server-certs/cert.pem")
-			}
-			localKey, err := ioutil.ReadFile("testdata/server-certs/key.pem")
-			if err != nil {
-				t.Skip("Unable to read key.pem from testdata/server-certs/key.pem")
-			}
-
-			cert, _ := tls.X509KeyPair(localCert, localKey)
-			tlsConfig := &tls.Config{Certificates: []tls.Certificate{cert}}
-			tlsListener, _ := tls.Listen("tcp", "127.0.0.1:0", tlsConfig)
-			listenHost := tlsListener.Addr().(*net.TCPAddr).IP.String()
-			listenPort := tlsListener.Addr().(*net.TCPAddr).Port
-
-			fmt.Println(listenHost, listenPort)
-
-			localEndpointCfg := []byte(
-				fmt.Sprintf(`monitoring_token 0000000000000000000000000000000000000000000000000000000000000000.7777
-		monitoring_id agentA
-		monitoring_endpoints %s:%d
-		monitoring_private_zones pzA`, listenHost, listenPort))
-			err = ioutil.WriteFile("testdata/local-endpoint.cfg", localEndpointCfg, 0644)
-			if err != nil {
-				t.Skip("Unable to write config file for happy path")
-			}
-
-			// Start TCP Server
-			server := utils.NewBannerServer()
-			go server.ServeTLS(tlsListener)
-	*/
 	tests := []struct {
 		name           string
 		args           []string

@@ -7,7 +7,7 @@
   },
   "type": "remote.ping",
   "timeout": 15,
-  "period": 30,
+  "period": 1,
   "ip_addresses": {
     "default": "google.com"
   },

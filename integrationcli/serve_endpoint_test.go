@@ -2,9 +2,11 @@ package integrationcli
 
 import (
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
+	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/utils"
 	"github.com/stretchr/testify/assert"
 )
@@ -19,8 +21,9 @@ func TestStartServeEndpointHappyPath(t *testing.T) {
 	go runEndpoint(endpointTimeout, endpointDone)
 
 	// start serve - validate it's up and able to communicate with endpoint
-	serveTimeout := time.Duration(10 * time.Second)
+	serveTimeout := time.Duration(60 * time.Second)
 	serveDone := make(chan *utils.Result, 1)
+	os.Setenv(config.EnvDevCA, "testdata/server-certs/ca.pem")
 	go runServe(serveTimeout, serveDone)
 
 	endpointResult := <-endpointDone
