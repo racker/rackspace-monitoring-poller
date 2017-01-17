@@ -6,8 +6,8 @@
     "count": 3
   },
   "type": "remote.ping",
-  "timeout": 5,
-  "period": 15,
+  "timeout": 1,
+  "period": 1,
   "ip_addresses": {
     "default": "127.0.0.1"
   },

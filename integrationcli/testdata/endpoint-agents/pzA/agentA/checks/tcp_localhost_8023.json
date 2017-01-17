@@ -7,8 +7,8 @@
     "ssl": false
   },
   "type": "remote.tcp",
-  "timeout": 5,
-  "period": 10,
+  "timeout": 1,
+  "period": 1,
   "ip_addresses": {
     "default": "127.0.0.1"
   },

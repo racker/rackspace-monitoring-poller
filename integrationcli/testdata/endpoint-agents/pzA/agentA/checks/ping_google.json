@@ -6,7 +6,7 @@
     "count": 3
   },
   "type": "remote.ping",
-  "timeout": 15,
+  "timeout": 1,
   "period": 1,
   "ip_addresses": {
     "default": "google.com"

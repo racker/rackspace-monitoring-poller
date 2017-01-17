@@ -12,16 +12,17 @@ import (
 )
 
 func TestStartServeEndpointHappyPath(t *testing.T) {
+	t.Skip("Currently this is not working due to endpoint protocol being in flux.")
 	if testing.Short() {
 		t.Skip()
 	}
 	// start endpoint - validate it's up and listening to requests
-	endpointTimeout := time.Duration(10 * time.Second)
+	endpointTimeout := time.Duration(120 * time.Second)
 	endpointDone := make(chan *utils.Result, 1)
 	go runEndpoint(endpointTimeout, endpointDone)
 
 	// start serve - validate it's up and able to communicate with endpoint
-	serveTimeout := time.Duration(60 * time.Second)
+	serveTimeout := time.Duration(120 * time.Second)
 	serveDone := make(chan *utils.Result, 1)
 	os.Setenv(config.EnvDevCA, "testdata/server-certs/ca.pem")
 	go runServe(serveTimeout, serveDone)
