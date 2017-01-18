@@ -14,6 +14,15 @@ func TestStartEndpoint(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
 	}
+
+	createCaPemFile(t)
+	createIntegrationCertFile(t)
+	createIntegrationKeyFile(t)
+
+	defer deleteCaPemFile(t)
+	defer deleteCertPemFile(t)
+	defer deleteKeyPemFile(t)
+
 	tests := []struct {
 		name           string
 		args           []string
@@ -140,7 +149,7 @@ func TestStartEndpoint(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.runWithDevCa {
-				os.Setenv(config.EnvDevCA, "testdata/server-certs/ca.pem")
+				os.Setenv(config.EnvDevCA, CaFileLocation)
 			} else {
 				os.Unsetenv(config.EnvDevCA)
 			}
@@ -156,7 +165,4 @@ func TestStartEndpoint(t *testing.T) {
 			}
 		})
 	}
-
-	//server.Stop()
-	//tlsListener.Close()
 }

@@ -16,6 +16,10 @@ func TestStartServeEndpointHappyPath(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
 	}
+
+	createCaPemFile(t)
+	defer deleteCaPemFile(t)
+
 	// start endpoint - validate it's up and listening to requests
 	endpointTimeout := time.Duration(120 * time.Second)
 	endpointDone := make(chan *utils.Result, 1)
@@ -24,7 +28,7 @@ func TestStartServeEndpointHappyPath(t *testing.T) {
 	// start serve - validate it's up and able to communicate with endpoint
 	serveTimeout := time.Duration(120 * time.Second)
 	serveDone := make(chan *utils.Result, 1)
-	os.Setenv(config.EnvDevCA, "testdata/server-certs/ca.pem")
+	os.Setenv(config.EnvDevCA, CaFileLocation)
 	go runServe(serveTimeout, serveDone)
 
 	endpointResult := <-endpointDone
