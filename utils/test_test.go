@@ -221,7 +221,7 @@ func TestBufferToStringSlice(t *testing.T) {
 
 func TestGetProcess(t *testing.T) {
 	pollerCommand := &utils.PollerCmd{
-		exec.Command(utils.PollerCommand, "echo", "test"),
+		exec.Command("echo", "test"),
 	}
 
 	err := pollerCommand.Start()
@@ -236,7 +236,7 @@ func TestGetProcess(t *testing.T) {
 
 func TestGetProcessState(t *testing.T) {
 	pollerCommand := &utils.PollerCmd{
-		exec.Command(utils.PollerCommand, "echo", "test"),
+		exec.Command("echo", "test"),
 	}
 
 	err := pollerCommand.Start()
@@ -265,208 +265,38 @@ func TestGetArgs(t *testing.T) {
 	assert.Equal(t, []string{utils.PollerCommand, "echo", "test"}, pollerCommand.GetArgs())
 }
 
-/*
 func TestTimebox(t *testing.T) {
 	tests := []struct {
-		name  string
-		d     time.Duration
-		boxed func(t *testing.T)
-		want  bool
+		name     string
+		d        time.Duration
+		boxed    func(t *testing.T)
+		expected bool
 	}{
 		{
 			name: "Expire timeout",
 			d:    time.Duration(1 * time.Millisecond),
 			boxed: func(t *testing.T) {
 				time.Sleep(1 * time.Second)
-				c := make(chan struct{})
-				<-c
 			},
+			expected: false,
 		},
 		{
 			name: "Happy path",
 			d:    time.Duration(1 * time.Second),
 			boxed: func(t *testing.T) {
-				c := make(chan struct{})
-				<-c
+				time.Sleep(1 * time.Millisecond)
 			},
+			expected: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			completed := utils.Timebox(nil, tt.d, tt.boxed)
-
-			assert.False(t, completed, "cancellation channel never notified")
-		})
-	}
-}
-*/
-/*
-
-
-
-func TestTestTimebox_Quick(t *testing.T) {
-	type args struct {
-		t *testing.T
-	}
-	tests := []struct {
-		name string
-		args args
-	}{
-	// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			TestTimebox_Quick(tt.args.t)
-		})
-	}
-}
-
-func TestTestTimebox_TimesOut(t *testing.T) {
-	type args struct {
-		t *testing.T
-	}
-	tests := []struct {
-		name string
-		args args
-	}{
-	// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			TestTimebox_TimesOut(tt.args.t)
-		})
-	}
-}
-
-func TestNewBannerServer(t *testing.T) {
-	tests := []struct {
-		name string
-		want *BannerServer
-	}{
-	// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := NewBannerServer(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewBannerServer() = %v, want %v", got, tt.want)
+			if tt.expected {
+				assert.True(t, completed)
+			} else {
+				assert.False(t, completed)
 			}
 		})
 	}
 }
-
-func TestBannerServer_Stop(t *testing.T) {
-	type fields struct {
-		HandleConnection func(conn net.Conn)
-		waitGroup        *sync.WaitGroup
-		ctx              context.Context
-		cancel           context.CancelFunc
-	}
-	tests := []struct {
-		name   string
-		fields fields
-	}{
-	// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := &BannerServer{
-				HandleConnection: tt.fields.HandleConnection,
-				waitGroup:        tt.fields.waitGroup,
-				ctx:              tt.fields.ctx,
-				cancel:           tt.fields.cancel,
-			}
-			s.Stop()
-		})
-	}
-}
-
-func TestBannerServer_Serve(t *testing.T) {
-	type fields struct {
-		HandleConnection func(conn net.Conn)
-		waitGroup        *sync.WaitGroup
-		ctx              context.Context
-		cancel           context.CancelFunc
-	}
-	type args struct {
-		listener net.Listener
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-	// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := &BannerServer{
-				HandleConnection: tt.fields.HandleConnection,
-				waitGroup:        tt.fields.waitGroup,
-				ctx:              tt.fields.ctx,
-				cancel:           tt.fields.cancel,
-			}
-			s.Serve(tt.args.listener)
-		})
-	}
-}
-
-func TestBannerServer_ServeTLS(t *testing.T) {
-	type fields struct {
-		HandleConnection func(conn net.Conn)
-		waitGroup        *sync.WaitGroup
-		ctx              context.Context
-		cancel           context.CancelFunc
-	}
-	type args struct {
-		listener net.Listener
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-	// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := &BannerServer{
-				HandleConnection: tt.fields.HandleConnection,
-				waitGroup:        tt.fields.waitGroup,
-				ctx:              tt.fields.ctx,
-				cancel:           tt.fields.cancel,
-			}
-			s.ServeTLS(tt.args.listener)
-		})
-	}
-}
-
-func TestBannerServer_serve(t *testing.T) {
-	type fields struct {
-		HandleConnection func(conn net.Conn)
-		waitGroup        *sync.WaitGroup
-		ctx              context.Context
-		cancel           context.CancelFunc
-	}
-	type args struct {
-		conn net.Conn
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		args   args
-	}{
-	// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := &BannerServer{
-				HandleConnection: tt.fields.HandleConnection,
-				waitGroup:        tt.fields.waitGroup,
-				ctx:              tt.fields.ctx,
-				cancel:           tt.fields.cancel,
-			}
-			s.serve(tt.args.conn)
-		})
-	}
-}
-*/
