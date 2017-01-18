@@ -6,12 +6,13 @@ package poller
 import (
 	"context"
 	"crypto/tls"
+	"io"
+	"time"
+
 	"github.com/golang/mock/gomock"
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/protocol"
-	"io"
-	"time"
 )
 
 // Mock of ConnectionStream interface
@@ -93,7 +94,7 @@ func (_mr *_MockConnectionStreamRecorder) GetContext() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetContext")
 }
 
-func (_m *MockConnectionStream) SendMetrics(crs *check.CheckResultSet) error {
+func (_m *MockConnectionStream) SendMetrics(crs *check.ResultSet) error {
 	ret := _m.ctrl.Call(_m, "SendMetrics", crs)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -420,7 +421,7 @@ func (_mr *_MockSchedulerRecorder) Close() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Close")
 }
 
-func (_m *MockScheduler) SendMetrics(crs *check.CheckResultSet) {
+func (_m *MockScheduler) SendMetrics(crs *check.ResultSet) {
 	_m.ctrl.Call(_m, "SendMetrics", crs)
 }
 

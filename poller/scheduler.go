@@ -117,7 +117,7 @@ func (s *EleScheduler) Schedule(ch check.Check) {
 				s.executor.Execute(ch)
 
 			case <-ch.Done(): // session cancellation is propagated since check context is child of session context
-				log.WithField("check", ch.GetId()).Info("Check or session has been cancelled")
+				log.WithField("check", ch.GetID()).Info("Check or session has been cancelled")
 				return
 			}
 		}
