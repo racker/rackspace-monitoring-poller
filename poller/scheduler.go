@@ -52,17 +52,17 @@ func NewScheduler(zoneID string, stream ConnectionStream) Scheduler {
 	return s
 }
 
-// GetZoneID is a getter method to retrieve zone id
+// GetZoneID retrieves zone id
 func (s *EleScheduler) GetZoneID() string {
 	return s.zoneID
 }
 
-// GetContext is a getter method to retrieve cancelable context
+// GetContext retrieves cancelable context
 func (s *EleScheduler) GetContext() (ctx context.Context, cancel context.CancelFunc) {
 	return s.ctx, s.cancel
 }
 
-// GetChecks is a getter method to retrieve check map
+// GetChecks retrieves check map
 func (s *EleScheduler) GetChecks() map[string]check.Check {
 	return s.checks
 }
@@ -82,7 +82,7 @@ func (s *EleScheduler) runCheck(ch check.Check) {
 	jitter := rand.Intn(CheckSpreadInMilliseconds) + 1
 
 	log.WithFields(log.Fields{
-		"check":      ch.GetId(),
+		"check":      ch.GetID(),
 		"jitterMs":   jitter,
 		"waitPeriod": ch.GetWaitPeriod(),
 	}).Info("Starting check")
@@ -97,14 +97,14 @@ func (s *EleScheduler) runCheck(ch check.Check) {
 				s.SendMetrics(crs)
 			}
 		case <-ch.Done(): // session cancellation is propagated since check context is child of session context
-			log.WithField("check", ch.GetId()).Info("Check or session has been cancelled")
+			log.WithField("check", ch.GetID()).Info("Check or session has been cancelled")
 			return
 		}
 	}
 }
 
 // SendMetrics sends metrics passed in crs parameter via the stream
-func (s *EleScheduler) SendMetrics(crs *check.CheckResultSet) {
+func (s *EleScheduler) SendMetrics(crs *check.ResultSet) {
 	s.stream.SendMetrics(crs)
 }
 
@@ -113,7 +113,7 @@ func (s *EleScheduler) Register(ch check.Check) error {
 	if ch == nil {
 		return ErrCheckEmpty
 	}
-	s.checks[ch.GetId()] = ch
+	s.checks[ch.GetID()] = ch
 	return nil
 }
 
@@ -127,7 +127,7 @@ func (s *EleScheduler) RunFrameConsumer() {
 			// TODO Later this will probably need to handle check cancellations in which case it can call ch.Cancel()
 
 			checkCtx, cancelFunc := context.WithCancel(s.ctx)
-			ch := check.NewCheck(f.GetRawParams(), checkCtx, cancelFunc)
+			ch := check.NewCheck(checkCtx, f.GetRawParams(), cancelFunc)
 			if ch == nil {
 				log.Printf("Invalid Check")
 				continue

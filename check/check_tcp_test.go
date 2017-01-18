@@ -28,7 +28,7 @@ import (
 	"github.com/racker/rackspace-monitoring-poller/utils"
 )
 
-func ValidateMetrics(t *testing.T, metrics []string, cr *check.CheckResult) {
+func ValidateMetrics(t *testing.T, metrics []string, cr *check.Result) {
 	for _, metricName := range metrics {
 		if metric := cr.GetMetric(metricName); metric == nil {
 			log.Fatal("metric " + metricName + " does not exist")
@@ -62,7 +62,7 @@ func TestTCP_TLSRunSuccess(t *testing.T) {
 	  "target_resolver":"",
 	  "disabled":false
 	  }`, listenPort)
-	check := check.NewCheck([]byte(checkData), context.Background(), func() {})
+	check := check.NewCheck(context.Background(), []byte(checkData), func() {})
 
 	// Run check
 	crs, err := check.Run()
@@ -133,7 +133,7 @@ func TestTCPRunSuccess(t *testing.T) {
 	  "target_resolver":"",
 	  "disabled":false
 	  }`, listenPort)
-	check := check.NewCheck([]byte(checkData), context.Background(), func() {})
+	check := check.NewCheck(context.Background(), []byte(checkData), func() {})
 
 	// Run check
 	crs, err := check.Run()
@@ -181,7 +181,7 @@ func TestTCPRunFailureClosedPort(t *testing.T) {
 	  "target_resolver":"",
 	  "disabled":false
 	  }`, listenPort)
-	check := check.NewCheck([]byte(checkData), context.Background(), func() {})
+	check := check.NewCheck(context.Background(), []byte(checkData), func() {})
 
 	// Run check
 	crs, err := check.Run()
@@ -191,7 +191,7 @@ func TestTCPRunFailureClosedPort(t *testing.T) {
 
 	// Validate Metrics
 	//   - will be unavailable
-	if crs.Available == true {
+	if crs.Available {
 		t.Fatal("status must be not success")
 	}
 

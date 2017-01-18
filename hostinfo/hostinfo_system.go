@@ -37,11 +37,11 @@ func NewHostInfoSystem(base *hostinfo.HostInfoBase) HostInfo {
 	return &HostInfoSystem{HostInfoBase: *base}
 }
 
-func (*HostInfoSystem) Run() (*check.CheckResultSet, error) {
+func (*HostInfoSystem) Run() (*check.ResultSet, error) {
 	log.Debug("Running System")
 	info, _ := host.Info()
-	crs := check.NewCheckResultSet(nil, nil)
-	cr := check.NewCheckResult()
+	crs := check.NewResultSet(nil, nil)
+	cr := check.NewResult()
 	cr.AddMetrics(
 		metric.NewMetric("arch", "", metric.MetricString, runtime.GOOS, ""),
 		metric.NewMetric("name", "", metric.MetricString, info.OS, ""),
@@ -54,7 +54,7 @@ func (*HostInfoSystem) Run() (*check.CheckResultSet, error) {
 	return crs, nil
 }
 
-func (*HostInfoSystem) BuildResult(crs *check.CheckResultSet) interface{} {
+func (*HostInfoSystem) BuildResult(crs *check.ResultSet) interface{} {
 	result := &hostinfo.HostInfoSystemResult{}
 	if crs == nil {
 		log.Infoln("Check result set is unset")

@@ -14,26 +14,28 @@
 // limitations under the License.
 //
 
-// Ping Check
 package check
 
 import (
 	"encoding/json"
+	"time"
+
 	log "github.com/Sirupsen/logrus"
 	protocol "github.com/racker/rackspace-monitoring-poller/protocol/check"
 	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	"github.com/racker/rackspace-monitoring-poller/utils"
 	ping "github.com/sparrc/go-ping"
-	"time"
 )
 
+// PingCheck conveys Ping checks
 type PingCheck struct {
-	CheckBase
+	Base
 	protocol.PingCheckDetails
 }
 
-func NewPingCheck(base *CheckBase) Check {
-	check := &PingCheck{CheckBase: *base}
+// NewPingCheck - Constructor for an Ping Check
+func NewPingCheck(base *Base) Check {
+	check := &PingCheck{Base: *base}
 	err := json.Unmarshal(*base.RawDetails, &check.Details)
 	if err != nil {
 		log.Printf("Error unmarshalling check details")
@@ -43,17 +45,19 @@ func NewPingCheck(base *CheckBase) Check {
 	return check
 }
 
-func (ch *PingCheck) Run() (*CheckResultSet, error) {
-	log.Printf("Running PING Check: %v", ch.GetId())
+// Run method implements Check.Run method for Ping
+// please see Check interface for more information
+func (ch *PingCheck) Run() (*ResultSet, error) {
+	log.Printf("Running PING Check: %v", ch.GetID())
 
-	targetIp, err := ch.GetTargetIP()
+	targetIP, err := ch.GetTargetIP()
 	if err != nil {
 		return nil, err
 	}
 
-	pinger, err := PingerFactory(targetIp)
+	pinger, err := PingerFactory(targetIP)
 	if err != nil {
-		log.WithField("targetIp", targetIp).
+		log.WithField("targetIP", targetIP).
 			Error("Failed to create pinger")
 		return nil, err
 	}
@@ -63,7 +67,7 @@ func (ch *PingCheck) Run() (*CheckResultSet, error) {
 
 	pinger.SetOnRecv(func(pkt *ping.Packet) {
 		log.WithFields(log.Fields{
-			"id":    ch.GetId(),
+			"id":    ch.GetID(),
 			"bytes": pkt.Nbytes,
 			"seq":   pkt.Seq,
 			"rtt":   pkt.Rtt,
@@ -71,7 +75,7 @@ func (ch *PingCheck) Run() (*CheckResultSet, error) {
 	})
 
 	log.WithFields(log.Fields{
-		"id":         ch.GetId(),
+		"id":         ch.GetID(),
 		"count":      pinger.Count(),
 		"timeoutSec": ch.Timeout,
 		"timeoutDur": pinger.Timeout(),
@@ -82,14 +86,14 @@ func (ch *PingCheck) Run() (*CheckResultSet, error) {
 
 	stats := pinger.Statistics()
 
-	cr := NewCheckResult(
+	cr := NewResult(
 		metric.NewPercentMetricFromInt("available", "", stats.PacketsRecv, stats.PacketsSent),
 		metric.NewMetric("average", "", metric.MetricFloat, utils.ScaleFractionalDuration(stats.AvgRtt, time.Second), metric.UnitSeconds),
 		metric.NewMetric("count", "", metric.MetricNumber, stats.PacketsSent, ""),
 		metric.NewMetric("maximum", "", metric.MetricFloat, utils.ScaleFractionalDuration(stats.MaxRtt, time.Second), metric.UnitSeconds),
 		metric.NewMetric("minimum", "", metric.MetricFloat, utils.ScaleFractionalDuration(stats.MinRtt, time.Second), metric.UnitSeconds),
 	)
-	crs := NewCheckResultSet(ch, cr)
+	crs := NewResultSet(ch, cr)
 	if stats.PacketsSent == 0 {
 		log.Warn("No ping packets were sent, likely due to lack of permission")
 		crs.SetStateUnavailable()
@@ -98,7 +102,7 @@ func (ch *PingCheck) Run() (*CheckResultSet, error) {
 	}
 
 	log.WithFields(log.Fields{
-		"id":     ch.GetId(),
+		"id":     ch.GetID(),
 		"stats":  stats,
 		"result": cr,
 	}).Debug("Finished remote.ping check")

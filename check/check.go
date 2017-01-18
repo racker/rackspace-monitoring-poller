@@ -72,11 +72,14 @@ import (
 )
 
 // Check is an interface required to be implemented by all checks.
-// Implementations of this interface should extend CheckBase, which leaves only the Run method to be implemented.
+// Implementations of this interface should extend CheckBase,
+// which leaves only the Run method to be implemented.
+// Run method needs to set up the check,
+// send the request, and parse the response
 type Check interface {
-	GetId() string
-	SetId(id string)
-	GetEntityId() string
+	GetID() string
+	SetID(id string)
+	GetEntityID() string
 	GetCheckType() string
 	SetCheckType(checkType string)
 	GetPeriod() uint64
@@ -87,13 +90,17 @@ type Check interface {
 	SetTimeout(timeout uint64)
 	Cancel()
 	Done() <-chan struct{}
-	Run() (*CheckResultSet, error)
+	Run() (*ResultSet, error)
 }
 
+// WaitPeriodTimeMeasurement sets up the time measurement
+// for how long the check should wait before retrying.
+// By default, it'll wait for check's "period" seconds
 var WaitPeriodTimeMeasurement = time.Second
 
-// CheckBase provides an abstract implementation of the Check interface leaving Run to be implemented.
-type CheckBase struct {
+// Base provides an abstract implementation of the Check
+// interface leaving Run to be implemented.
+type Base struct {
 	protocheck.CheckIn
 	// context is primarily provided to enable watching for cancellation of this particular check
 	context context.Context
@@ -103,7 +110,7 @@ type CheckBase struct {
 
 // GetTargetIP obtains the specific IP address selected for this check.
 // It returns the resolved IP address as dotted string.
-func (ch *CheckBase) GetTargetIP() (string, error) {
+func (ch *Base) GetTargetIP() (string, error) {
 	ip, ok := ch.IpAddresses[*ch.TargetAlias]
 	if ok {
 		return ip, nil
@@ -112,66 +119,88 @@ func (ch *CheckBase) GetTargetIP() (string, error) {
 
 }
 
-func (ch *CheckBase) GetId() string {
+// GetID  returns check's id
+func (ch *Base) GetID() string {
 	return ch.Id
 }
 
-func (ch *CheckBase) SetId(id string) {
+// SetID sets check's id to provided id
+func (ch *Base) SetID(id string) {
 	ch.Id = id
 }
 
-func (ch *CheckBase) GetCheckType() string {
+// GetCheckType returns check's type
+func (ch *Base) GetCheckType() string {
 	return ch.CheckType
 }
 
-func (ch *CheckBase) SetCheckType(checkType string) {
+// SetCheckType sets check's checktype to
+// to provided check type
+func (ch *Base) SetCheckType(checkType string) {
 	ch.CheckType = checkType
 }
 
-func (ch *CheckBase) GetPeriod() uint64 {
+// GetPeriod returns check's period
+func (ch *Base) GetPeriod() uint64 {
 	return ch.Period
 }
 
-func (ch *CheckBase) GetEntityId() string {
-	return ch.EntityId
-}
-
-func (ch *CheckBase) SetPeriod(period uint64) {
+// SetPeriod sets check's period to
+// to provided period
+func (ch *Base) SetPeriod(period uint64) {
 	ch.Period = period
 }
 
-func (ch *CheckBase) GetTimeout() uint64 {
+// GetEntityID  returns check's entity id
+func (ch *Base) GetEntityID() string {
+	return ch.EntityId
+}
+
+// GetTimeout returns check's timeout
+func (ch *Base) GetTimeout() uint64 {
 	return ch.Timeout
 }
 
-func (ch *CheckBase) GetTimeoutDuration() time.Duration {
+// SetTimeout is not currently implemented
+func (ch *Base) SetTimeout(timeout uint64) {
+
+}
+
+// GetTimeoutDuration returns check's timeout in seconds
+func (ch *Base) GetTimeoutDuration() time.Duration {
 	return time.Duration(ch.Timeout) * time.Second
 }
 
-func (ch *CheckBase) SetTimeout(timeout uint64) {
-
-}
-
-func (ch *CheckBase) GetWaitPeriod() time.Duration {
+// GetWaitPeriod returns check's period in
+// provided time measurements.  Defaulted to seconds
+func (ch *Base) GetWaitPeriod() time.Duration {
 	return time.Duration(ch.Period) * WaitPeriodTimeMeasurement
 }
 
-func (ch *CheckBase) Cancel() {
+// Cancel method closes the channel's context
+func (ch *Base) Cancel() {
 	ch.cancel()
 }
 
-func (ch *CheckBase) Done() <-chan struct{} {
+// Done method listens on channel's context to close
+func (ch *Base) Done() <-chan struct{} {
 	return ch.context.Done()
 }
 
+// TLSMetrics is utilized the provide TLS metrics
 type TLSMetrics struct {
 	Verified bool
 }
 
-func (ch *CheckBase) AddTLSMetrics(cr *CheckResult, state tls.ConnectionState) (*TLSMetrics, error) {
+// AddTLSMetrics function sets up secure metrics from provided check result
+// It then returns a list of tls metrics with optional Verified parameter
+// that depends on whether the certificate was successfully signed (based on provided tls
+// connection state)
+func (ch *Base) AddTLSMetrics(cr *Result, state tls.ConnectionState) *TLSMetrics {
+	// TODO: refactor.  Cyclomatic complexity of 35
 	tlsMetrics := &TLSMetrics{}
 	if len(state.PeerCertificates) == 0 {
-		return tlsMetrics, nil
+		return tlsMetrics
 	}
 	// Validate certificate chain
 	cert := state.PeerCertificates[0]
@@ -288,10 +317,10 @@ func (ch *CheckBase) AddTLSMetrics(cr *CheckResult, state tls.ConnectionState) (
 	// START TIME
 	cr.AddMetric(metric.NewMetric("cert_start", "", metric.MetricNumber, cert.NotBefore.Unix(), ""))
 	cr.AddMetric(metric.NewMetric("cert_end", "", metric.MetricNumber, cert.NotAfter.Unix(), ""))
-	return tlsMetrics, nil
+	return tlsMetrics
 }
 
-func (ch *CheckBase) readLimit(conn io.Reader, limit int64) ([]byte, error) {
+func (ch *Base) readLimit(conn io.Reader, limit int64) ([]byte, error) {
 	bytes := make([]byte, limit)
 	bio := io.LimitReader(conn, limit)
 	count, err := bio.Read(bytes)
@@ -301,7 +330,9 @@ func (ch *CheckBase) readLimit(conn io.Reader, limit int64) ([]byte, error) {
 	return bytes[:count], nil
 }
 
-func (ch *CheckBase) PrintDefaults() {
+// PrintDefaults logs the check's default data.
+// (whatever is provided in the base)
+func (ch *Base) PrintDefaults() {
 	var targetAlias string
 	var targetHostname string
 	var targetResolver string
@@ -324,5 +355,5 @@ func (ch *CheckBase) PrintDefaults() {
 		"target_hostname": targetHostname,
 		"target_resolver": targetResolver,
 		"details":         string(*ch.RawDetails),
-	}).Infof("New check %v", ch.GetId())
+	}).Infof("New check %v", ch.GetID())
 }

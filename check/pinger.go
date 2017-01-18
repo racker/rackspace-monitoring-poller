@@ -17,10 +17,12 @@
 package check
 
 import (
-	"github.com/sparrc/go-ping"
 	"time"
+
+	"github.com/sparrc/go-ping"
 )
 
+// Pinger is an interface required to be implemented by all pingers.
 type Pinger interface {
 	SetCount(i int)
 	Count() int
@@ -35,8 +37,13 @@ type Pinger interface {
 	Statistics() *ping.Statistics
 }
 
+// PingerFactorySpec specifies function specification to use
+// when creating a Pinger.
 type PingerFactorySpec func(addr string) (Pinger, error)
 
+// PingerFactory creates and returns a new pinger with a specified address
+// It then delegates th pingerImpl private function to wrap the pinger
+// with the Timeouts, Counts, Statistics, and Run methods
 var PingerFactory PingerFactorySpec = func(addr string) (Pinger, error) {
 	delegate, err := ping.NewPinger(addr)
 	if err != nil {

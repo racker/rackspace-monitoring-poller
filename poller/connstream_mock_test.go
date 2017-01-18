@@ -90,7 +90,7 @@ func (_mr *_MockConnectionStreamRecorder) RegisterConnection(arg0, arg1 interfac
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "RegisterConnection", arg0, arg1)
 }
 
-func (_m *MockConnectionStream) SendMetrics(_param0 *check.CheckResultSet) error {
+func (_m *MockConnectionStream) SendMetrics(_param0 *check.ResultSet) error {
 	ret := _m.ctrl.Call(_m, "SendMetrics", _param0)
 	ret0, _ := ret[0].(error)
 	return ret0

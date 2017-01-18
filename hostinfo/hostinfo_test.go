@@ -33,8 +33,8 @@ func TestHostInfoMemory_PopulateResult(t *testing.T) {
 	hinfo := &hostinfo_proto.HostInfoBase{Type: "MEMORY"}
 	hostInfoMemory := hostinfo.NewHostInfoMemory(hinfo)
 
-	crs := check.NewCheckResultSet(nil, nil)
-	cr := check.NewCheckResult()
+	crs := check.NewResultSet(nil, nil)
+	cr := check.NewResult()
 	cr.AddMetrics(
 		metric.NewMetric("UsedPercentage", "", metric.MetricFloat, 0.75, ""),
 		metric.NewMetric("Free", "", metric.MetricNumber, 250, ""),
@@ -70,7 +70,7 @@ func TestHostInfoProcesses_PopulateResult(t *testing.T) {
 	}
 }
 
-func getMetricResults(name string, checkResultList []*check.CheckResult) *metric.Metric {
+func getMetricResults(name string, checkResultList []*check.Result) *metric.Metric {
 	for _, got_check_result := range checkResultList {
 		if got_check_result.Metrics[name] != nil {
 			return got_check_result.Metrics[name]

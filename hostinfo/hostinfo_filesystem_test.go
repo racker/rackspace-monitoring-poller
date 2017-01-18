@@ -122,14 +122,14 @@ func TestHostInfoFilesystem_Run(t *testing.T) {
 func TestHostInfoFilesystem_BuildResult(t *testing.T) {
 	tests := []struct {
 		name     string
-		crs      *check.CheckResultSet
+		crs      *check.ResultSet
 		expected *protocol_hostinfo.HostInfoFilesystemResult
 	}{
 		{
 			name: "Happy path",
-			crs: &check.CheckResultSet{
-				Metrics: []*check.CheckResult{
-					&check.CheckResult{
+			crs: &check.ResultSet{
+				Metrics: []*check.Result{
+					&check.Result{
 						Metrics: map[string]*metric.Metric{
 							"dir_name": &metric.Metric{
 								Name:       "dir_name",

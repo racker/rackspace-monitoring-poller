@@ -68,7 +68,7 @@ func TestEleScheduler_SendMetrics(t *testing.T) {
 	mockStream := poller.NewMockConnectionStream(mockCtrl)
 	schedule := poller.NewScheduler("pzAwesome", mockStream)
 	mockStream.EXPECT().SendMetrics(gomock.Any()).Times(1)
-	schedule.SendMetrics(&check.CheckResultSet{})
+	schedule.SendMetrics(&check.ResultSet{})
 }
 
 func TestEleScheduler_Register(t *testing.T) {
@@ -80,7 +80,7 @@ func TestEleScheduler_Register(t *testing.T) {
 	}{
 		{
 			name: "Happy path",
-			ch: check.NewCheck(json.RawMessage(`{
+			ch: check.NewCheck(cancelCtx, json.RawMessage(`{
 	  "id":"chPzATCP",
 	  "zone_id":"pzA",
 	  "entity_id":"enAAAAIPV4",
@@ -93,7 +93,7 @@ func TestEleScheduler_Register(t *testing.T) {
 	  "target_hostname":"",
 	  "target_resolver":"",
 	  "disabled":true
-			}`), cancelCtx, cancelFunc),
+			}`), cancelFunc),
 			expectedErr: false,
 		},
 		{
@@ -119,7 +119,7 @@ func TestEleScheduler_Register(t *testing.T) {
 				for checkId, _ := range s.GetChecks() {
 					checkList = append(checkList, checkId)
 				}
-				assert.Contains(t, checkList, tt.ch.GetId())
+				assert.Contains(t, checkList, tt.ch.GetID())
 			}
 		})
 	}

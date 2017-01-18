@@ -64,7 +64,7 @@ func (_mr *_MockSchedulerRecorder) RunFrameConsumer() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "RunFrameConsumer")
 }
 
-func (_m *MockScheduler) SendMetrics(_param0 *check.CheckResultSet) {
+func (_m *MockScheduler) SendMetrics(_param0 *check.ResultSet) {
 	_m.ctrl.Call(_m, "SendMetrics", _param0)
 }
 

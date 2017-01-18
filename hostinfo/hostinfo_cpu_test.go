@@ -118,14 +118,14 @@ func TestHostInfoCpu_Run(t *testing.T) {
 func TestHostInfoCpu_BuildResult(t *testing.T) {
 	tests := []struct {
 		name     string
-		crs      *check.CheckResultSet
+		crs      *check.ResultSet
 		expected *protocol_hostinfo.HostInfoCpuResult
 	}{
 		{
 			name: "Happy path",
-			crs: &check.CheckResultSet{
-				Metrics: []*check.CheckResult{
-					&check.CheckResult{
+			crs: &check.ResultSet{
+				Metrics: []*check.Result{
+					&check.Result{
 						Metrics: map[string]*metric.Metric{
 							"name": &metric.Metric{
 								Name:       "name",

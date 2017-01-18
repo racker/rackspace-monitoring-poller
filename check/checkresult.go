@@ -14,7 +14,6 @@
 // limitations under the License.
 //
 
-// Check Result
 package check
 
 import (
@@ -22,47 +21,66 @@ import (
 )
 
 const (
-	StateAvailable     = "available"
-	StateUnavailable   = "unavailable"
-	StatusSuccess      = "success"
+	// StateAvailable constant used for setting states and statuses
+	StateAvailable = "available"
+	// StateUnavailable constant used for setting states and statuses
+	StateUnavailable = "unavailable"
+	// StatusSuccess constant used for setting states and statuses
+	StatusSuccess = "success"
+	// StatusUnknownError constant used for setting states and statuses
 	StatusUnknownError = "unknown error"
 )
 
 var (
+	// DefaultStatusLimit sets the limit to Status string length
 	DefaultStatusLimit = 256
-	DefaultStateLimit  = 256
-	DefaultStatus      = StatusSuccess
-	DefaultState       = StateAvailable
+	// DefaultStateLimit sets the limit to State string length
+	DefaultStateLimit = 256
+	// DefaultStatus sets the default status for a check.
+	// Default is set to "success"
+	DefaultStatus = StatusSuccess
+	// DefaultState sets the default state for a check.
+	// Default is set to "available"
+	DefaultState = StateAvailable
 )
 
+// States used for check result.  Consist of State and Status
 type States struct {
 	State  string
 	Status string
 }
 
-func (crs *States) SetStateAvailable() {
-	crs.State = StateAvailable
+// SetStateAvailable updates state to available
+func (st *States) SetStateAvailable() {
+	st.State = StateAvailable
 }
 
-func (crs *States) SetStateUnavailable() {
-	crs.State = StateUnavailable
+// SetStateUnavailable updates state to unavailable
+func (st *States) SetStateUnavailable() {
+	st.State = StateUnavailable
 }
 
-func (crs *States) SetStatusUnknown() {
-	crs.Status = StatusUnknownError
+// SetStatusUnknown updates status to unknown
+func (st *States) SetStatusUnknown() {
+	st.Status = StatusUnknownError
 }
 
-func (crs *States) SetStatusSuccess() {
-	crs.Status = StatusSuccess
+// SetStatusSuccess updates status to success
+func (st *States) SetStatusSuccess() {
+	st.Status = StatusSuccess
 }
 
+// SetState sets the state of result.
+// If length of state is > DefaultStateLimit, it crops it
 func (st *States) SetState(state string) {
-	if len(state) > DefaultStatusLimit {
+	if len(state) > DefaultStateLimit {
 		state = state[:DefaultStateLimit]
 	}
 	st.State = state
 }
 
+// SetStatus sets the status of result.
+// If length of status is > DefaultStatusLimit, it crops it
 func (st *States) SetStatus(status string) {
 	if len(status) > DefaultStatusLimit {
 		status = status[:DefaultStatusLimit]
@@ -70,43 +88,63 @@ func (st *States) SetStatus(status string) {
 	st.Status = status
 }
 
-type CheckResult struct {
+// Result wraps the metrics map
+// metric name is used as key
+type Result struct {
 	Metrics map[string]*metric.Metric
 }
 
-func NewCheckResult(metrics ...*metric.Metric) *CheckResult {
-	cr := &CheckResult{
+// NewResult creates a CheckResult object and adds passed
+// in metrics.  Returns that check result
+func NewResult(metrics ...*metric.Metric) *Result {
+	cr := &Result{
 		Metrics: make(map[string]*metric.Metric, len(metrics)+1),
 	}
 	cr.AddMetrics(metrics...)
 	return cr
 }
 
-func (cr *CheckResult) AddMetric(metric *metric.Metric) {
+// AddMetric adds a new metric to the map.  If metric name is
+// already in the map, it overwrites the old metric with the
+// passed in
+func (cr *Result) AddMetric(metric *metric.Metric) {
 	cr.Metrics[metric.Name] = metric
 }
 
-func (cr *CheckResult) AddMetrics(metrics ...*metric.Metric) {
+// AddMetrics adds a new metrics list.
+// If metric names already exist in check result, the old
+// metric is overwritten with the one in the list
+func (cr *Result) AddMetrics(metrics ...*metric.Metric) {
 	for _, metric := range metrics {
 		cr.AddMetric(metric)
 	}
 }
 
-func (cr *CheckResult) GetMetric(name string) *metric.Metric {
+// GetMetric returns the metric from the map based on passed in
+// metric name
+func (cr *Result) GetMetric(name string) *metric.Metric {
 	return cr.Metrics[name]
 }
 
-type CheckResultSet struct {
+// ResultSet wraps the states, the check, and the CheckResult
+// list.  It also provides an available boolean to show whether the
+// set is available or not.  Metrics are a list of CheckResults,
+// which contain a metric map (so a list of maps)
+type ResultSet struct {
 	States
 	Check     Check
-	Metrics   []*CheckResult
+	Metrics   []*Result
 	Available bool
 }
 
-func NewCheckResultSet(ch Check, cr *CheckResult) *CheckResultSet {
-	crs := &CheckResultSet{
+// NewResultSet creates a new ResultSet.
+// By default the set's state is unavailable and status is unknown
+// It then adds passed in check results to the set and sets the
+// check to the passed in check.
+func NewResultSet(ch Check, cr *Result) *ResultSet {
+	crs := &ResultSet{
 		Check:   ch,
-		Metrics: make([]*CheckResult, 0),
+		Metrics: make([]*Result, 0),
 	}
 	crs.SetStateUnavailable()
 	crs.SetStatusUnknown()
@@ -116,30 +154,39 @@ func NewCheckResultSet(ch Check, cr *CheckResult) *CheckResultSet {
 	return crs
 }
 
-func (crs *CheckResultSet) SetStateAvailable() {
+// SetStateAvailable sets the set to available and sets its
+// state to available
+func (crs *ResultSet) SetStateAvailable() {
 	crs.Available = true
 	crs.States.SetStateAvailable()
 }
 
-func (crs *CheckResultSet) SetStateUnavailable() {
+// SetStateUnavailable sets the set to unavailable, sets its
+// state to unavailable, and clears all check results
+func (crs *ResultSet) SetStateUnavailable() {
 	crs.Available = false
 	crs.States.SetStateUnavailable()
 	crs.ClearMetrics()
 }
 
-func (crs *CheckResultSet) ClearMetrics() {
-	crs.Metrics = make([]*CheckResult, 0)
+// ClearMetrics clears all the check results (empties the list)
+func (crs *ResultSet) ClearMetrics() {
+	crs.Metrics = make([]*Result, 0)
 }
 
-func (crs *CheckResultSet) Add(cr *CheckResult) {
+// Add adds a check result to check result list
+func (crs *ResultSet) Add(cr *Result) {
 	crs.Metrics = append(crs.Metrics, cr)
 }
 
-func (crs *CheckResultSet) Length() int {
+// Length returns the number of check results in a set
+func (crs *ResultSet) Length() int {
 	return len(crs.Metrics)
 }
 
-func (crs *CheckResultSet) Get(idx int) *CheckResult {
+// Get returns a check result by its index in a list.
+// Stops the program if the index is out of bounds.
+func (crs *ResultSet) Get(idx int) *Result {
 	if idx >= crs.Length() {
 		panic("CheckResultSet index is greater than length")
 	}

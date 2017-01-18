@@ -36,15 +36,15 @@ func NewHostInfoProcesses(base *hostinfo.HostInfoBase) HostInfo {
 	return &HostInfoProcesses{HostInfoBase: *base}
 }
 
-func (*HostInfoProcesses) Run() (*check.CheckResultSet, error) {
+func (*HostInfoProcesses) Run() (*check.ResultSet, error) {
 	log.Debug("Running Processes")
-	crs := check.NewCheckResultSet(nil, nil)
+	crs := check.NewResultSet(nil, nil)
 	pids, err := process.Pids()
 	if err != nil {
 		return nil, err
 	}
 	for _, pid := range pids {
-		cr := check.NewCheckResult()
+		cr := check.NewResult()
 		pr, err := process.NewProcess(pid)
 		if err != nil {
 			continue
@@ -99,7 +99,7 @@ func (*HostInfoProcesses) Run() (*check.CheckResultSet, error) {
 	return crs, nil
 }
 
-func (hi *HostInfoProcesses) BuildResult(crs *check.CheckResultSet) interface{} {
+func (hi *HostInfoProcesses) BuildResult(crs *check.ResultSet) interface{} {
 	result := &hostinfo.HostInfoProcessesResult{}
 	result.Timestamp = utils.NowTimestampMillis()
 	for i := 0; i < crs.Length(); i++ {

@@ -22,10 +22,10 @@ import (
 	"log"
 )
 
-// Given a received check request, this will unmarshal the request into one of the known polymorphic types.
+// NewCheck will unmarshal the request into one of the known polymorphic types given a received check request.
 // This method needs to be updated to add to the known types.
-func NewCheck(rawParams json.RawMessage, checkCtx context.Context, cancel context.CancelFunc) Check {
-	checkBase := &CheckBase{
+func NewCheck(checkCtx context.Context, rawParams json.RawMessage, cancel context.CancelFunc) Check {
+	checkBase := &Base{
 		context: checkCtx,
 		cancel:  cancel,
 	}
