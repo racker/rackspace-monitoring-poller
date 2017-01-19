@@ -126,10 +126,13 @@ func TestEleScheduler_Register(t *testing.T) {
 }
 
 func TestEleScheduler_RunFrameConsumer(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockStream := poller.NewMockConnectionStream(mockCtrl)
-	mockStream.EXPECT().SendMetrics(gomock.Any())
+	mockStream.EXPECT().SendMetrics(gomock.Any()).AnyTimes()
 	schedule := poller.NewScheduler("pzAwesome", mockStream)
 
 	// set up wait period time measurement
@@ -178,4 +181,44 @@ func TestEleScheduler_RunFrameConsumer(t *testing.T) {
 		<-ctx.Done()
 	})
 	assert.True(t, completed, "cancellation channel never notified")
+}
+
+// This is a variant of TestEleScheduler_RunFrameConsumer that eliminates all use of go routines, but narrows the
+// scope of testing.
+func TestEleScheduler_FrameConsumer_Scheduling(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	mockCheckScheduler := poller.NewMockCheckScheduler(mockCtrl)
+	mockCheckExecutor := poller.NewMockCheckExecutor(mockCtrl)
+
+	mockStream := poller.NewMockConnectionStream(mockCtrl)
+	scheduler := poller.NewCustomScheduler("pzAwesome", mockStream, mockCheckScheduler, mockCheckExecutor)
+
+	scheduler.GetInput() <- &protocol.FrameMsg{
+		FrameMsgCommon: protocol.FrameMsgCommon{
+			Id: 123,
+		},
+		RawParams: json.RawMessage(`{
+	  "id":"chPzATCP",
+	  "zone_id":"pzA",
+	  "entity_id":"enAAAAIPV4",
+	  "details":{"port":0,"ssl":false},
+	  "type":"remote.tcp",
+	  "timeout":1,
+	  "period":120,
+	  "ip_addresses":{"default":"127.0.0.1"},
+	  "target_alias":"default",
+	  "target_hostname":"",
+	  "target_resolver":"",
+	  "disabled":true
+	  }`),
+	}
+
+	mockCheckScheduler.EXPECT().Schedule(check.ExpectedCheckType("remote.tcp")).Do(func(ch check.Check) {
+		// then close the frame consumer
+		scheduler.Close()
+	})
+
+	scheduler.RunFrameConsumer()
 }

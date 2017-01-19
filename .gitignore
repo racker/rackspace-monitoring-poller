@@ -6,3 +6,4 @@
 /*.pem
 /data/
 .DS_Store
+trace.out
