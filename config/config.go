@@ -20,11 +20,12 @@ package config
 import (
 	"bufio"
 	"errors"
-	log "github.com/Sirupsen/logrus"
 	"os"
 	"regexp"
 	"strings"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 var (

@@ -16,6 +16,8 @@ go build
 
 ## Running Simple Endpoint Server for development
 
+#### NOTE: Due to endpoint protocol being in flux, This is currently not configured to listen to any checks.
+
 In the workspace, generate self-signed client/server certificates and keys. In the following examples, the files
 will be stored under sub-directories of `data`. Create that directory, if needed:
 

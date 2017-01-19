@@ -1,0 +1,6 @@
+{
+  "CertFile": "testdata/cert.pem",
+  "KeyFile":  "testdata/key.pem",
+
+  "AgentsConfigDir": "testdata/endpoint-agents"
+}

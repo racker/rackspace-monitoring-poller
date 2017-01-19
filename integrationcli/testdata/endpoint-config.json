@@ -1,0 +1,7 @@
+{
+  "CertFile": "testdata/cert.pem",
+  "KeyFile":  "testdata/key.pem",
+  "BindAddr": ":55000",
+
+  "AgentsConfigDir": "testdata/endpoint-agents"
+}
