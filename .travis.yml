@@ -2,7 +2,6 @@ language: go
 
 sudo: false
 
-
 go:
   - 1.7.x
 
@@ -22,7 +21,7 @@ script:
   - go test -v github.com/racker/rackspace-monitoring-poller/integrationcli
 after_script:
   - go get github.com/mattn/goveralls
-  - bash combine-coverage.sh --coveralls
+  - bash contrib/combine-coverage.sh --coveralls
 deploy:
   provider: releases
   # Generate OAuth token at https://github.com/settings/tokens and configure in
