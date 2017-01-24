@@ -88,6 +88,9 @@ type Session interface {
 	GetWriteDeadline() time.Time
 	Close()
 	Wait()
+
+	GetClockOffset() int64
+	GetTransitDelay() int64
 }
 
 // CheckScheduler arranges the periodic invocation of the given Check

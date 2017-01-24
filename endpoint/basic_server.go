@@ -86,16 +86,16 @@ func (s *BasicServer) ListenAndServe() error {
 		if err != nil {
 			log.Fatal("Failed to accept connection", err.Error())
 		}
-		go s.handleConnection(rootContext, conn)
+		go s.runConnectionHandling(rootContext, conn)
 	}
 }
 
-func (s *BasicServer) handleConnection(ctx context.Context, c net.Conn) {
+func (s *BasicServer) runConnectionHandling(ctx context.Context, c net.Conn) {
 	defer c.Close()
 	log.WithField("remoteAddr", c.RemoteAddr()).Info("Handling connection")
 
 	smartC := utils.NewSmartConn(c)
-	// the agent doesn't know it yet, but we're imposing the keepalive duration upon them to send us a handshake, etc
+
 	smartC.ReadKeepalive = ExpectedAgentHeartbeatSec * time.Second
 	smartC.WriteAllowance = ConnectionWriteAllowance
 	// this is also where we could setup endpoint->agent heartbeats
@@ -163,13 +163,7 @@ func (s *BasicServer) consumeFrame(ctx context.Context, c *utils.SmartConn, fram
 			return err
 		}
 
-		resp := &protocol.HandshakeResponse{}
-		resp.Method = protocol.MethodEmpty
-		resp.Id = frame.Id
-		resp.Result.HandshakeInterval = ExpectedAgentHeartbeatSec * 1000
-
-		log.Debug("SEND handshake resp", resp)
-		c.WriteJSON(resp)
+		sendHandshakeResponse(frame, c)
 
 		agentErrors := s.AgentTracker.ProcessHello(*handshakeReq, c)
 		go watchForAgentErrors(ctx, agentErrors, c)
@@ -185,13 +179,34 @@ func (s *BasicServer) consumeFrame(ctx context.Context, c *utils.SmartConn, fram
 		s.AgentTracker.ProcessCheckMetricsPost(*metricsPostReq)
 
 	case protocol.MethodHeartbeatPost:
-		log.WithField("remoteAddr", c.RemoteAddr()).Debug("It's alive")
+		log.WithField("remoteAddr", c.RemoteAddr()).Debug("Received heartbeat")
+		sendHeartbeatResponse(frame, c)
 
 	default:
 		return types.Error{Msg: "Unsupported method: " + frame.Method}
 	}
 
 	return nil
+}
+
+func sendHeartbeatResponse(frame *protocol.FrameMsg, c *utils.SmartConn) {
+	resp := &protocol.HeartbeatResponse{}
+	resp.Method = protocol.MethodEmpty
+	resp.Id = frame.Id
+	resp.Result.Timestamp = utils.NowTimestampMillis()
+
+	log.WithField("resp", resp).Debug("SEND heartbeat resp")
+	c.WriteJSON(resp)
+}
+
+func sendHandshakeResponse(frame *protocol.FrameMsg, c *utils.SmartConn) {
+	resp := &protocol.HandshakeResponse{}
+	resp.Method = protocol.MethodEmpty
+	resp.Id = frame.Id
+	resp.Result.HandshakeInterval = ExpectedAgentHeartbeatSec * 1000
+
+	log.WithField("resp", resp).Debug("SEND handshake resp")
+	c.WriteJSON(resp)
 }
 
 func logUnmarshalError(frame *protocol.FrameMsg, c *utils.SmartConn) {

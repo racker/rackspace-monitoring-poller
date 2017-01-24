@@ -26,6 +26,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/hostinfo"
 	"github.com/racker/rackspace-monitoring-poller/protocol"
+	"github.com/racker/rackspace-monitoring-poller/utils"
 )
 
 // CompletionFrame is a pointer to a request with a specified
@@ -61,23 +62,31 @@ type EleSession struct {
 
 	sendCh chan protocol.Frame
 
-	heartbeatInterval time.Duration
+	heartbeatInterval  time.Duration
+	heartbeatResponses chan *protocol.HeartbeatResponse
+	heartbeatLatency   struct {
+		tracking      utils.TimeLatencyTracking
+		expectedSeqID uint64
+		offset        int64
+		delay         int64
+	}
 }
 
 func newSession(ctx context.Context, connection Connection) Session {
 	session := &EleSession{
-		connection:        connection,
-		enc:               json.NewEncoder(connection.GetConnection()),
-		dec:               json.NewDecoder(connection.GetConnection()),
-		seq:               1,
-		sendCh:            make(chan protocol.Frame, 128),
-		heartbeatInterval: time.Duration(40 * time.Second),
-		completions:       make(map[uint64]*CompletionFrame),
+		connection:         connection,
+		enc:                json.NewEncoder(connection.GetConnection()),
+		dec:                json.NewDecoder(connection.GetConnection()),
+		seq:                1,
+		sendCh:             make(chan protocol.Frame, 128),
+		heartbeatInterval:  time.Duration(40 * time.Second),
+		heartbeatResponses: make(chan *protocol.HeartbeatResponse, 1),
+		completions:        make(map[uint64]*CompletionFrame),
 	}
 	ctx, cancel := context.WithCancel(ctx)
-	go session.read(ctx)
-	go session.send(ctx)
-	go session.heartbeat(ctx)
+	go session.runFrameReading(ctx)
+	go session.runFrameSending(ctx)
+	go session.runHeartbeats(ctx)
 	session.ctx = ctx
 	session.cancel = cancel
 	session.Auth()
@@ -88,18 +97,21 @@ func newSession(ctx context.Context, connection Connection) Session {
 // and process version
 func (s *EleSession) Auth() {
 	cfg := s.connection.GetStream().GetConfig()
-	s.Send(protocol.NewHandshakeRequest(cfg))
+	request := protocol.NewHandshakeRequest(cfg)
+	request.SetId(&s.seq)
+	s.Send(request)
 }
 
-// Send method sets up the session id, endpoint, and source
-// and sends the request
+// Send stages a frame for sending after setting the target and source.
+// NOTE: The protocol.Frame.SetId MUST be called prior to this method.
 func (s *EleSession) Send(msg protocol.Frame) {
-	msg.SetId(&s.seq)
 	msg.SetTarget("endpoint")
 	msg.SetSource(s.connection.GetGUID())
 	s.sendCh <- msg
 }
 
+// Respond is equivalent to Send but improves readability by emphasizing this is the poller responding to a
+// request from the server.
 func (s *EleSession) Respond(msg protocol.Frame) {
 	msg.SetTarget("endpoint")
 	msg.SetSource(s.connection.GetGUID())
@@ -132,9 +144,11 @@ func (s *EleSession) handleResponse(resp *protocol.FrameMsg) {
 		case protocol.MethodHandshakeHello:
 			resp := protocol.NewHandshakeResponse(resp)
 			s.SetHeartbeatInterval(resp.Result.HandshakeInterval)
+		case protocol.MethodHeartbeatPost:
+			resp := protocol.NewHeartbeatResponse(resp)
+			s.heartbeatResponses <- resp
 		case protocol.MethodCheckScheduleGet:
 		case protocol.MethodPollerRegister:
-		case protocol.MethodHeartbeatPost:
 		case protocol.MethodCheckMetricsPost:
 		default:
 			log.Errorf("Unexpected method: %s", req.Method)
@@ -153,7 +167,7 @@ func (s *EleSession) GetWriteDeadline() time.Time {
 }
 
 // runs it it's own go routine
-func (s *EleSession) read(ctx context.Context) {
+func (s *EleSession) runFrameReading(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -204,19 +218,68 @@ func (s *EleSession) handleHostInfo(f *protocol.FrameMsg) {
 	}
 }
 
-// runs it it's own go routine
-func (s *EleSession) heartbeat(ctx context.Context) {
+// runs it it's own go routine and is driven by a timer on heartbeatInterval
+func (s *EleSession) runHeartbeats(ctx context.Context) {
 	log.Debug("heartbeat starting")
 	for {
 		select {
 		case <-ctx.Done():
 			goto done
 		case <-time.After(s.heartbeatInterval):
-			s.Send(protocol.NewHeartbeat())
+			req := protocol.NewHeartbeat()
+			req.SetId(&s.seq)
+
+			s.prepareHeartbeatLatency(req)
+			log.WithField("req", req).Debug("Initiating heartbeat")
+			s.Send(req)
+
+		case resp := <-s.heartbeatResponses:
+			s.updateHeartbeatLatency(resp)
 		}
 	}
 done:
 	log.Debug("heartbeat exiting")
+}
+
+func (s *EleSession) prepareHeartbeatLatency(req *protocol.HeartbeatRequest) {
+	s.heartbeatLatency.expectedSeqID = req.Id
+	s.heartbeatLatency.tracking.PollerSendTimestamp = req.Params.Timestamp
+}
+
+func (s *EleSession) updateHeartbeatLatency(resp *protocol.HeartbeatResponse) {
+	if s.heartbeatLatency.expectedSeqID != resp.Id {
+		log.WithFields(log.Fields{
+			"expected": s.heartbeatLatency.expectedSeqID,
+			"received": resp.Id,
+		}).Warn("Received out of sequence heartbeat response. Unable to compute latency from it.")
+		return
+	}
+
+	s.heartbeatLatency.tracking.PollerRecvTimestamp = utils.NowTimestampMillis()
+	s.heartbeatLatency.tracking.ServerRecvTimestamp = resp.Result.Timestamp
+	s.heartbeatLatency.tracking.ServerRespTimestamp = resp.Result.Timestamp
+
+	offset, delay, err := s.heartbeatLatency.tracking.ComputeSkew()
+	if err != nil {
+		log.WithField("err", err).Warn("Failed to compute skew")
+		return
+	}
+
+	log.WithFields(log.Fields{
+		"offset": offset,
+		"delay":  delay,
+	}).Debug("Computed poller-server latencies")
+
+	s.heartbeatLatency.offset = offset
+	s.heartbeatLatency.delay = delay
+}
+
+func (s *EleSession) GetClockOffset() int64 {
+	return s.heartbeatLatency.offset
+}
+
+func (s *EleSession) GetTransitDelay() int64 {
+	return s.heartbeatLatency.delay
 }
 
 func (s *EleSession) addCompletion(frame protocol.Frame) {
@@ -226,8 +289,8 @@ func (s *EleSession) addCompletion(frame protocol.Frame) {
 	s.completions[cFrame.ID] = cFrame
 }
 
-// runs it it's own go routine
-func (s *EleSession) send(ctx context.Context) {
+// runs it it's own go routine and consumes from sendCh
+func (s *EleSession) runFrameSending(ctx context.Context) {
 	log.Debug("send starting")
 	for {
 		select {

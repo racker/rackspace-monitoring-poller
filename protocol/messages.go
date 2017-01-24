@@ -82,15 +82,33 @@ type HeartbeatParameters struct {
 	Timestamp int64 `json:"timestamp"`
 }
 
+type HeartbeatResult struct {
+	Timestamp int64 `json:"timestamp"`
+}
+
 type HeartbeatRequest struct {
 	FrameMsg
 	Params HeartbeatParameters `json:"params"`
 }
 
+type HeartbeatResponse struct {
+	FrameMsg
+	Result HeartbeatResult `json:"result"`
+}
+
+func NewHeartbeatResponse(frame *FrameMsg) *HeartbeatResponse {
+	resp := &HeartbeatResponse{}
+	resp.SetFromFrameMsg(frame)
+	if frame.GetRawResult() != nil {
+		json.Unmarshal(frame.GetRawResult(), &resp.Result)
+	}
+	return resp
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Heartbeat
 
-func NewHeartbeat() Frame {
+func NewHeartbeat() *HeartbeatRequest {
 	f := &HeartbeatRequest{}
 	f.Version = "1"
 	f.Method = "heartbeat.post"

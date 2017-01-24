@@ -79,11 +79,12 @@ go get github.com/golang/mock/mockgen
 With `$GOPATH/bin` in your `PATH`, run 
 
 ```
-mockgen -package={PKG} -destination={PKG}/{obj}_mock_test.go github.com/racker/rackspace-monitoring-poller/{PKG} {Object}
+mockgen -source={Pkg}/{InterfaceFile}.go -package={Pkg} -destination={Pkg}/{InterfaceFile}_mock_test.go
 ```
 
-where `PKG` is the sub-package that contains `Object` to mock. The file itself is named with `obj` as the snakecase
-normalization of `Object`.
+where `Pkg` is the sub-package that contains one or more interfaces in `{InterfaceFile}.go` to mock. 
+It will write mocks of those interfaces to an adjacent file `{InterfaceFile}_mock_test.go` where those
+mocks will also reside in the package `Pkg`.
 
 Don't forget to re-run `mockgen` when a mocked interface is altered since test-time compilation errors will result
 from incomplete interface implementations.
