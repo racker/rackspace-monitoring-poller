@@ -90,7 +90,7 @@ type Session interface {
 	Wait()
 
 	GetClockOffset() int64
-	GetTransitDelay() int64
+	GetLatency() int64
 }
 
 // CheckScheduler arranges the periodic invocation of the given Check

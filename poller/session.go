@@ -36,6 +36,11 @@ type CompletionFrame struct {
 	Method string
 }
 
+const (
+	sendChannelSize      = 128
+	heartbeatIntervalSec = 40
+)
+
 // EleSession implements Session interface
 // See Session for more information
 type EleSession struct {
@@ -68,7 +73,7 @@ type EleSession struct {
 		tracking      utils.TimeLatencyTracking
 		expectedSeqID uint64
 		offset        int64
-		delay         int64
+		latency       int64
 	}
 }
 
@@ -78,8 +83,8 @@ func newSession(ctx context.Context, connection Connection) Session {
 		enc:                json.NewEncoder(connection.GetConnection()),
 		dec:                json.NewDecoder(connection.GetConnection()),
 		seq:                1,
-		sendCh:             make(chan protocol.Frame, 128),
-		heartbeatInterval:  time.Duration(40 * time.Second),
+		sendCh:             make(chan protocol.Frame, sendChannelSize),
+		heartbeatInterval:  time.Duration(heartbeatIntervalSec * time.Second),
 		heartbeatResponses: make(chan *protocol.HeartbeatResponse, 1),
 		completions:        make(map[uint64]*CompletionFrame),
 	}
@@ -259,7 +264,7 @@ func (s *EleSession) updateHeartbeatLatency(resp *protocol.HeartbeatResponse) {
 	s.heartbeatLatency.tracking.ServerRecvTimestamp = resp.Result.Timestamp
 	s.heartbeatLatency.tracking.ServerRespTimestamp = resp.Result.Timestamp
 
-	offset, delay, err := s.heartbeatLatency.tracking.ComputeSkew()
+	offset, latency, err := s.heartbeatLatency.tracking.ComputeSkew()
 	if err != nil {
 		log.WithField("err", err).Warn("Failed to compute skew")
 		return
@@ -267,19 +272,19 @@ func (s *EleSession) updateHeartbeatLatency(resp *protocol.HeartbeatResponse) {
 
 	log.WithFields(log.Fields{
 		"offset": offset,
-		"delay":  delay,
+		"delay":  latency,
 	}).Debug("Computed poller-server latencies")
 
 	s.heartbeatLatency.offset = offset
-	s.heartbeatLatency.delay = delay
+	s.heartbeatLatency.latency = latency
 }
 
 func (s *EleSession) GetClockOffset() int64 {
 	return s.heartbeatLatency.offset
 }
 
-func (s *EleSession) GetTransitDelay() int64 {
-	return s.heartbeatLatency.delay
+func (s *EleSession) GetLatency() int64 {
+	return s.heartbeatLatency.latency
 }
 
 func (s *EleSession) addCompletion(frame protocol.Frame) {

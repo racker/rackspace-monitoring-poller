@@ -159,11 +159,11 @@ func (s *BasicServer) consumeFrame(ctx context.Context, c *utils.SmartConn, fram
 		handshakeReq := &protocol.HandshakeRequest{FrameMsg: *frame}
 		err := json.Unmarshal(frame.RawParams, &handshakeReq.Params)
 		if err != nil {
-			logUnmarshalError(frame, c)
+			logUnmarshalError(c, frame)
 			return err
 		}
 
-		sendHandshakeResponse(frame, c)
+		sendHandshakeResponse(c, frame)
 
 		agentErrors := s.AgentTracker.ProcessHello(*handshakeReq, c)
 		go watchForAgentErrors(ctx, agentErrors, c)
@@ -172,7 +172,7 @@ func (s *BasicServer) consumeFrame(ctx context.Context, c *utils.SmartConn, fram
 		metricsPostReq := &protocol.MetricsPostRequest{FrameMsg: *frame}
 		err := json.Unmarshal(frame.RawParams, &metricsPostReq.Params)
 		if err != nil {
-			logUnmarshalError(frame, c)
+			logUnmarshalError(c, frame)
 			return err
 		}
 
@@ -180,7 +180,7 @@ func (s *BasicServer) consumeFrame(ctx context.Context, c *utils.SmartConn, fram
 
 	case protocol.MethodHeartbeatPost:
 		log.WithField("remoteAddr", c.RemoteAddr()).Debug("Received heartbeat")
-		sendHeartbeatResponse(frame, c)
+		sendHeartbeatResponse(c, frame)
 
 	default:
 		return types.Error{Msg: "Unsupported method: " + frame.Method}
@@ -189,7 +189,7 @@ func (s *BasicServer) consumeFrame(ctx context.Context, c *utils.SmartConn, fram
 	return nil
 }
 
-func sendHeartbeatResponse(frame *protocol.FrameMsg, c *utils.SmartConn) {
+func sendHeartbeatResponse(c *utils.SmartConn, frame *protocol.FrameMsg) {
 	resp := &protocol.HeartbeatResponse{}
 	resp.Method = protocol.MethodEmpty
 	resp.Id = frame.Id
@@ -199,7 +199,7 @@ func sendHeartbeatResponse(frame *protocol.FrameMsg, c *utils.SmartConn) {
 	c.WriteJSON(resp)
 }
 
-func sendHandshakeResponse(frame *protocol.FrameMsg, c *utils.SmartConn) {
+func sendHandshakeResponse(c *utils.SmartConn, frame *protocol.FrameMsg) {
 	resp := &protocol.HandshakeResponse{}
 	resp.Method = protocol.MethodEmpty
 	resp.Id = frame.Id
@@ -209,7 +209,7 @@ func sendHandshakeResponse(frame *protocol.FrameMsg, c *utils.SmartConn) {
 	c.WriteJSON(resp)
 }
 
-func logUnmarshalError(frame *protocol.FrameMsg, c *utils.SmartConn) {
+func logUnmarshalError(c *utils.SmartConn, frame *protocol.FrameMsg) {
 	log.WithFields(log.Fields{
 		"rawParams":  frame.RawParams,
 		"method":     frame.Method,

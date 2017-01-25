@@ -50,7 +50,7 @@ type TimeLatencyTracking struct {
 // ComputeSkew uses the NTP algorithm documented here [1] to compute the poller-endpoint/server time offset and transit latency.
 //
 // [1]: https://www.eecis.udel.edu/~mills/ntp/html/warp.html
-func (tt *TimeLatencyTracking) ComputeSkew() (offset int64, delay int64, _ error) {
+func (tt *TimeLatencyTracking) ComputeSkew() (offset int64, latency int64, _ error) {
 	if tt.PollerSendTimestamp == 0 || tt.PollerRecvTimestamp == 0 || tt.ServerRecvTimestamp == 0 || tt.ServerRespTimestamp == 0 {
 		return 0, 0, errors.New("Unable to compute with any unset timestamp")
 	}
@@ -62,7 +62,7 @@ func (tt *TimeLatencyTracking) ComputeSkew() (offset int64, delay int64, _ error
 	T4 := tt.PollerRecvTimestamp
 
 	offset = ((T2 - T1) + (T3 - T4)) / 2
-	delay = ((T4 - T1) + (T3 - T2))
+	latency = ((T4 - T1) + (T3 - T2))
 
 	return
 }

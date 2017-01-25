@@ -333,14 +333,14 @@ func (_mr *_MockSessionRecorder) GetClockOffset() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetClockOffset")
 }
 
-func (_m *MockSession) GetTransitDelay() int64 {
-	ret := _m.ctrl.Call(_m, "GetTransitDelay")
+func (_m *MockSession) GetLatency() int64 {
+	ret := _m.ctrl.Call(_m, "GetLatency")
 	ret0, _ := ret[0].(int64)
 	return ret0
 }
 
-func (_mr *_MockSessionRecorder) GetTransitDelay() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetTransitDelay")
+func (_mr *_MockSessionRecorder) GetLatency() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetLatency")
 }
 
 // Mock of CheckScheduler interface
