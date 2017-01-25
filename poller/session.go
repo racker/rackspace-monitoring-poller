@@ -67,6 +67,7 @@ type EleSession struct {
 
 	sendCh chan protocol.Frame
 
+	heartbeatChanged   chan (struct{})
 	heartbeatInterval  time.Duration
 	heartbeatResponses chan *protocol.HeartbeatResponse
 	heartbeatLatency   struct {
@@ -77,13 +78,14 @@ type EleSession struct {
 	}
 }
 
-func newSession(ctx context.Context, connection Connection) Session {
+func NewSession(ctx context.Context, connection Connection) Session {
 	session := &EleSession{
 		connection:         connection,
 		enc:                json.NewEncoder(connection.GetConnection()),
 		dec:                json.NewDecoder(connection.GetConnection()),
 		seq:                1,
 		sendCh:             make(chan protocol.Frame, sendChannelSize),
+		heartbeatChanged:   make(chan struct{}, 1),
 		heartbeatInterval:  time.Duration(heartbeatIntervalSec * time.Second),
 		heartbeatResponses: make(chan *protocol.HeartbeatResponse, 1),
 		completions:        make(map[uint64]*CompletionFrame),
@@ -129,6 +131,8 @@ func (s *EleSession) SetHeartbeatInterval(timeout uint64) {
 	duration := time.Duration(timeout) * time.Millisecond
 	log.Debugf("setting heartbeat interval %v", duration)
 	s.heartbeatInterval = time.Duration(duration)
+
+	s.heartbeatChanged <- struct{}{}
 }
 
 func (s *EleSession) getCompletionRequest(resp protocol.Frame) *CompletionFrame {
@@ -240,6 +244,9 @@ func (s *EleSession) runHeartbeats(ctx context.Context) {
 
 		case resp := <-s.heartbeatResponses:
 			s.updateHeartbeatLatency(resp)
+
+		case <-s.heartbeatChanged:
+			continue
 		}
 	}
 done:
@@ -310,7 +317,7 @@ func (s *EleSession) runFrameSending(ctx context.Context) {
 				goto done
 			}
 			log.Debugf("SEND: %s", data)
-			_, err = s.connection.(*EleConnection).GetConnection().Write(data)
+			_, err = s.connection.GetConnection().Write(data)
 			if err != nil {
 				s.exitError(err)
 				goto done

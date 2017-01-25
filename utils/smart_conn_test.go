@@ -27,7 +27,7 @@ type HeartbeatTest struct {
 func getMockedConnection(t *testing.T) *MockConn {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
-	return NewMockConn(mockCtrl)
+	return utils.NewMockConn(mockCtrl)
 }
 
 func TestStart(t *testing.T) {

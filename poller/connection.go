@@ -110,7 +110,7 @@ func (conn *EleConnection) Connect(ctx context.Context, tlsConfig *tls.Config) e
 	}
 	log.Info("  ... Connected")
 	conn.conn = tlsConn
-	conn.session = newSession(ctx, conn)
+	conn.session = NewSession(ctx, conn)
 	return nil
 }
 
