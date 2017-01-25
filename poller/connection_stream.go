@@ -87,7 +87,8 @@ func (cs *EleConnectionStream) RegisterConnection(qry string, conn Connection) e
 		return ErrInvalidConnectionStream
 	}
 	cs.conns[qry] = conn
-	log.Warningf("%v", cs.conns)
+	log.WithField("connections", cs.conns).
+		Debug("Currently registered connections")
 	return nil
 }
 
