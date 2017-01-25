@@ -26,8 +26,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 	check "github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/utils"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func ValidateMetrics(t *testing.T, metrics []string, cr *check.Result) {
@@ -187,11 +185,17 @@ func TestTCPRunFailureClosedPort(t *testing.T) {
 
 	// Run check
 	crs, err := check.Run()
-	require.NoError(t, err)
+	if err != nil {
+		t.Error(err)
+	}
 
 	// Validate Metrics
 	//   - will be unavailable
-	assert.True(t, crs.Available, "status must be not success")
+	if crs.Available {
+		t.Fatal("status must be not success")
+	}
 
-	assert.NotEqual(t, 0, crs.Length(), "metric length should be 0")
+	if crs.Length() != 0 {
+		t.Fatal("metric length should be 0")
+	}
 }
