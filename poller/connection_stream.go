@@ -39,21 +39,31 @@ type EleConnectionStream struct {
 	stopCh chan struct{}
 	config *config.Config
 
-	connsMu sync.Mutex
-	conns   map[string]Connection
-	wg      sync.WaitGroup
+	connectionFactory ConnectionFactory
+	connsMu           sync.Mutex
+	conns             map[string]Connection
+	wg                sync.WaitGroup
 
 	// map is the private zone ID as a string
 	schedulers map[string]Scheduler
 }
 
 // NewConnectionStream instantiates a new EleConnectionStream
-// It sets up the contexts and the schedules based on configured private zones
+// It sets up the contexts and the starts the schedulers based on configured private zones
 func NewConnectionStream(config *config.Config, rootCAs *x509.CertPool) ConnectionStream {
+	return NewCustomConnectionStream(config, rootCAs, nil)
+}
+
+// NewCustomConnectionStream is a variant of NewConnectionStream that allows providing a customized ConnectionFactory
+func NewCustomConnectionStream(config *config.Config, rootCAs *x509.CertPool, connectionFactory ConnectionFactory) ConnectionStream {
+	if connectionFactory == nil {
+		connectionFactory = NewConnection
+	}
 	stream := &EleConnectionStream{
-		config:     config,
-		rootCAs:    rootCAs,
-		schedulers: make(map[string]Scheduler),
+		config:            config,
+		rootCAs:           rootCAs,
+		schedulers:        make(map[string]Scheduler),
+		connectionFactory: connectionFactory,
 	}
 	stream.ctx = context.Background()
 	stream.conns = make(map[string]Connection)
@@ -182,7 +192,7 @@ func (cs *EleConnectionStream) connectByHost(addr string) {
 	var csi ConnectionStream = cs
 	defer cs.wg.Done()
 	for {
-		conn := NewConnection(addr, csi.GetConfig().Guid, cs)
+		conn := cs.connectionFactory(addr, csi.GetConfig().Guid, cs)
 		err := conn.Connect(cs.GetContext(), cs.buildTLSConfig(addr))
 		if err != nil {
 			goto conn_error

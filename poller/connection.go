@@ -116,6 +116,9 @@ func (conn *EleConnection) Connect(ctx context.Context, tlsConfig *tls.Config) e
 
 // Close closes the session
 func (conn *EleConnection) Close() {
+	if conn.conn != nil {
+		conn.conn.Close()
+	}
 	conn.GetSession().Close()
 }
 

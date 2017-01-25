@@ -115,3 +115,5 @@ type Scheduler interface {
 	GetContext() (ctx context.Context, cancel context.CancelFunc)
 	GetChecks() map[string]check.Check
 }
+
+type ConnectionFactory func(address string, guid string, stream ConnectionStream) Connection
