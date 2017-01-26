@@ -17,7 +17,6 @@
 package poller_test
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -63,10 +62,10 @@ func (fm frameMatcher) Matches(in interface{}) bool {
 }
 
 func setupConnStreamExpectations(ctrl *gomock.Controller) (eleConn *poller.MockConnection,
-	writesHere *bytes.Buffer, readsHere *utils.BlockingReadBuffer) {
+	writesHere *utils.BlockingReadBuffer, readsHere *utils.BlockingReadBuffer) {
 	eleConn = poller.NewMockConnection(ctrl)
 
-	writesHere = new(bytes.Buffer)
+	writesHere = utils.NewBlockingReadBuffer()
 	readsHere = utils.NewBlockingReadBuffer()
 
 	connStream := poller.NewMockConnectionStream(ctrl)
@@ -149,9 +148,7 @@ func TestEleSession_HeartbeatSending(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, int64(3000), heartbeatReq.Params.Timestamp, "wrong 2nd timestamp")
 
-	// ...and nothing ready yet
-	err = decoder.Decode(heartbeatReq)
-	require.EqualError(t, err, io.EOF.Error())
+	assert.False(t, writesHere.ReadReady(), "buffer should have been empty")
 }
 
 func TestEleSession_HeartbeatConsumption(t *testing.T) {

@@ -166,7 +166,6 @@ func (s *EleSession) computeWriteDeadline() time.Time {
 	return s.config.ComputeWriteDeadline(s.heartbeatInterval)
 }
 
-// runs it it's own go routine
 func (s *EleSession) runFrameReading(ctx context.Context) {
 	log.Debug("read starting")
 	for {
@@ -190,7 +189,6 @@ done:
 	s.cancel()
 }
 
-// runs it it's own go routine
 func (s *EleSession) handleFrame(f *protocol.FrameMsg) {
 	js, _ := f.Encode()
 	if log.GetLevel() >= log.DebugLevel {
@@ -221,7 +219,7 @@ func (s *EleSession) handleHostInfo(f *protocol.FrameMsg) {
 	}
 }
 
-// runs it it's own go routine and is driven by a timer on heartbeatInterval
+// runHeartbeats is driven by a timer on heartbeatInterval
 func (s *EleSession) runHeartbeats() {
 	log.Debug("heartbeat starting")
 	for {

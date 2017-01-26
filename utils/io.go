@@ -57,6 +57,11 @@ func (bb *BlockingReadBuffer) Read(p []byte) (n int, err error) {
 	}
 }
 
+// ReadReady is a non-blocking operation to see if any bytes are ready to be read.
+func (bb *BlockingReadBuffer) ReadReady() bool {
+	return bb.Buffer.Len() != 0
+}
+
 // Write places more content in the internal buffer and
 func (bb *BlockingReadBuffer) Write(p []byte) (n int, err error) {
 	n, err = bb.Buffer.Write(p)
