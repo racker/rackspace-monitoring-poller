@@ -151,10 +151,10 @@ func (s *EleSession) handleResponse(resp *protocol.FrameMsg) {
 	if req := s.getCompletionRequest(resp); req != nil {
 		switch req.Method {
 		case protocol.MethodHandshakeHello:
-			resp := protocol.NewHandshakeResponse(resp)
+			resp := protocol.DecodeHandshakeResponse(resp)
 			s.SetHeartbeatInterval(resp.Result.HandshakeInterval)
 		case protocol.MethodHeartbeatPost:
-			resp := protocol.NewHeartbeatResponse(resp)
+			resp := protocol.DecodeHeartbeatResponse(resp)
 			s.heartbeatResponses <- resp
 		case protocol.MethodCheckScheduleGet:
 		case protocol.MethodPollerRegister:
@@ -177,6 +177,7 @@ func (s *EleSession) GetWriteDeadline() time.Time {
 
 // runs it it's own go routine
 func (s *EleSession) runFrameReading(ctx context.Context) {
+	log.Debug("read starting")
 	for {
 		select {
 		case <-ctx.Done():
@@ -201,7 +202,9 @@ done:
 // runs it it's own go routine
 func (s *EleSession) handleFrame(f *protocol.FrameMsg) {
 	js, _ := f.Encode()
-	log.Debugf("RECV: %s", js)
+	if log.GetLevel() >= log.DebugLevel {
+		log.Debugf("RECV: %s", js)
+	}
 	switch f.GetMethod() {
 	case protocol.MethodEmpty: // Responses do not have a method name
 		s.handleResponse(f)
@@ -235,7 +238,7 @@ func (s *EleSession) runHeartbeats(ctx context.Context) {
 		case <-ctx.Done():
 			goto done
 		case <-time.After(s.heartbeatInterval):
-			req := protocol.NewHeartbeat()
+			req := protocol.NewHeartbeatRequest()
 			req.SetId(&s.seq)
 
 			s.prepareHeartbeatLatency(req)
@@ -316,7 +319,9 @@ func (s *EleSession) runFrameSending(ctx context.Context) {
 				s.exitError(err)
 				goto done
 			}
-			log.Debugf("SEND: %s", data)
+			if log.GetLevel() >= log.DebugLevel {
+				log.Debugf("SEND: %s", data)
+			}
 			_, err = s.connection.GetConnection().Write(data)
 			if err != nil {
 				s.exitError(err)

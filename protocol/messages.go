@@ -69,7 +69,7 @@ type HandshakeResponse struct {
 	Result HandshakeResult `json:"result"`
 }
 
-func NewHandshakeResponse(frame *FrameMsg) *HandshakeResponse {
+func DecodeHandshakeResponse(frame *FrameMsg) *HandshakeResponse {
 	resp := &HandshakeResponse{}
 	resp.SetFromFrameMsg(frame)
 	if frame.GetRawResult() != nil {
@@ -77,6 +77,9 @@ func NewHandshakeResponse(frame *FrameMsg) *HandshakeResponse {
 	}
 	return resp
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// Heartbeat
 
 type HeartbeatParameters struct {
 	Timestamp int64 `json:"timestamp"`
@@ -96,7 +99,7 @@ type HeartbeatResponse struct {
 	Result HeartbeatResult `json:"result"`
 }
 
-func NewHeartbeatResponse(frame *FrameMsg) *HeartbeatResponse {
+func DecodeHeartbeatResponse(frame *FrameMsg) *HeartbeatResponse {
 	resp := &HeartbeatResponse{}
 	resp.SetFromFrameMsg(frame)
 	if frame.GetRawResult() != nil {
@@ -105,10 +108,7 @@ func NewHeartbeatResponse(frame *FrameMsg) *HeartbeatResponse {
 	return resp
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// Heartbeat
-
-func NewHeartbeat() *HeartbeatRequest {
+func NewHeartbeatRequest() *HeartbeatRequest {
 	f := &HeartbeatRequest{}
 	f.Version = "1"
 	f.Method = "heartbeat.post"
@@ -120,13 +120,13 @@ func (r HeartbeatRequest) Encode() ([]byte, error) {
 	return json.Marshal(r)
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// Check Schedule Get
+
 type CheckScheduleGet struct {
 	FrameMsg
 	Params map[string]uint64 `json:"params"`
 }
-
-///////////////////////////////////////////////////////////////////////////////
-// Check Schedule Get
 
 func NewCheckScheduleGet() Frame {
 	f := &CheckScheduleGet{}

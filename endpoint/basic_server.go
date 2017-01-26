@@ -106,7 +106,7 @@ func (s *BasicServer) runConnectionHandling(ctx context.Context, c net.Conn) {
 	}
 
 	var frames = make(chan *protocol.FrameMsg, 10)
-	go s.frameDecoder(smartC, frames)
+	go s.runFrameDecoder(smartC, frames)
 
 	for {
 		select {
@@ -115,7 +115,7 @@ func (s *BasicServer) runConnectionHandling(ctx context.Context, c net.Conn) {
 			return
 
 		case frame := <-frames:
-			err := s.consumeFrame(ctx, smartC, frame)
+			err := s.handleFrame(ctx, smartC, frame)
 			if err != nil {
 				log.Warnln("Failed to consume frame", err)
 				// assume the worst, get out, and close the connection
@@ -127,7 +127,7 @@ func (s *BasicServer) runConnectionHandling(ctx context.Context, c net.Conn) {
 	}
 }
 
-func (s *BasicServer) frameDecoder(c *utils.SmartConn, frames chan<- *protocol.FrameMsg) {
+func (s *BasicServer) runFrameDecoder(c *utils.SmartConn, frames chan<- *protocol.FrameMsg) {
 	log.WithField("remoteAddr", c.RemoteAddr()).Debug("Frame decoder starting")
 	defer log.WithField("remoteAddr", c.RemoteAddr()).Debug("Frame decoder stopped")
 
@@ -146,7 +146,7 @@ func (s *BasicServer) frameDecoder(c *utils.SmartConn, frames chan<- *protocol.F
 	}
 }
 
-func (s *BasicServer) consumeFrame(ctx context.Context, c *utils.SmartConn, frame *protocol.FrameMsg) error {
+func (s *BasicServer) handleFrame(ctx context.Context, c *utils.SmartConn, frame *protocol.FrameMsg) error {
 	log.WithFields(log.Fields{
 		"remoteAddr": c.RemoteAddr(),
 		"msgId":      frame.Id,
