@@ -59,7 +59,9 @@ func (r HandshakeRequest) Encode() ([]byte, error) {
 }
 
 type HandshakeResult struct {
-	HandshakeInterval uint64 `json:"heartbeat_interval"`
+	// HeartbeatInterval indicates to the poller how often it should send a heartbeat.
+	// Unit is millisecond.
+	HeartbeatInterval uint64 `json:"heartbeat_interval"`
 	EntityId          string `json:"entity_id"`
 	Channel           string `json:"channel"`
 }

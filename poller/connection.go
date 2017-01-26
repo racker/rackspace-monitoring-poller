@@ -24,6 +24,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/racker/rackspace-monitoring-poller/config"
 )
 
 // EleConnection implements Connection
@@ -57,8 +58,13 @@ func (conn *EleConnection) GetGUID() string {
 	return conn.guid
 }
 
-// GetConnection returns ReadWriteCloser used for streaming data
-func (conn *EleConnection) GetConnection() io.ReadWriteCloser {
+// GetFarendWriter gets a writer directed towards the endpoint server
+func (conn *EleConnection) GetFarendWriter() io.Writer {
+	return conn.conn
+}
+
+// GetFarendReader gets a reader to consume from the endpoint server
+func (conn *EleConnection) GetFarendReader() io.Reader {
 	return conn.conn
 }
 
@@ -95,7 +101,7 @@ func (conn *EleConnection) SetWriteDeadline(deadline time.Time) {
 // If context is not set, ErrUndefinedContext is returned
 // The end result of this function is a usable connection ready to
 // send data.
-func (conn *EleConnection) Connect(ctx context.Context, tlsConfig *tls.Config) error {
+func (conn *EleConnection) Connect(ctx context.Context, config *config.Config, tlsConfig *tls.Config) error {
 	if ctx == nil {
 		return ErrUndefinedContext
 	}
@@ -110,7 +116,7 @@ func (conn *EleConnection) Connect(ctx context.Context, tlsConfig *tls.Config) e
 	}
 	log.Info("  ... Connected")
 	conn.conn = tlsConn
-	conn.session = NewSession(ctx, conn)
+	conn.session = NewSession(ctx, conn, config)
 	return nil
 }
 

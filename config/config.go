@@ -33,6 +33,11 @@ var (
 	ErrorNoToken = errors.New("No token is defined")
 )
 
+const (
+	DefaultTimeoutRead  = 10 * time.Second
+	DefaultTimeoutWrite = 10 * time.Second
+)
+
 type Config struct {
 	// Addresses
 	UseSrv     bool
@@ -65,8 +70,8 @@ func NewConfig(guid string, useStaging bool) *Config {
 	cfg.AgentName = "remote_poller"
 	cfg.ProcessVersion = "0.0.1" //TODO
 	cfg.BundleVersion = "0.0.1"  //TODO
-	cfg.TimeoutRead = time.Duration(10 * time.Second)
-	cfg.TimeoutWrite = time.Duration(10 * time.Second)
+	cfg.TimeoutRead = DefaultTimeoutRead
+	cfg.TimeoutWrite = DefaultTimeoutWrite
 	if useStaging {
 		cfg.SrvQueries = DefaultStagingSrvEndpoints
 		log.Warn("Using staging endpoints")
@@ -145,12 +150,12 @@ func (cfg *Config) SetPrivateZones(zones []string) {
 	cfg.ZoneIds = zones
 }
 
-func (cfg *Config) GetReadDeadline(offset time.Duration) time.Time {
+func (cfg *Config) ComputeReadDeadline(offset time.Duration) time.Time {
 	offset = offset + cfg.TimeoutRead
 	return time.Now().Add(time.Duration(offset * time.Second))
 }
 
-func (cfg *Config) GetWriteDeadline(offset time.Duration) time.Time {
+func (cfg *Config) ComputeWriteDeadline(offset time.Duration) time.Time {
 	offset = offset + cfg.TimeoutWrite
 	return time.Now().Add(time.Duration(offset * time.Second))
 }

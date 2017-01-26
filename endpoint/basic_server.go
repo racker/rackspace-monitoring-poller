@@ -203,7 +203,7 @@ func sendHandshakeResponse(c *utils.SmartConn, frame *protocol.FrameMsg) {
 	resp := &protocol.HandshakeResponse{}
 	resp.Method = protocol.MethodEmpty
 	resp.Id = frame.Id
-	resp.Result.HandshakeInterval = ExpectedAgentHeartbeatSec * 1000
+	resp.Result.HeartbeatInterval = ExpectedAgentHeartbeatSec * 1000
 
 	log.WithField("resp", resp).Debug("SEND handshake resp")
 	c.WriteJSON(resp)

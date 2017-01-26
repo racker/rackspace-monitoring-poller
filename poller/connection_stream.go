@@ -75,16 +75,6 @@ func NewCustomConnectionStream(config *config.Config, rootCAs *x509.CertPool, co
 	return stream
 }
 
-// GetConfig retrieves ConnectionStream configuration
-func (cs *EleConnectionStream) GetConfig() *config.Config {
-	return cs.config
-}
-
-// GetContext retrieves ConnectionStream context
-func (cs *EleConnectionStream) GetContext() context.Context {
-	return cs.ctx
-}
-
 // RegisterConnection sets up a new connection and adds it to
 // connection stream
 // If no connection list has been initialized, this method will
@@ -151,13 +141,13 @@ func (cs *EleConnectionStream) SendMetrics(crs *check.ResultSet) error {
 // to them directly
 // DEFAULT: Using SRV records
 func (cs *EleConnectionStream) Connect() {
-	if cs.GetConfig().UseSrv {
-		for _, qry := range cs.GetConfig().SrvQueries {
+	if cs.config.UseSrv {
+		for _, qry := range cs.config.SrvQueries {
 			cs.wg.Add(1)
 			go cs.connectBySrv(qry)
 		}
 	} else {
-		for _, addr := range cs.GetConfig().Addresses {
+		for _, addr := range cs.config.Addresses {
 			cs.wg.Add(1)
 			go cs.connectByHost(addr)
 		}
@@ -189,11 +179,10 @@ func (cs *EleConnectionStream) connectBySrv(qry string) {
 }
 
 func (cs *EleConnectionStream) connectByHost(addr string) {
-	var csi ConnectionStream = cs
 	defer cs.wg.Done()
 	for {
-		conn := cs.connectionFactory(addr, csi.GetConfig().Guid, cs)
-		err := conn.Connect(cs.GetContext(), cs.buildTLSConfig(addr))
+		conn := cs.connectionFactory(addr, cs.config.Guid, cs)
+		err := conn.Connect(cs.ctx, cs.config, cs.buildTLSConfig(addr))
 		if err != nil {
 			goto conn_error
 		}
@@ -209,7 +198,7 @@ func (cs *EleConnectionStream) connectByHost(addr string) {
 		log.Debugf("  connection sleeping %v", ReconnectTimeout)
 		for {
 			select {
-			case <-cs.GetContext().Done():
+			case <-cs.ctx.Done():
 				log.Infof("connection close")
 				return
 			case <-time.After(ReconnectTimeout):

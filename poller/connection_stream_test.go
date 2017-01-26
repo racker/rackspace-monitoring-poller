@@ -3,50 +3,12 @@ package poller_test
 import (
 	"testing"
 
-	"crypto/x509"
-
 	"github.com/golang/mock/gomock"
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/poller"
 	"github.com/stretchr/testify/assert"
 	"sync"
 )
-
-func TestNewConnectionStream(t *testing.T) {
-	testConfig := &config.Config{
-		AgentId: "awesome agent",
-	}
-	multipleZoneIdsConfig := &config.Config{
-		AgentId: "awesome agent",
-		ZoneIds: []string{"zone one", "zone two"},
-	}
-	tests := []struct {
-		name     string
-		config   *config.Config
-		rootCA   *x509.CertPool
-		expected *config.Config
-	}{
-		{
-			name:     "Happy path",
-			config:   testConfig,
-			rootCA:   x509.NewCertPool(),
-			expected: testConfig,
-		},
-		{
-			name:     "Multiple ZoneIds",
-			config:   multipleZoneIdsConfig,
-			rootCA:   x509.NewCertPool(),
-			expected: multipleZoneIdsConfig,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := poller.NewConnectionStream(tt.config, tt.rootCA)
-			//assert that configs are the same
-			assert.Equal(t, tt.expected, got.GetConfig())
-		})
-	}
-}
 
 func TestConnectionStream_Register(t *testing.T) {
 	tests := []struct {
@@ -149,7 +111,7 @@ func TestConnectionStream_Connect(t *testing.T) {
 			conn := poller.NewMockConnection(ctrl)
 			if !tt.neverAttemptsConnection {
 				mockConnWaiting.Add(1)
-				connectCall := conn.EXPECT().Connect(gomock.Any(), gomock.Any())
+				connectCall := conn.EXPECT().Connect(gomock.Any(), gomock.Any(), gomock.Any())
 				conn.EXPECT().Wait().After(connectCall).Do(func() {
 					mockConnWaiting.Done()
 				})

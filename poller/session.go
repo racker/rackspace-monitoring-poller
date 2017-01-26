@@ -24,6 +24,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/hostinfo"
 	"github.com/racker/rackspace-monitoring-poller/protocol"
 	"github.com/racker/rackspace-monitoring-poller/utils"
@@ -37,8 +38,7 @@ type CompletionFrame struct {
 }
 
 const (
-	sendChannelSize      = 128
-	heartbeatIntervalSec = 40
+	sendChannelSize = 128
 )
 
 // EleSession implements Session interface
@@ -46,6 +46,8 @@ const (
 type EleSession struct {
 	// reference to the connection
 	connection Connection
+
+	config *config.Config
 
 	// Used to cancel all go routines
 	ctx    context.Context
@@ -67,10 +69,10 @@ type EleSession struct {
 
 	sendCh chan protocol.Frame
 
-	heartbeatChanged   chan (struct{})
-	heartbeatInterval  time.Duration
-	heartbeatResponses chan *protocol.HeartbeatResponse
-	heartbeatLatency   struct {
+	heartbeatsStarter    sync.Once
+	heartbeatInterval    time.Duration
+	heartbeatResponses   chan *protocol.HeartbeatResponse
+	heartbeatMeasurement struct {
 		tracking      utils.TimeLatencyTracking
 		expectedSeqID uint64
 		offset        int64
@@ -78,22 +80,19 @@ type EleSession struct {
 	}
 }
 
-func NewSession(ctx context.Context, connection Connection) Session {
+func NewSession(ctx context.Context, connection Connection, config *config.Config) Session {
 	session := &EleSession{
 		connection:         connection,
-		enc:                json.NewEncoder(connection.GetConnection()),
-		dec:                json.NewDecoder(connection.GetConnection()),
-		seq:                1,
+		config:             config,
+		dec:                json.NewDecoder(connection.GetFarendReader()),
+		seq:                0, // so that handshake req gets ID 1 after incrementing
 		sendCh:             make(chan protocol.Frame, sendChannelSize),
-		heartbeatChanged:   make(chan struct{}, 1),
-		heartbeatInterval:  time.Duration(heartbeatIntervalSec * time.Second),
 		heartbeatResponses: make(chan *protocol.HeartbeatResponse, 1),
 		completions:        make(map[uint64]*CompletionFrame),
 	}
 	ctx, cancel := context.WithCancel(ctx)
 	go session.runFrameReading(ctx)
 	go session.runFrameSending(ctx)
-	go session.runHeartbeats(ctx)
 	session.ctx = ctx
 	session.cancel = cancel
 	session.Auth()
@@ -103,8 +102,7 @@ func NewSession(ctx context.Context, connection Connection) Session {
 // Auth sends a handshake request with token, agent id, name,
 // and process version
 func (s *EleSession) Auth() {
-	cfg := s.connection.GetStream().GetConfig()
-	request := protocol.NewHandshakeRequest(cfg)
+	request := protocol.NewHandshakeRequest(s.config)
 	request.SetId(&s.seq)
 	s.Send(request)
 }
@@ -125,16 +123,6 @@ func (s *EleSession) Respond(msg protocol.Frame) {
 	s.sendCh <- msg
 }
 
-// SetHeartbeatInterval sets up session interval to use
-// for a request
-func (s *EleSession) SetHeartbeatInterval(timeout uint64) {
-	duration := time.Duration(timeout) * time.Millisecond
-	log.Debugf("setting heartbeat interval %v", duration)
-	s.heartbeatInterval = time.Duration(duration)
-
-	s.heartbeatChanged <- struct{}{}
-}
-
 func (s *EleSession) getCompletionRequest(resp protocol.Frame) *CompletionFrame {
 	s.completionsMu.Lock()
 	req, ok := s.completions[resp.GetId()]
@@ -152,7 +140,10 @@ func (s *EleSession) handleResponse(resp *protocol.FrameMsg) {
 		switch req.Method {
 		case protocol.MethodHandshakeHello:
 			resp := protocol.DecodeHandshakeResponse(resp)
-			s.SetHeartbeatInterval(resp.Result.HandshakeInterval)
+			s.heartbeatInterval = time.Duration(resp.Result.HeartbeatInterval) * time.Millisecond
+
+			// just to be sure guard against multiple handshake starting multiple heartbeat routines
+			s.heartbeatsStarter.Do(s.goRunHeartbeats)
 		case protocol.MethodHeartbeatPost:
 			resp := protocol.DecodeHeartbeatResponse(resp)
 			s.heartbeatResponses <- resp
@@ -166,13 +157,13 @@ func (s *EleSession) handleResponse(resp *protocol.FrameMsg) {
 }
 
 // GetReadDeadline adds sessions's heartbeat interval to configured read deadline
-func (s *EleSession) GetReadDeadline() time.Time {
-	return s.connection.GetStream().GetConfig().GetReadDeadline(s.heartbeatInterval)
+func (s *EleSession) computeReadDeadline() time.Time {
+	return s.config.ComputeReadDeadline(s.heartbeatInterval)
 }
 
 // GetWriteDeadline adds sessions's heartbeat interval to configured write deadline
-func (s *EleSession) GetWriteDeadline() time.Time {
-	return s.connection.GetStream().GetConfig().GetWriteDeadline(s.heartbeatInterval)
+func (s *EleSession) computeWriteDeadline() time.Time {
+	return s.config.ComputeWriteDeadline(s.heartbeatInterval)
 }
 
 // runs it it's own go routine
@@ -184,7 +175,7 @@ func (s *EleSession) runFrameReading(ctx context.Context) {
 			goto done
 		default:
 			f := new(protocol.FrameMsg)
-			s.connection.SetReadDeadline(s.GetReadDeadline())
+			s.connection.SetReadDeadline(s.computeReadDeadline())
 			if err := s.dec.Decode(f); err == io.EOF {
 				goto done
 			} else if err != nil {
@@ -231,50 +222,52 @@ func (s *EleSession) handleHostInfo(f *protocol.FrameMsg) {
 }
 
 // runs it it's own go routine and is driven by a timer on heartbeatInterval
-func (s *EleSession) runHeartbeats(ctx context.Context) {
+func (s *EleSession) runHeartbeats() {
 	log.Debug("heartbeat starting")
 	for {
 		select {
-		case <-ctx.Done():
+		case <-s.ctx.Done():
 			goto done
 		case <-time.After(s.heartbeatInterval):
 			req := protocol.NewHeartbeatRequest()
 			req.SetId(&s.seq)
 
-			s.prepareHeartbeatLatency(req)
+			s.prepareHeartbeatMeasurement(req)
 			log.WithField("req", req).Debug("Initiating heartbeat")
 			s.Send(req)
 
 		case resp := <-s.heartbeatResponses:
-			s.updateHeartbeatLatency(resp)
+			s.updateHeartbeatMeasurement(resp)
 
-		case <-s.heartbeatChanged:
-			continue
 		}
 	}
 done:
 	log.Debug("heartbeat exiting")
 }
 
-func (s *EleSession) prepareHeartbeatLatency(req *protocol.HeartbeatRequest) {
-	s.heartbeatLatency.expectedSeqID = req.Id
-	s.heartbeatLatency.tracking.PollerSendTimestamp = req.Params.Timestamp
+func (s *EleSession) goRunHeartbeats() {
+	go s.runHeartbeats()
 }
 
-func (s *EleSession) updateHeartbeatLatency(resp *protocol.HeartbeatResponse) {
-	if s.heartbeatLatency.expectedSeqID != resp.Id {
+func (s *EleSession) prepareHeartbeatMeasurement(req *protocol.HeartbeatRequest) {
+	s.heartbeatMeasurement.expectedSeqID = req.Id
+	s.heartbeatMeasurement.tracking.PollerSendTimestamp = req.Params.Timestamp
+}
+
+func (s *EleSession) updateHeartbeatMeasurement(resp *protocol.HeartbeatResponse) {
+	if s.heartbeatMeasurement.expectedSeqID != resp.Id {
 		log.WithFields(log.Fields{
-			"expected": s.heartbeatLatency.expectedSeqID,
+			"expected": s.heartbeatMeasurement.expectedSeqID,
 			"received": resp.Id,
 		}).Warn("Received out of sequence heartbeat response. Unable to compute latency from it.")
 		return
 	}
 
-	s.heartbeatLatency.tracking.PollerRecvTimestamp = utils.NowTimestampMillis()
-	s.heartbeatLatency.tracking.ServerRecvTimestamp = resp.Result.Timestamp
-	s.heartbeatLatency.tracking.ServerRespTimestamp = resp.Result.Timestamp
+	s.heartbeatMeasurement.tracking.PollerRecvTimestamp = utils.NowTimestampMillis()
+	s.heartbeatMeasurement.tracking.ServerRecvTimestamp = resp.Result.Timestamp
+	s.heartbeatMeasurement.tracking.ServerRespTimestamp = resp.Result.Timestamp
 
-	offset, latency, err := s.heartbeatLatency.tracking.ComputeSkew()
+	offset, latency, err := s.heartbeatMeasurement.tracking.ComputeSkew()
 	if err != nil {
 		log.WithField("err", err).Warn("Failed to compute skew")
 		return
@@ -285,16 +278,16 @@ func (s *EleSession) updateHeartbeatLatency(resp *protocol.HeartbeatResponse) {
 		"delay":  latency,
 	}).Debug("Computed poller-server latencies")
 
-	s.heartbeatLatency.offset = offset
-	s.heartbeatLatency.latency = latency
+	s.heartbeatMeasurement.offset = offset
+	s.heartbeatMeasurement.latency = latency
 }
 
 func (s *EleSession) GetClockOffset() int64 {
-	return s.heartbeatLatency.offset
+	return s.heartbeatMeasurement.offset
 }
 
 func (s *EleSession) GetLatency() int64 {
-	return s.heartbeatLatency.latency
+	return s.heartbeatMeasurement.latency
 }
 
 func (s *EleSession) addCompletion(frame protocol.Frame) {
@@ -313,7 +306,7 @@ func (s *EleSession) runFrameSending(ctx context.Context) {
 			goto done
 		case frame := <-s.sendCh:
 			s.addCompletion(frame)
-			s.connection.SetWriteDeadline(s.GetWriteDeadline())
+			s.connection.SetWriteDeadline(s.computeWriteDeadline())
 			data, err := frame.Encode()
 			if err != nil {
 				s.exitError(err)
@@ -322,12 +315,12 @@ func (s *EleSession) runFrameSending(ctx context.Context) {
 			if log.GetLevel() >= log.DebugLevel {
 				log.Debugf("SEND: %s", data)
 			}
-			_, err = s.connection.GetConnection().Write(data)
+			_, err = s.connection.GetFarendWriter().Write(data)
 			if err != nil {
 				s.exitError(err)
 				goto done
 			}
-			_, err = s.connection.GetConnection().Write([]byte{'\r', '\n'})
+			_, err = s.connection.GetFarendWriter().Write([]byte{'\r', '\n'})
 			if err != nil {
 				s.exitError(err)
 				goto done

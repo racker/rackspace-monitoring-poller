@@ -35,16 +35,6 @@ func (_m *MockConnectionStream) EXPECT() *_MockConnectionStreamRecorder {
 	return _m.recorder
 }
 
-func (_m *MockConnectionStream) GetConfig() *config.Config {
-	ret := _m.ctrl.Call(_m, "GetConfig")
-	ret0, _ := ret[0].(*config.Config)
-	return ret0
-}
-
-func (_mr *_MockConnectionStreamRecorder) GetConfig() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetConfig")
-}
-
 func (_m *MockConnectionStream) RegisterConnection(qry string, conn Connection) error {
 	ret := _m.ctrl.Call(_m, "RegisterConnection", qry, conn)
 	ret0, _ := ret[0].(error)
@@ -81,16 +71,6 @@ func (_m *MockConnectionStream) GetSchedulers() map[string]Scheduler {
 
 func (_mr *_MockConnectionStreamRecorder) GetSchedulers() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetSchedulers")
-}
-
-func (_m *MockConnectionStream) GetContext() context.Context {
-	ret := _m.ctrl.Call(_m, "GetContext")
-	ret0, _ := ret[0].(context.Context)
-	return ret0
-}
-
-func (_mr *_MockConnectionStreamRecorder) GetContext() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetContext")
 }
 
 func (_m *MockConnectionStream) SendMetrics(crs *check.ResultSet) error {
@@ -188,14 +168,14 @@ func (_mr *_MockConnectionRecorder) SetWriteDeadline(arg0 interface{}) *gomock.C
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetWriteDeadline", arg0)
 }
 
-func (_m *MockConnection) Connect(ctx context.Context, tlsConfig *tls.Config) error {
-	ret := _m.ctrl.Call(_m, "Connect", ctx, tlsConfig)
+func (_m *MockConnection) Connect(ctx context.Context, config *config.Config, tlsConfig *tls.Config) error {
+	ret := _m.ctrl.Call(_m, "Connect", ctx, config, tlsConfig)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-func (_mr *_MockConnectionRecorder) Connect(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Connect", arg0, arg1)
+func (_mr *_MockConnectionRecorder) Connect(arg0, arg1, arg2 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Connect", arg0, arg1, arg2)
 }
 
 func (_m *MockConnection) Close() {
@@ -214,14 +194,24 @@ func (_mr *_MockConnectionRecorder) Wait() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Wait")
 }
 
-func (_m *MockConnection) GetConnection() io.ReadWriteCloser {
-	ret := _m.ctrl.Call(_m, "GetConnection")
-	ret0, _ := ret[0].(io.ReadWriteCloser)
+func (_m *MockConnection) GetFarendWriter() io.Writer {
+	ret := _m.ctrl.Call(_m, "GetFarendWriter")
+	ret0, _ := ret[0].(io.Writer)
 	return ret0
 }
 
-func (_mr *_MockConnectionRecorder) GetConnection() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetConnection")
+func (_mr *_MockConnectionRecorder) GetFarendWriter() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetFarendWriter")
+}
+
+func (_m *MockConnection) GetFarendReader() io.Reader {
+	ret := _m.ctrl.Call(_m, "GetFarendReader")
+	ret0, _ := ret[0].(io.Reader)
+	return ret0
+}
+
+func (_mr *_MockConnectionRecorder) GetFarendReader() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetFarendReader")
 }
 
 func (_m *MockConnection) GetGUID() string {
@@ -277,34 +267,6 @@ func (_m *MockSession) Respond(msg protocol.Frame) {
 
 func (_mr *_MockSessionRecorder) Respond(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Respond", arg0)
-}
-
-func (_m *MockSession) SetHeartbeatInterval(timeout uint64) {
-	_m.ctrl.Call(_m, "SetHeartbeatInterval", timeout)
-}
-
-func (_mr *_MockSessionRecorder) SetHeartbeatInterval(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetHeartbeatInterval", arg0)
-}
-
-func (_m *MockSession) GetReadDeadline() time.Time {
-	ret := _m.ctrl.Call(_m, "GetReadDeadline")
-	ret0, _ := ret[0].(time.Time)
-	return ret0
-}
-
-func (_mr *_MockSessionRecorder) GetReadDeadline() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetReadDeadline")
-}
-
-func (_m *MockSession) GetWriteDeadline() time.Time {
-	ret := _m.ctrl.Call(_m, "GetWriteDeadline")
-	ret0, _ := ret[0].(time.Time)
-	return ret0
-}
-
-func (_mr *_MockSessionRecorder) GetWriteDeadline() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetWriteDeadline")
 }
 
 func (_m *MockSession) Close() {

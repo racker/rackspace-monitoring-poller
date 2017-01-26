@@ -50,12 +50,10 @@ var (
 // register, connect, and send data in connections.
 // It is the main factory for connection handling
 type ConnectionStream interface {
-	GetConfig() *config.Config
 	RegisterConnection(qry string, conn Connection) error
 	Stop()
 	StopNotify() chan struct{}
 	GetSchedulers() map[string]Scheduler
-	GetContext() context.Context
 	SendMetrics(crs *check.ResultSet) error
 	Connect()
 	WaitCh() <-chan struct{}
@@ -69,10 +67,11 @@ type Connection interface {
 	GetSession() Session
 	SetReadDeadline(deadline time.Time)
 	SetWriteDeadline(deadline time.Time)
-	Connect(ctx context.Context, tlsConfig *tls.Config) error
+	Connect(ctx context.Context, config *config.Config, tlsConfig *tls.Config) error
 	Close()
 	Wait()
-	GetConnection() io.ReadWriteCloser
+	GetFarendWriter() io.Writer
+	GetFarendReader() io.Reader
 	GetGUID() string
 }
 
@@ -83,9 +82,6 @@ type Session interface {
 	Auth()
 	Send(msg protocol.Frame)
 	Respond(msg protocol.Frame)
-	SetHeartbeatInterval(timeout uint64)
-	GetReadDeadline() time.Time
-	GetWriteDeadline() time.Time
 	Close()
 	Wait()
 

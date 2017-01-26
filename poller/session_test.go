@@ -17,13 +17,13 @@
 package poller_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/Sirupsen/logrus"
 	"github.com/golang/mock/gomock"
 	"github.com/racker/rackspace-monitoring-poller/config"
-	"github.com/racker/rackspace-monitoring-poller/mock_golang"
 	"github.com/racker/rackspace-monitoring-poller/poller"
 	"github.com/racker/rackspace-monitoring-poller/protocol"
 	"github.com/racker/rackspace-monitoring-poller/utils"
@@ -36,10 +36,6 @@ import (
 
 type frameMatcher struct {
 	expectedMethod string
-}
-
-func frameBytes(expectedMethod string) gomock.Matcher {
-	return frameMatcher{expectedMethod: expectedMethod}
 }
 
 func (fm frameMatcher) Matches(in interface{}) bool {
@@ -66,20 +62,20 @@ func (fm frameMatcher) Matches(in interface{}) bool {
 	return true
 }
 
-func setupConnStreamExpectations(ctrl *gomock.Controller) (eleConn *poller.MockConnection, conn *mock_golang.MockConn, connStream *poller.MockConnectionStream) {
+func setupConnStreamExpectations(ctrl *gomock.Controller) (eleConn *poller.MockConnection,
+	writesHere *bytes.Buffer, readsHere *utils.BlockingReadBuffer) {
 	eleConn = poller.NewMockConnection(ctrl)
 
-	conn = mock_golang.NewMockConn(ctrl)
+	writesHere = new(bytes.Buffer)
+	readsHere = utils.NewBlockingReadBuffer()
 
-	connStream = poller.NewMockConnectionStream(ctrl)
+	connStream := poller.NewMockConnectionStream(ctrl)
 
-	config := &config.Config{}
-	connStream.EXPECT().GetConfig().AnyTimes().Return(config)
-
-	eleConn.EXPECT().GetConnection().AnyTimes().Return(conn)
+	eleConn.EXPECT().GetFarendWriter().AnyTimes().Return(writesHere)
+	eleConn.EXPECT().GetFarendReader().AnyTimes().Return(readsHere)
 	eleConn.EXPECT().GetStream().AnyTimes().Return(connStream)
 	eleConn.EXPECT().GetGUID().AnyTimes().Return("1-2-3")
-	eleConn.EXPECT().SetReadDeadline(gomock.Any())
+	eleConn.EXPECT().SetReadDeadline(gomock.Any()).AnyTimes()
 	eleConn.EXPECT().SetWriteDeadline(gomock.Any()).AnyTimes()
 
 	return
@@ -89,126 +85,123 @@ func (fm frameMatcher) String() string {
 	return fmt.Sprintf("is a frame expecting method '%s'", fm.expectedMethod)
 }
 
-func TestEleSession_HeartbeatSending(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	eleConn, conn, _ := setupConnStreamExpectations(ctrl)
-
-	newline := []byte{'\r', '\n'}
-
-	conn.EXPECT().Read(gomock.Any()).AnyTimes()
-
-	handshake := conn.EXPECT().Write(frameBytes(protocol.MethodHandshakeHello))
-	handshakeNL := conn.EXPECT().Write(newline).After(handshake)
-
-	heartbeat := conn.EXPECT().Write(frameBytes(protocol.MethodHeartbeatPost)).After(handshakeNL).Do(func(content []byte) {
-		var parsed protocol.HeartbeatRequest
-		err := json.Unmarshal(content, &parsed)
-		assert.NoError(t, err)
-
-		require.NotEqual(t, 0, parsed.Params.Timestamp)
-	})
-	conn.EXPECT().Write(newline).After(heartbeat)
-
-	ctx := context.Background()
-	es := poller.NewSession(ctx, eleConn)
-	es.SetHeartbeatInterval(10) // resets the heartbeat waiting
-
-	time.Sleep(20 * time.Millisecond) // ...so give it a little longer than that
-
-	es.Close() // to "stop" its go routines
-}
-
-func TestEleSession_HeartbeatConsumption(t *testing.T) {
-	logrus.SetLevel(logrus.DebugLevel)
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	newline := []byte{'\r', '\n'}
-
-	eleConn, conn, _ := setupConnStreamExpectations(ctrl)
-
-	responseCh := make(chan []byte, 1)
-	serverCh := make(chan []byte, 2)
-
-	firstRead := conn.EXPECT().Read(gomock.Any()).Do(func(readBuffer []byte) (n int, err error) {
-		response := <-responseCh
-		n = copy(readBuffer, response)
-		err = nil
-
-		t.Log("Populated read buffer", n, string(readBuffer[:n]))
-		return
-	})
-	conn.EXPECT().Read(gomock.Any()).AnyTimes().After(firstRead).Do(func(readBuffer []byte) (n int, err error) {
-		return 0, io.EOF
-	})
-
+func installDeterministicTimestamper(startingTimestamp, timestampInc int64) utils.NowTimestampMillisFunc {
 	origTimestamper := utils.NowTimestampMillis
-	mockTimestamp := int64(1000)
+	mockTimestamp := startingTimestamp
 	utils.NowTimestampMillis = func() int64 {
 		ts := mockTimestamp
-		mockTimestamp += 2000
+		mockTimestamp += timestampInc
 		return ts
 	}
 
-	// semi-mock server
-	go func() {
+	return origTimestamper
+}
 
-		heartbeatBytes := <-serverCh
-		<-serverCh // newline
+func prepareHandshakeResponse(heartbeatInterval uint64, readsHere io.Writer) {
+	var handshakeResp protocol.HandshakeResponse
+	handshakeResp.Id = 1                                       // since that's what poller will send as first message
+	handshakeResp.Result.HeartbeatInterval = heartbeatInterval // ms
+	json.NewEncoder(readsHere).Encode(handshakeResp)
+}
 
-		t.Log("Processing heartbeat bytes")
-		f := new(protocol.FrameMsg)
-		err := json.Unmarshal(heartbeatBytes, f)
-		require.NoError(t, err)
-		t.Log("Got hearbeat frame", f)
+func TestEleSession_HeartbeatSending(t *testing.T) {
+	if testing.Verbose() {
+		logrus.SetLevel(logrus.DebugLevel)
+	}
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
 
-		req := protocol.HeartbeatRequest{FrameMsg: *f}
-		err = json.Unmarshal(f.RawParams, &req.Params)
-		require.NoError(t, err)
-		t.Log("Got heartbeat req", req)
+	eleConn, writesHere, readsHere := setupConnStreamExpectations(ctrl)
+	defer readsHere.Close()
 
-		resp := protocol.DecodeHeartbeatResponse(f)
-		resp.Method = protocol.MethodEmpty
-		resp.RawParams = nil
-		resp.Result.Timestamp = 1500
+	origTimestamper := installDeterministicTimestamper(1000, 2000)
+	defer func() { utils.NowTimestampMillis = origTimestamper }()
 
-		respBytes, err := json.Marshal(resp)
-		require.NoError(t, err)
+	const heartbeatInterval = 10 // ms
 
-		respBytes = append(respBytes, '\r', '\n')
+	// Get handshake ready for session to read right away
+	prepareHandshakeResponse(heartbeatInterval, readsHere)
 
-		t.Log("Providing response bytes", len(respBytes), string(respBytes))
-		responseCh <- respBytes
-	}()
+	es := poller.NewSession(context.Background(), eleConn, &config.Config{})
+	defer es.Close()
 
-	handshake := conn.EXPECT().Write(frameBytes(protocol.MethodHandshakeHello))
-	handshakeNL := conn.EXPECT().Write(newline).After(handshake)
+	// allow for handshake resp to fire up heartbeating
+	time.Sleep((heartbeatInterval * 2.5) * time.Millisecond)
 
-	heartbeat := conn.EXPECT().Write(frameBytes(protocol.MethodHeartbeatPost)).After(handshakeNL).Do(func(content []byte) {
-		t.Log("DBG saw write heartbeat post", content)
-		serverCh <- content
-	})
-	lastWrite := conn.EXPECT().Write(newline).After(heartbeat).Do(func(content []byte) {
-		t.Log("DBG saw write newline", content)
-		serverCh <- content
-	})
-	conn.EXPECT().Write(gomock.Any()).AnyTimes().After(lastWrite)
+	// decoder is used to consume frames sent out by the poller under test
+	decoder := json.NewDecoder(writesHere)
 
-	ctx := context.Background()
-	es := poller.NewSession(ctx, eleConn)
-	es.SetHeartbeatInterval(10) // resets the heartbeat waiting
+	// We should see a handshake, but can ignore it
+	handshakeReq := new(protocol.HandshakeRequest)
+	err := decoder.Decode(handshakeReq)
+	require.NoError(t, err)
 
-	time.Sleep(500 * time.Millisecond) // ...so give it a little longer than that
+	// Within the 2.5 scaled time above, we should see two heartbeats and then nothing ready yet
+	heartbeatReq := new(protocol.HeartbeatRequest)
 
-	latency := es.GetLatency()
+	// 1 heartbeat
+	err = decoder.Decode(heartbeatReq)
+	require.NoError(t, err)
+	assert.Equal(t, int64(1000), heartbeatReq.Params.Timestamp, "wrong timestamp")
+
+	// ...2 heartbeats
+	err = decoder.Decode(heartbeatReq)
+	require.NoError(t, err)
+	assert.Equal(t, int64(3000), heartbeatReq.Params.Timestamp, "wrong 2nd timestamp")
+
+	// ...and nothing ready yet
+	err = decoder.Decode(heartbeatReq)
+	require.EqualError(t, err, io.EOF.Error())
+}
+
+func TestEleSession_HeartbeatConsumption(t *testing.T) {
+	if testing.Verbose() {
+		logrus.SetLevel(logrus.DebugLevel)
+	}
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	eleConn, writesHere, readsHere := setupConnStreamExpectations(ctrl)
+	defer readsHere.Close()
+
+	origTimestamper := installDeterministicTimestamper(1000, 2000)
+	defer func() { utils.NowTimestampMillis = origTimestamper }()
+
+	const heartbeatInterval = 10 // ms
+
+	// Get handshake ready for session to read right away
+	prepareHandshakeResponse(heartbeatInterval, readsHere)
+
+	es := poller.NewSession(context.Background(), eleConn, &config.Config{})
+	defer es.Close()
+
+	// allow for handshake resp to fire up heartbeating
+	time.Sleep((heartbeatInterval * 1.5) * time.Millisecond)
+
+	// decoder is used to consume frames sent out by the poller under test
+	decoder := json.NewDecoder(writesHere)
+
+	// We should see a handshake, but can ignore it
+	handshakeReq := new(protocol.HandshakeRequest)
+	err := decoder.Decode(handshakeReq)
+	require.NoError(t, err)
+
+	heartbeatReq := new(protocol.HeartbeatRequest)
+	err = decoder.Decode(heartbeatReq)
+	// sanity check
+	assert.Equal(t, int64(1000), heartbeatReq.Params.Timestamp, "wrong timestamp")
+	require.NoError(t, err)
+
+	heartbeatResp := new(protocol.HeartbeatResponse)
+	heartbeatResp.Id = heartbeatReq.Id
+	// simulate a delay of about 1000ms each way and 500ms clock offset
+	heartbeatResp.Result.Timestamp = 2500
+	json.NewEncoder(readsHere).Encode(heartbeatResp)
+
+	time.Sleep((heartbeatInterval * 0.1) * time.Millisecond)
 	offset := es.GetClockOffset()
+	latency := es.GetLatency()
 
-	assert.Equal(t, int64(1000), latency)
-	assert.Equal(t, int64(500), offset)
-
-	utils.NowTimestampMillis = origTimestamper
-	es.Close() // to "stop" its go routines
-
+	assert.Equal(t, int64(500), offset, "wrong offset")
+	assert.Equal(t, int64(2000), latency, "wrong latency")
 }

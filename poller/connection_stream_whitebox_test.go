@@ -17,31 +17,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestConnectionStream_GetConfig(t *testing.T) {
-	testConfig := &config.Config{
-		AgentId: "test-agent-id",
-	}
-	tests := []struct {
-		name     string
-		cs       *EleConnectionStream
-		expected *config.Config
-	}{
-		{
-			name: "Happy path",
-			cs: &EleConnectionStream{
-				config: testConfig,
-			},
-			expected: testConfig,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := tt.cs.GetConfig()
-			assert.Equal(t, tt.expected, got)
-		})
-	}
-}
-
 func TestConnectionStream_Stop(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
