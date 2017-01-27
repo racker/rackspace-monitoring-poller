@@ -91,3 +91,11 @@ from incomplete interface implementations.
 
 Please note that due to https://github.com/golang/mock/issues/30 you may need to manually scrub the imports of 
 the generated file.
+
+### Generating callgraph diagrams
+
+From the directory containing this README, run
+
+```
+contrib/generate-callgraphs.sh
+```
