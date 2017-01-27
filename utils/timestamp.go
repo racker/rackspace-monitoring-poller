@@ -16,7 +16,10 @@
 
 package utils
 
-import "time"
+import (
+	"errors"
+	"time"
+)
 
 type NowTimestampMillisFunc func() int64
 
@@ -30,4 +33,36 @@ var NowTimestampMillis NowTimestampMillisFunc = func() int64 {
 // one of the Duration constants, such as time.Second.
 func ScaleFractionalDuration(duration time.Duration, targetUnits time.Duration) float64 {
 	return float64(duration) / float64(targetUnits)
+}
+
+// TimeLatencyTracking is used for tracking observations of poller<->endpoint server latency.
+type TimeLatencyTracking struct {
+	// PollerSendTimestamp is when the poller sent a heartbeat
+	PollerSendTimestamp int64
+	// PollerRecvTimestamp is when the poller received the heartbeat ack from the server
+	PollerRecvTimestamp int64
+	// ServerRecvTimestamp is when the server/endpoint recorded receiving our heartbeat
+	ServerRecvTimestamp int64
+	// ServerRespTimestamp is when the server/endpoint sent its heartbeat ack
+	ServerRespTimestamp int64
+}
+
+// ComputeSkew uses the NTP algorithm documented here [1] to compute the poller-endpoint/server time offset and transit latency.
+//
+// [1]: https://www.eecis.udel.edu/~mills/ntp/html/warp.html
+func (tt *TimeLatencyTracking) ComputeSkew() (offset int64, latency int64, _ error) {
+	if tt.PollerSendTimestamp == 0 || tt.PollerRecvTimestamp == 0 || tt.ServerRecvTimestamp == 0 || tt.ServerRespTimestamp == 0 {
+		return 0, 0, errors.New("Unable to compute with any unset timestamp")
+	}
+
+	// Variable aliases for the timeline
+	T1 := tt.PollerSendTimestamp
+	T2 := tt.ServerRecvTimestamp
+	T3 := tt.ServerRespTimestamp
+	T4 := tt.PollerRecvTimestamp
+
+	offset = ((T2 - T1) + (T3 - T4)) / 2
+	latency = ((T4 - T1) + (T3 - T2))
+
+	return
 }

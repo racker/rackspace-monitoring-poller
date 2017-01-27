@@ -59,7 +59,9 @@ func (r HandshakeRequest) Encode() ([]byte, error) {
 }
 
 type HandshakeResult struct {
-	HandshakeInterval uint64 `json:"heartbeat_interval"`
+	// HeartbeatInterval indicates to the poller how often it should send a heartbeat.
+	// Unit is millisecond.
+	HeartbeatInterval uint64 `json:"heartbeat_interval"`
 	EntityId          string `json:"entity_id"`
 	Channel           string `json:"channel"`
 }
@@ -69,7 +71,7 @@ type HandshakeResponse struct {
 	Result HandshakeResult `json:"result"`
 }
 
-func NewHandshakeResponse(frame *FrameMsg) *HandshakeResponse {
+func DecodeHandshakeResponse(frame *FrameMsg) *HandshakeResponse {
 	resp := &HandshakeResponse{}
 	resp.SetFromFrameMsg(frame)
 	if frame.GetRawResult() != nil {
@@ -78,7 +80,14 @@ func NewHandshakeResponse(frame *FrameMsg) *HandshakeResponse {
 	return resp
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// Heartbeat
+
 type HeartbeatParameters struct {
+	Timestamp int64 `json:"timestamp"`
+}
+
+type HeartbeatResult struct {
 	Timestamp int64 `json:"timestamp"`
 }
 
@@ -87,10 +96,21 @@ type HeartbeatRequest struct {
 	Params HeartbeatParameters `json:"params"`
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// Heartbeat
+type HeartbeatResponse struct {
+	FrameMsg
+	Result HeartbeatResult `json:"result"`
+}
 
-func NewHeartbeat() Frame {
+func DecodeHeartbeatResponse(frame *FrameMsg) *HeartbeatResponse {
+	resp := &HeartbeatResponse{}
+	resp.SetFromFrameMsg(frame)
+	if frame.GetRawResult() != nil {
+		json.Unmarshal(frame.GetRawResult(), &resp.Result)
+	}
+	return resp
+}
+
+func NewHeartbeatRequest() *HeartbeatRequest {
 	f := &HeartbeatRequest{}
 	f.Version = "1"
 	f.Method = "heartbeat.post"
@@ -102,13 +122,13 @@ func (r HeartbeatRequest) Encode() ([]byte, error) {
 	return json.Marshal(r)
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// Check Schedule Get
+
 type CheckScheduleGet struct {
 	FrameMsg
 	Params map[string]uint64 `json:"params"`
 }
-
-///////////////////////////////////////////////////////////////////////////////
-// Check Schedule Get
 
 func NewCheckScheduleGet() Frame {
 	f := &CheckScheduleGet{}

@@ -1,56 +1,14 @@
 package poller_test
 
 import (
-	"net/http"
-	"net/http/httptest"
 	"testing"
 
-	"net/url"
-
-	"time"
-
-	"crypto/x509"
-
+	"github.com/golang/mock/gomock"
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/poller"
 	"github.com/stretchr/testify/assert"
+	"sync"
 )
-
-func TestNewConnectionStream(t *testing.T) {
-	testConfig := &config.Config{
-		AgentId: "awesome agent",
-	}
-	multipleZoneIdsConfig := &config.Config{
-		AgentId: "awesome agent",
-		ZoneIds: []string{"zone one", "zone two"},
-	}
-	tests := []struct {
-		name     string
-		config   *config.Config
-		rootCA   *x509.CertPool
-		expected *config.Config
-	}{
-		{
-			name:     "Happy path",
-			config:   testConfig,
-			rootCA:   x509.NewCertPool(),
-			expected: testConfig,
-		},
-		{
-			name:     "Multiple ZoneIds",
-			config:   multipleZoneIdsConfig,
-			rootCA:   x509.NewCertPool(),
-			expected: multipleZoneIdsConfig,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := poller.NewConnectionStream(tt.config, tt.rootCA)
-			//assert that configs are the same
-			assert.Equal(t, tt.expected, got.GetConfig())
-		})
-	}
-}
 
 func TestConnectionStream_Register(t *testing.T) {
 	tests := []struct {
@@ -92,20 +50,18 @@ func TestConnectionStream_Register(t *testing.T) {
 }
 
 func TestConnectionStream_Connect(t *testing.T) {
-	ts := httptest.NewTLSServer(http.HandlerFunc(staticResponse))
-	defer ts.Close()
 
 	tests := []struct {
-		name          string
-		addresses     func() []string
-		serverQueries func() []string
-		useSrv        bool
+		name                    string
+		addresses               func() []string
+		serverQueries           func() []string
+		useSrv                  bool
+		neverAttemptsConnection bool
 	}{
 		{
 			name: "Happy path",
 			addresses: func() []string {
-				testURL, _ := url.Parse(ts.URL)
-				return []string{testURL.Host}
+				return []string{"localhost"}
 			},
 			serverQueries: func() []string {
 				return []string{}
@@ -130,7 +86,8 @@ func TestConnectionStream_Connect(t *testing.T) {
 			serverQueries: func() []string {
 				return []string{"magic"}
 			},
-			useSrv: true,
+			useSrv:                  true,
+			neverAttemptsConnection: true,
 		},
 		{
 			name: "Invalid url",
@@ -144,26 +101,38 @@ func TestConnectionStream_Connect(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+
 		t.Run(tt.name, func(t *testing.T) {
-			cs := poller.NewConnectionStream(&config.Config{
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			var mockConnWaiting sync.WaitGroup
+
+			conn := poller.NewMockConnection(ctrl)
+			if !tt.neverAttemptsConnection {
+				mockConnWaiting.Add(1)
+				connectCall := conn.EXPECT().Connect(gomock.Any(), gomock.Any(), gomock.Any())
+				conn.EXPECT().Wait().After(connectCall).Do(func() {
+					mockConnWaiting.Done()
+				})
+				conn.EXPECT().Close()
+			}
+
+			connFactory := func(address string, guid string, stream poller.ConnectionStream) poller.Connection {
+				return conn
+			}
+
+			cs := poller.NewCustomConnectionStream(&config.Config{
 				UseSrv:     tt.useSrv,
 				Addresses:  tt.addresses(),
 				SrvQueries: tt.serverQueries(),
-			}, nil)
-			go cs.Connect()
+			}, nil, connFactory)
+			cs.Connect()
 
-			go func() {
-				time.Sleep(25 * time.Millisecond)
-				cs.Stop()
-			}()
+			mockConnWaiting.Wait()
+			cs.Stop()
 
-			select {
-			case <-cs.StopNotify():
-				assert.True(t, true, "blah")
-			case <-time.After(1 * time.Minute):
-				assert.Fail(t, "fail")
-			}
-
+			assert.NotEmpty(t, cs.StopNotify())
 		})
 	}
 }

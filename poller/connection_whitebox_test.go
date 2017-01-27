@@ -220,7 +220,9 @@ func TestGetConnection(t *testing.T) {
 		guid:    "test-guid",
 	}
 
-	got := conn.GetConnection()
+	writer := conn.GetFarendWriter()
+	assert.Equal(t, tcpConn, writer, fmt.Sprintf("Expected %v but got %v", tcpConn, writer))
 
-	assert.Equal(t, tcpConn, got, fmt.Sprintf("Expected %v but got %v", tcpConn, got))
+	reader := conn.GetFarendReader()
+	assert.Equal(t, tcpConn, reader, fmt.Sprintf("Expected %v but got %v", tcpConn, writer))
 }

@@ -9,6 +9,7 @@ import (
 	"errors"
 
 	"github.com/golang/mock/gomock"
+	"github.com/racker/rackspace-monitoring-poller/mock_golang"
 	"github.com/racker/rackspace-monitoring-poller/utils"
 )
 
@@ -24,10 +25,10 @@ type HeartbeatTest struct {
 	EntityId string
 }
 
-func getMockedConnection(t *testing.T) *MockConn {
+func getMockedConnection(t *testing.T) *mock_golang.MockConn {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
-	return NewMockConn(mockCtrl)
+	return mock_golang.NewMockConn(mockCtrl)
 }
 
 func TestStart(t *testing.T) {

@@ -86,16 +86,16 @@ func (s *BasicServer) ListenAndServe() error {
 		if err != nil {
 			log.Fatal("Failed to accept connection", err.Error())
 		}
-		go s.handleConnection(rootContext, conn)
+		go s.runConnectionHandling(rootContext, conn)
 	}
 }
 
-func (s *BasicServer) handleConnection(ctx context.Context, c net.Conn) {
+func (s *BasicServer) runConnectionHandling(ctx context.Context, c net.Conn) {
 	defer c.Close()
 	log.WithField("remoteAddr", c.RemoteAddr()).Info("Handling connection")
 
 	smartC := utils.NewSmartConn(c)
-	// the agent doesn't know it yet, but we're imposing the keepalive duration upon them to send us a handshake, etc
+
 	smartC.ReadKeepalive = ExpectedAgentHeartbeatSec * time.Second
 	smartC.WriteAllowance = ConnectionWriteAllowance
 	// this is also where we could setup endpoint->agent heartbeats
@@ -106,7 +106,7 @@ func (s *BasicServer) handleConnection(ctx context.Context, c net.Conn) {
 	}
 
 	var frames = make(chan *protocol.FrameMsg, 10)
-	go s.frameDecoder(smartC, frames)
+	go s.runFrameDecoder(smartC, frames)
 
 	for {
 		select {
@@ -115,7 +115,7 @@ func (s *BasicServer) handleConnection(ctx context.Context, c net.Conn) {
 			return
 
 		case frame := <-frames:
-			err := s.consumeFrame(ctx, smartC, frame)
+			err := s.handleFrame(ctx, smartC, frame)
 			if err != nil {
 				log.Warnln("Failed to consume frame", err)
 				// assume the worst, get out, and close the connection
@@ -127,7 +127,7 @@ func (s *BasicServer) handleConnection(ctx context.Context, c net.Conn) {
 	}
 }
 
-func (s *BasicServer) frameDecoder(c *utils.SmartConn, frames chan<- *protocol.FrameMsg) {
+func (s *BasicServer) runFrameDecoder(c *utils.SmartConn, frames chan<- *protocol.FrameMsg) {
 	log.WithField("remoteAddr", c.RemoteAddr()).Debug("Frame decoder starting")
 	defer log.WithField("remoteAddr", c.RemoteAddr()).Debug("Frame decoder stopped")
 
@@ -146,7 +146,7 @@ func (s *BasicServer) frameDecoder(c *utils.SmartConn, frames chan<- *protocol.F
 	}
 }
 
-func (s *BasicServer) consumeFrame(ctx context.Context, c *utils.SmartConn, frame *protocol.FrameMsg) error {
+func (s *BasicServer) handleFrame(ctx context.Context, c *utils.SmartConn, frame *protocol.FrameMsg) error {
 	log.WithFields(log.Fields{
 		"remoteAddr": c.RemoteAddr(),
 		"msgId":      frame.Id,
@@ -159,17 +159,11 @@ func (s *BasicServer) consumeFrame(ctx context.Context, c *utils.SmartConn, fram
 		handshakeReq := &protocol.HandshakeRequest{FrameMsg: *frame}
 		err := json.Unmarshal(frame.RawParams, &handshakeReq.Params)
 		if err != nil {
-			logUnmarshalError(frame, c)
+			logUnmarshalError(c, frame)
 			return err
 		}
 
-		resp := &protocol.HandshakeResponse{}
-		resp.Method = protocol.MethodEmpty
-		resp.Id = frame.Id
-		resp.Result.HandshakeInterval = ExpectedAgentHeartbeatSec * 1000
-
-		log.Debug("SEND handshake resp", resp)
-		c.WriteJSON(resp)
+		sendHandshakeResponse(c, frame)
 
 		agentErrors := s.AgentTracker.ProcessHello(*handshakeReq, c)
 		go watchForAgentErrors(ctx, agentErrors, c)
@@ -178,14 +172,15 @@ func (s *BasicServer) consumeFrame(ctx context.Context, c *utils.SmartConn, fram
 		metricsPostReq := &protocol.MetricsPostRequest{FrameMsg: *frame}
 		err := json.Unmarshal(frame.RawParams, &metricsPostReq.Params)
 		if err != nil {
-			logUnmarshalError(frame, c)
+			logUnmarshalError(c, frame)
 			return err
 		}
 
 		s.AgentTracker.ProcessCheckMetricsPost(*metricsPostReq)
 
 	case protocol.MethodHeartbeatPost:
-		log.WithField("remoteAddr", c.RemoteAddr()).Debug("It's alive")
+		log.WithField("remoteAddr", c.RemoteAddr()).Debug("Received heartbeat")
+		sendHeartbeatResponse(c, frame)
 
 	default:
 		return types.Error{Msg: "Unsupported method: " + frame.Method}
@@ -194,7 +189,27 @@ func (s *BasicServer) consumeFrame(ctx context.Context, c *utils.SmartConn, fram
 	return nil
 }
 
-func logUnmarshalError(frame *protocol.FrameMsg, c *utils.SmartConn) {
+func sendHeartbeatResponse(c *utils.SmartConn, frame *protocol.FrameMsg) {
+	resp := &protocol.HeartbeatResponse{}
+	resp.Method = protocol.MethodEmpty
+	resp.Id = frame.Id
+	resp.Result.Timestamp = utils.NowTimestampMillis()
+
+	log.WithField("resp", resp).Debug("SEND heartbeat resp")
+	c.WriteJSON(resp)
+}
+
+func sendHandshakeResponse(c *utils.SmartConn, frame *protocol.FrameMsg) {
+	resp := &protocol.HandshakeResponse{}
+	resp.Method = protocol.MethodEmpty
+	resp.Id = frame.Id
+	resp.Result.HeartbeatInterval = ExpectedAgentHeartbeatSec * 1000
+
+	log.WithField("resp", resp).Debug("SEND handshake resp")
+	c.WriteJSON(resp)
+}
+
+func logUnmarshalError(c *utils.SmartConn, frame *protocol.FrameMsg) {
 	log.WithFields(log.Fields{
 		"rawParams":  frame.RawParams,
 		"method":     frame.Method,

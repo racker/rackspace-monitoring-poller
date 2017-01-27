@@ -108,12 +108,12 @@ func TestConnection_Connect(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			conn := poller.NewConnection(tt.url(), tt.guid, tt.stream)
 			if tt.expectedErr {
-				err := conn.Connect(tt.ctx, nil)
+				err := conn.Connect(tt.ctx, config.NewConfig("1-2-3", false), nil)
 				assert.EqualError(
 					t, err, tt.expectedErrMessage,
 					fmt.Sprintf("Expected to throw %v but got %v", tt.expectedErrMessage, err))
 			} else {
-				assert.NoError(t, conn.Connect(tt.ctx, &tls.Config{
+				assert.NoError(t, conn.Connect(tt.ctx, config.NewConfig("1-2-3", false), &tls.Config{
 					InsecureSkipVerify: true,
 					ServerName:         tt.url(),
 					RootCAs:            nil,
