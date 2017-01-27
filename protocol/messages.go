@@ -194,7 +194,7 @@ func (r MetricsPostRequest) Encode() ([]byte, error) {
 const (
 	PrepareActionStart    = "start"
 	PrepareActionRestart  = "restart"
-	PrepareActionContinue = "restart"
+	PrepareActionContinue = "continue"
 
 	PrepareDirectivePrepare = "prepare"
 	PrepareDirectiveAbort   = "abort"
@@ -210,8 +210,6 @@ type PollerPrepareManifest struct {
 	Action    string `json:"action"`
 	Id        string `json:"id"`
 	CheckType string `json:"type"`
-	Period    uint64 `json:"period"`
-	Timeout   uint64 `json:"timeout"`
 	EntityId  string `json:"entity_id"`
 	ZoneId    string `json:"zone_id"`
 }
