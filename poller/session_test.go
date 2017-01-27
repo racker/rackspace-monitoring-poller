@@ -118,14 +118,8 @@ func TestEleSession_HeartbeatSending(t *testing.T) {
 
 	const heartbeatInterval = 10 // ms
 
-	// Get handshake ready for session to read right away
-	prepareHandshakeResponse(heartbeatInterval, readsHere)
-
 	es := poller.NewSession(context.Background(), eleConn, &config.Config{})
 	defer es.Close()
-
-	// allow for handshake resp to fire up heartbeating
-	time.Sleep((heartbeatInterval * 2.5) * time.Millisecond)
 
 	// decoder is used to consume frames sent out by the poller under test
 	decoder := json.NewDecoder(writesHere)
@@ -135,7 +129,10 @@ func TestEleSession_HeartbeatSending(t *testing.T) {
 	err := decoder.Decode(handshakeReq)
 	require.NoError(t, err)
 
-	// Within the 2.5 scaled time above, we should see two heartbeats and then nothing ready yet
+	prepareHandshakeResponse(heartbeatInterval, readsHere)
+
+	// Within 2.5 scaled time, we should see two heartbeats and then nothing ready yet
+	time.Sleep((heartbeatInterval * 2.5) * time.Millisecond)
 	heartbeatReq := new(protocol.HeartbeatRequest)
 
 	// 1 heartbeat
@@ -166,9 +163,6 @@ func TestEleSession_HeartbeatConsumption(t *testing.T) {
 
 	const heartbeatInterval = 10 // ms
 
-	// Get handshake ready for session to read right away
-	prepareHandshakeResponse(heartbeatInterval, readsHere)
-
 	es := poller.NewSession(context.Background(), eleConn, &config.Config{})
 	defer es.Close()
 
@@ -182,6 +176,8 @@ func TestEleSession_HeartbeatConsumption(t *testing.T) {
 	handshakeReq := new(protocol.HandshakeRequest)
 	err := decoder.Decode(handshakeReq)
 	require.NoError(t, err)
+
+	prepareHandshakeResponse(heartbeatInterval, readsHere)
 
 	heartbeatReq := new(protocol.HeartbeatRequest)
 	err = decoder.Decode(heartbeatReq)
