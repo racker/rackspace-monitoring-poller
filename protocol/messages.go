@@ -19,6 +19,7 @@ package protocol
 import (
 	"encoding/json"
 	"github.com/racker/rackspace-monitoring-poller/config"
+	"github.com/racker/rackspace-monitoring-poller/protocol/check"
 	"github.com/racker/rackspace-monitoring-poller/utils"
 )
 
@@ -42,8 +43,8 @@ type HandshakeRequest struct {
 
 func NewHandshakeRequest(cfg *config.Config) Frame {
 	f := &HandshakeRequest{}
-	f.Version = "1"
-	f.Method = "handshake.hello"
+	f.Version = Version
+	f.Method = MethodHandshakeHello
 	f.Params.Token = cfg.Token
 	f.Params.AgentId = cfg.AgentId
 	f.Params.AgentName = cfg.AgentName
@@ -112,8 +113,8 @@ func DecodeHeartbeatResponse(frame *FrameMsg) *HeartbeatResponse {
 
 func NewHeartbeatRequest() *HeartbeatRequest {
 	f := &HeartbeatRequest{}
-	f.Version = "1"
-	f.Method = "heartbeat.post"
+	f.Version = Version
+	f.Method = MethodHeartbeatPost
 	f.Params.Timestamp = utils.NowTimestampMillis()
 	return f
 }
@@ -132,8 +133,8 @@ type CheckScheduleGet struct {
 
 func NewCheckScheduleGet() Frame {
 	f := &CheckScheduleGet{}
-	f.Version = "1"
-	f.Method = "check_schedule.get"
+	f.Version = Version
+	f.Method = MethodCheckScheduleGet
 	f.Params = map[string]uint64{"blah": 1}
 	return f
 }
@@ -185,4 +186,57 @@ type MetricsPostRequest struct {
 
 func (r MetricsPostRequest) Encode() ([]byte, error) {
 	return json.Marshal(r)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Poller Prepare (start, block, end)
+
+const (
+	PrepareActionStart    = "start"
+	PrepareActionRestart  = "restart"
+	PrepareActionContinue = "restart"
+
+	PrepareDirectivePrepare = "prepare"
+	PrepareDirectiveAbort   = "abort"
+
+	PrepareResultStatusPrepared = "prepared"
+	PrepareResultStatusAborted  = "aborted"
+	PrepareResultStatusFailed   = "failed"
+	PrepareResultStatusIgnored  = "ignored"
+)
+
+type PollerPrepareManifest struct {
+	// Action is one of PrepareAction* constants
+	Action    string `json:"action"`
+	Id        string `json:"id"`
+	CheckType string `json:"type"`
+	Period    uint64 `json:"period"`
+	Timeout   uint64 `json:"timeout"`
+	EntityId  string `json:"entity_id"`
+	ZoneId    string `json:"zone_id"`
+}
+
+// PollerPrepareStartParams is the params of a message with method=MethodPollerPrepare
+type PollerPrepareStartParams struct {
+	Version  string
+	Manifest []PollerPrepareManifest
+}
+
+// PollerPrepareBlockParams is the params of a message with method=MethodPollerPrepareBlock
+type PollerPrepareBlockParams struct {
+	Version string
+	Block   []check.CheckIn
+}
+
+// PollerPrepareBlockParams is the params of a message with method=MethodPollerPrepareEnd
+type PollerPrepareEndParams struct {
+	Version string
+	// Directive is one of PrepareDirectiv* constants
+	Directive string
+}
+
+type PollerPrepareResult struct {
+	Version string
+	// Status is one of PrepareResultStatus* constants
+	Status string
 }

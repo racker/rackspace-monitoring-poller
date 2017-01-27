@@ -7,3 +7,5 @@
 /data/
 .DS_Store
 trace.out
+/.vscode
+/projectFilesBackup

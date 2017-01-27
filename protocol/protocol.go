@@ -16,3 +16,5 @@
 
 // Package protocol contains declarations of the frames and JSON payload common to pollers, endpoints, etc
 package protocol
+
+const Version = "1"
