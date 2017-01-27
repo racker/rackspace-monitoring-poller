@@ -229,7 +229,7 @@ type PollerPrepareBlockParams struct {
 // PollerPrepareBlockParams is the params of a message with method=MethodPollerPrepareEnd
 type PollerPrepareEndParams struct {
 	Version int
-	// Directive is one of PrepareDirectiv* constants
+	// Directive is one of PrepareDirective* constants
 	Directive string
 }
 
