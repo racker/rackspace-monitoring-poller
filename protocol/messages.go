@@ -216,25 +216,25 @@ type PollerPrepareManifest struct {
 
 // PollerPrepareStartParams is the params of a message with method=MethodPollerPrepare
 type PollerPrepareStartParams struct {
-	Version  string
+	Version  int
 	Manifest []PollerPrepareManifest
 }
 
 // PollerPrepareBlockParams is the params of a message with method=MethodPollerPrepareBlock
 type PollerPrepareBlockParams struct {
-	Version string
+	Version int
 	Block   []check.CheckIn
 }
 
 // PollerPrepareBlockParams is the params of a message with method=MethodPollerPrepareEnd
 type PollerPrepareEndParams struct {
-	Version string
+	Version int
 	// Directive is one of PrepareDirectiv* constants
 	Directive string
 }
 
 type PollerPrepareResult struct {
-	Version string
+	Version int
 	// Status is one of PrepareResultStatus* constants
 	Status string
 }
