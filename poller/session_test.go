@@ -62,6 +62,7 @@ func (fm frameMatcher) Matches(in interface{}) bool {
 }
 
 func setupConnStreamExpectations(ctrl *gomock.Controller) (eleConn *poller.MockConnection,
+	reconciler *poller.MockChecksReconciler,
 	writesHere *utils.BlockingReadBuffer, readsHere *utils.BlockingReadBuffer) {
 	eleConn = poller.NewMockConnection(ctrl)
 
@@ -76,6 +77,8 @@ func setupConnStreamExpectations(ctrl *gomock.Controller) (eleConn *poller.MockC
 	eleConn.EXPECT().GetGUID().AnyTimes().Return("1-2-3")
 	eleConn.EXPECT().SetReadDeadline(gomock.Any()).AnyTimes()
 	eleConn.EXPECT().SetWriteDeadline(gomock.Any()).AnyTimes()
+
+	reconciler = poller.NewMockChecksReconciler(ctrl)
 
 	return
 }
@@ -110,7 +113,7 @@ func TestEleSession_HeartbeatSending(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	eleConn, writesHere, readsHere := setupConnStreamExpectations(ctrl)
+	eleConn, reconciler, writesHere, readsHere := setupConnStreamExpectations(ctrl)
 	defer readsHere.Close()
 
 	origTimestamper := installDeterministicTimestamper(1000, 2000)
@@ -118,7 +121,7 @@ func TestEleSession_HeartbeatSending(t *testing.T) {
 
 	const heartbeatInterval = 10 // ms
 
-	es := poller.NewSession(context.Background(), eleConn, &config.Config{})
+	es := poller.NewSession(context.Background(), eleConn, reconciler, &config.Config{})
 	defer es.Close()
 
 	// decoder is used to consume frames sent out by the poller under test
@@ -155,7 +158,7 @@ func TestEleSession_HeartbeatConsumption(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	eleConn, writesHere, readsHere := setupConnStreamExpectations(ctrl)
+	eleConn, reconciler, writesHere, readsHere := setupConnStreamExpectations(ctrl)
 	defer readsHere.Close()
 
 	origTimestamper := installDeterministicTimestamper(1000, 2000)
@@ -163,7 +166,7 @@ func TestEleSession_HeartbeatConsumption(t *testing.T) {
 
 	const heartbeatInterval = 10 // ms
 
-	es := poller.NewSession(context.Background(), eleConn, &config.Config{})
+	es := poller.NewSession(context.Background(), eleConn, reconciler, &config.Config{})
 	defer es.Close()
 
 	// allow for handshake resp to fire up heartbeating

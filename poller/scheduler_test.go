@@ -2,7 +2,6 @@ package poller_test
 
 import (
 	"crypto/x509"
-	"encoding/json"
 	"testing"
 	"time"
 
@@ -10,7 +9,6 @@ import (
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/poller"
-	"github.com/racker/rackspace-monitoring-poller/protocol"
 	"github.com/racker/rackspace-monitoring-poller/utils"
 	"github.com/stretchr/testify/assert"
 )
@@ -68,102 +66,4 @@ func TestEleScheduler_SendMetrics(t *testing.T) {
 	schedule := poller.NewScheduler("pzAwesome", mockStream)
 	mockStream.EXPECT().SendMetrics(gomock.Any()).Times(1)
 	schedule.SendMetrics(&check.ResultSet{})
-}
-
-func TestEleScheduler_RunFrameConsumer(t *testing.T) {
-	if testing.Short() {
-		t.Skip()
-	}
-	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
-	mockStream := poller.NewMockConnectionStream(mockCtrl)
-	mockStream.EXPECT().SendMetrics(gomock.Any()).AnyTimes()
-	schedule := poller.NewScheduler("pzAwesome", mockStream)
-
-	// set up wait period time measurement
-	bakWaitPeriodTimeMeasurement := check.WaitPeriodTimeMeasurement
-	bakCheckSpreadInMilliseconds := poller.CheckSpreadInMilliseconds
-	defer func() {
-		check.WaitPeriodTimeMeasurement = bakWaitPeriodTimeMeasurement
-		poller.CheckSpreadInMilliseconds = bakCheckSpreadInMilliseconds
-	}()
-
-	check.WaitPeriodTimeMeasurement = time.Millisecond
-	// set up jitter
-	poller.CheckSpreadInMilliseconds = 100
-
-	// NOTE: period is set to 90 seconds so that the check
-	// only runs once in the jitter period (jitter is set to 100 ms)
-	schedule.GetInput() <- &protocol.FrameMsg{
-		FrameMsgCommon: protocol.FrameMsgCommon{
-			Id: 123,
-		},
-		RawParams: json.RawMessage(`{
-	  "id":"chPzATCP",
-	  "zone_id":"pzA",
-	  "entity_id":"enAAAAIPV4",
-	  "details":{"port":0,"ssl":false},
-	  "type":"remote.tcp",
-	  "timeout":1,
-	  "period":120,
-	  "ip_addresses":{"default":"127.0.0.1"},
-	  "target_alias":"default",
-	  "target_hostname":"",
-	  "target_resolver":"",
-	  "disabled":true
-	  }`),
-	}
-	go schedule.RunFrameConsumer()
-
-	// wait for jitter amount of time (and add 100 milliseconds to catch the other close)
-	time.Sleep(200 * time.Millisecond)
-
-	// close session
-	schedule.Close()
-
-	ctx, _ := schedule.GetContext()
-	completed := utils.Timebox(t, 1000*time.Millisecond, func(t *testing.T) {
-		<-ctx.Done()
-	})
-	assert.True(t, completed, "cancellation channel never notified")
-}
-
-// This is a variant of TestEleScheduler_RunFrameConsumer that eliminates all use of go routines, but narrows the
-// scope of testing.
-func TestEleScheduler_FrameConsumer_Scheduling(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
-
-	mockCheckScheduler := poller.NewMockCheckScheduler(mockCtrl)
-	mockCheckExecutor := poller.NewMockCheckExecutor(mockCtrl)
-
-	mockStream := poller.NewMockConnectionStream(mockCtrl)
-	scheduler := poller.NewCustomScheduler("pzAwesome", mockStream, mockCheckScheduler, mockCheckExecutor)
-
-	scheduler.GetInput() <- &protocol.FrameMsg{
-		FrameMsgCommon: protocol.FrameMsgCommon{
-			Id: 123,
-		},
-		RawParams: json.RawMessage(`{
-	  "id":"chPzATCP",
-	  "zone_id":"pzA",
-	  "entity_id":"enAAAAIPV4",
-	  "details":{"port":0,"ssl":false},
-	  "type":"remote.tcp",
-	  "timeout":1,
-	  "period":120,
-	  "ip_addresses":{"default":"127.0.0.1"},
-	  "target_alias":"default",
-	  "target_hostname":"",
-	  "target_resolver":"",
-	  "disabled":true
-	  }`),
-	}
-
-	mockCheckScheduler.EXPECT().Schedule(check.ExpectedCheckType("remote.tcp")).Do(func(ch check.Check) {
-		// then close the frame consumer
-		scheduler.Close()
-	})
-
-	scheduler.RunFrameConsumer()
 }

@@ -45,7 +45,8 @@ const (
 // See Session for more information
 type EleSession struct {
 	// reference to the connection
-	connection Connection
+	connection       Connection
+	checksReconciler ChecksReconciler
 
 	config *config.Config
 
@@ -80,9 +81,10 @@ type EleSession struct {
 	}
 }
 
-func NewSession(ctx context.Context, connection Connection, config *config.Config) Session {
+func NewSession(ctx context.Context, connection Connection, checksReconciler ChecksReconciler, config *config.Config) Session {
 	session := &EleSession{
 		connection:         connection,
+		checksReconciler:   checksReconciler,
 		config:             config,
 		dec:                json.NewDecoder(connection.GetFarendReader()),
 		seq:                0, // so that handshake req gets ID 1 after incrementing

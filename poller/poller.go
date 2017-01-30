@@ -53,7 +53,6 @@ type ConnectionStream interface {
 	RegisterConnection(qry string, conn Connection) error
 	Stop()
 	StopNotify() chan struct{}
-	GetSchedulers() map[string]Scheduler
 	SendMetrics(crs *check.ResultSet) error
 	Connect()
 	WaitCh() <-chan struct{}
@@ -63,7 +62,6 @@ type ConnectionStream interface {
 // Connection interface wraps the methods required to manage a
 // single connection.
 type Connection interface {
-	GetStream() ConnectionStream
 	GetSession() Session
 	SetReadDeadline(deadline time.Time)
 	SetWriteDeadline(deadline time.Time)
@@ -99,16 +97,19 @@ type CheckExecutor interface {
 	Execute(ch check.Check)
 }
 
+type ChecksReconciler interface {
+	ReconcileChecks(cp *CheckPreparation)
+}
+
 // Scheduler interface wraps the methods that schedule
 // metric setup and sending
 type Scheduler interface {
-	GetInput() chan protocol.Frame
+	ChecksReconciler
+
 	Close()
 	SendMetrics(crs *check.ResultSet)
-	Register(ch check.Check)
-	RunFrameConsumer()
 	GetZoneID() string
 	GetContext() (ctx context.Context, cancel context.CancelFunc)
 }
 
-type ConnectionFactory func(address string, guid string, stream ConnectionStream) Connection
+type ConnectionFactory func(address string, guid string, checksReconciler ChecksReconciler) Connection

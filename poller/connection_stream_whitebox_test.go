@@ -111,11 +111,6 @@ func TestConnection_WaitCh(t *testing.T) {
 	assert.True(t, result, "wait channel never notified")
 }
 
-func TestConnection_GetScheduler(t *testing.T) {
-	cs := NewConnectionStream(config.NewConfig("test-guid", false), nil)
-	assert.Equal(t, cs.(*EleConnectionStream).schedulers, cs.GetSchedulers())
-}
-
 func TestConnectionStream_SendMetrics(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()

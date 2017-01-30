@@ -23,7 +23,10 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/check"
-	"github.com/racker/rackspace-monitoring-poller/protocol"
+)
+
+const (
+	checkPreparationBufferSize = 10
 )
 
 // EleScheduler implements Scheduler interface.
@@ -32,9 +35,9 @@ type EleScheduler struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	zoneID string
-	checks map[string]check.Check
-	input  chan protocol.Frame
+	zoneID       string
+	checks       map[string]check.Check
+	preparations chan *CheckPreparation
 
 	stream ConnectionStream
 
@@ -52,12 +55,12 @@ func NewScheduler(zoneID string, stream ConnectionStream) Scheduler {
 // Nil can be passed to either checkScheduler and/or checkExecutor to enable the default behavior.
 func NewCustomScheduler(zoneID string, stream ConnectionStream, checkScheduler CheckScheduler, checkExecutor CheckExecutor) Scheduler {
 	s := &EleScheduler{
-		checks:    make(map[string]check.Check),
-		input:     make(chan protocol.Frame, 1024),
-		stream:    stream,
-		zoneID:    zoneID,
-		scheduler: checkScheduler,
-		executor:  checkExecutor,
+		checks:       make(map[string]check.Check),
+		preparations: make(chan *CheckPreparation, checkPreparationBufferSize),
+		stream:       stream,
+		zoneID:       zoneID,
+		scheduler:    checkScheduler,
+		executor:     checkExecutor,
 	}
 
 	// by default we are our own scheduler/executor of checks
@@ -69,6 +72,8 @@ func NewCustomScheduler(zoneID string, stream ConnectionStream, checkScheduler C
 	}
 
 	s.ctx, s.cancel = context.WithCancel(context.Background())
+
+	go s.runReconciler()
 
 	return s
 
@@ -84,14 +89,31 @@ func (s *EleScheduler) GetContext() (ctx context.Context, cancel context.CancelF
 	return s.ctx, s.cancel
 }
 
-// GetInput returns protocol.Frame channel
-func (s *EleScheduler) GetInput() chan protocol.Frame {
-	return s.input
-}
-
 // Close cancels the context and closes the connection
 func (s *EleScheduler) Close() {
 	s.cancel()
+}
+
+func (s *EleScheduler) ReconcileChecks(cp *CheckPreparation) {
+	s.preparations <- cp
+}
+
+func (s *EleScheduler) runReconciler() {
+	for {
+		select {
+		case cp := <-s.preparations:
+
+			log.WithField("cp", cp).Debug("Reconciling prepared checks")
+
+		// TODO
+		// ... compute removed checks by finding non-intersecting checks
+		// ... cancel modified/removed checks
+		// ... reschedule modified/added checks
+
+		case <-s.ctx.Done():
+			return
+		}
+	}
 }
 
 // Schedule is the default implementation of CheckScheduler that kicks off a go routine to run a check's timer.
@@ -136,32 +158,4 @@ func (s *EleScheduler) Execute(ch check.Check) {
 // SendMetrics sends metrics passed in crs parameter via the stream
 func (s *EleScheduler) SendMetrics(crs *check.ResultSet) {
 	s.stream.SendMetrics(crs)
-}
-
-// Register registers the passed in ch check in the checks list
-func (s *EleScheduler) Register(ch check.Check) {
-	s.checks[ch.GetID()] = ch
-}
-
-// RunFrameConsumer method runs the check.  It sets up the new check
-// and sends it.
-func (s *EleScheduler) RunFrameConsumer() {
-	for {
-		select {
-		case f := <-s.GetInput():
-
-			// TODO Later this will probably need to handle check cancellations in which case it can call ch.Cancel()
-
-			checkCtx, cancelFunc := context.WithCancel(s.ctx)
-			ch := check.NewCheck(checkCtx, f.GetRawParams(), cancelFunc)
-			if ch == nil {
-				log.Printf("Invalid Check")
-				continue
-			}
-			s.Register(ch)
-			s.scheduler.Schedule(ch)
-		case <-s.ctx.Done():
-			return
-		}
-	}
 }
