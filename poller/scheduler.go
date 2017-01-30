@@ -84,11 +84,6 @@ func (s *EleScheduler) GetContext() (ctx context.Context, cancel context.CancelF
 	return s.ctx, s.cancel
 }
 
-// GetChecks retrieves check map
-func (s *EleScheduler) GetChecks() map[string]check.Check {
-	return s.checks
-}
-
 // GetInput returns protocol.Frame channel
 func (s *EleScheduler) GetInput() chan protocol.Frame {
 	return s.input
@@ -99,7 +94,12 @@ func (s *EleScheduler) Close() {
 	s.cancel()
 }
 
+// Schedule is the default implementation of CheckScheduler that kicks off a go routine to run a check's timer.
 func (s *EleScheduler) Schedule(ch check.Check) {
+	go s.runCheckTimerLoop(ch)
+}
+
+func (s *EleScheduler) runCheckTimerLoop(ch check.Check) {
 	// Spread the checks out over 30 seconds
 	jitter := rand.Intn(CheckSpreadInMilliseconds) + 1
 
@@ -109,22 +109,20 @@ func (s *EleScheduler) Schedule(ch check.Check) {
 		"waitPeriod": ch.GetWaitPeriod(),
 	}).Info("Starting check")
 
-	go func() {
-		time.Sleep(time.Duration(jitter) * time.Millisecond)
-		for {
-			select {
-			case <-time.After(ch.GetWaitPeriod()):
-				s.executor.Execute(ch)
+	time.Sleep(time.Duration(jitter) * time.Millisecond)
+	for {
+		select {
+		case <-time.After(ch.GetWaitPeriod()):
+			s.executor.Execute(ch)
 
-			case <-ch.Done(): // session cancellation is propagated since check context is child of session context
-				log.WithField("check", ch.GetID()).Info("Check or session has been cancelled")
-				return
-			}
+		case <-ch.Done(): // session cancellation is propagated since check context is child of session context
+			log.WithField("check", ch.GetID()).Info("Check or session has been cancelled")
+			return
 		}
-
-	}()
+	}
 }
 
+// Execute perform the default CheckExecutor behavior by running the check and sending its results via SendMetrics.
 func (s *EleScheduler) Execute(ch check.Check) {
 	crs, err := ch.Run()
 	if err != nil {
@@ -141,12 +139,8 @@ func (s *EleScheduler) SendMetrics(crs *check.ResultSet) {
 }
 
 // Register registers the passed in ch check in the checks list
-func (s *EleScheduler) Register(ch check.Check) error {
-	if ch == nil {
-		return ErrCheckEmpty
-	}
+func (s *EleScheduler) Register(ch check.Check) {
 	s.checks[ch.GetID()] = ch
-	return nil
 }
 
 // RunFrameConsumer method runs the check.  It sets up the new check

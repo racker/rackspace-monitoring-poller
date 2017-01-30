@@ -86,6 +86,12 @@ where `Pkg` is the sub-package that contains one or more interfaces in `{Interfa
 It will write mocks of those interfaces to an adjacent file `{InterfaceFile}_mock_test.go` where those
 mocks will also reside in the package `Pkg`.
 
+An example use for the interfaces in `poller/poller.go` is:
+
+```
+mockgen -source=poller/poller.go -package=poller -destination=poller/poller_mock_test.go
+```
+
 Don't forget to re-run `mockgen` when a mocked interface is altered since test-time compilation errors will result
 from incomplete interface implementations.
 

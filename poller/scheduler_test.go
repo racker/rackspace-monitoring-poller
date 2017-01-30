@@ -1,7 +1,6 @@
 package poller_test
 
 import (
-	"context"
 	"crypto/x509"
 	"encoding/json"
 	"testing"
@@ -69,60 +68,6 @@ func TestEleScheduler_SendMetrics(t *testing.T) {
 	schedule := poller.NewScheduler("pzAwesome", mockStream)
 	mockStream.EXPECT().SendMetrics(gomock.Any()).Times(1)
 	schedule.SendMetrics(&check.ResultSet{})
-}
-
-func TestEleScheduler_Register(t *testing.T) {
-	cancelCtx, cancelFunc := context.WithCancel(context.Background())
-	tests := []struct {
-		name        string
-		ch          check.Check
-		expectedErr bool
-	}{
-		{
-			name: "Happy path",
-			ch: check.NewCheck(cancelCtx, json.RawMessage(`{
-	  "id":"chPzATCP",
-	  "zone_id":"pzA",
-	  "entity_id":"enAAAAIPV4",
-	  "details":{"port":0,"ssl":false},
-	  "type":"remote.tcp",
-	  "timeout":1,
-	  "period":30,
-	  "ip_addresses":{"default":"127.0.0.1"},
-	  "target_alias":"default",
-	  "target_hostname":"",
-	  "target_resolver":"",
-	  "disabled":true
-			}`), cancelFunc),
-			expectedErr: false,
-		},
-		{
-			name:        "Check is nil",
-			ch:          nil,
-			expectedErr: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := poller.NewScheduler("pzAwesome",
-				poller.NewConnectionStream(
-					&config.Config{
-						AgentId: "test1",
-					},
-					x509.NewCertPool(),
-				))
-			if tt.expectedErr {
-				assert.Error(t, s.Register(tt.ch))
-			} else {
-				assert.NoError(t, s.Register(tt.ch))
-				checkList := []string{}
-				for checkId, _ := range s.GetChecks() {
-					checkList = append(checkList, checkId)
-				}
-				assert.Contains(t, checkList, tt.ch.GetID())
-			}
-		})
-	}
 }
 
 func TestEleScheduler_RunFrameConsumer(t *testing.T) {

@@ -105,11 +105,10 @@ type Scheduler interface {
 	GetInput() chan protocol.Frame
 	Close()
 	SendMetrics(crs *check.ResultSet)
-	Register(ch check.Check) error
+	Register(ch check.Check)
 	RunFrameConsumer()
 	GetZoneID() string
 	GetContext() (ctx context.Context, cancel context.CancelFunc)
-	GetChecks() map[string]check.Check
 }
 
 type ConnectionFactory func(address string, guid string, stream ConnectionStream) Connection

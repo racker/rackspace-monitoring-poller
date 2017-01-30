@@ -410,10 +410,8 @@ func (_mr *_MockSchedulerRecorder) SendMetrics(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SendMetrics", arg0)
 }
 
-func (_m *MockScheduler) Register(ch check.Check) error {
-	ret := _m.ctrl.Call(_m, "Register", ch)
-	ret0, _ := ret[0].(error)
-	return ret0
+func (_m *MockScheduler) Register(ch check.Check) {
+	_m.ctrl.Call(_m, "Register", ch)
 }
 
 func (_mr *_MockSchedulerRecorder) Register(arg0 interface{}) *gomock.Call {
@@ -447,14 +445,4 @@ func (_m *MockScheduler) GetContext() (context.Context, context.CancelFunc) {
 
 func (_mr *_MockSchedulerRecorder) GetContext() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetContext")
-}
-
-func (_m *MockScheduler) GetChecks() map[string]check.Check {
-	ret := _m.ctrl.Call(_m, "GetChecks")
-	ret0, _ := ret[0].(map[string]check.Check)
-	return ret0
-}
-
-func (_mr *_MockSchedulerRecorder) GetChecks() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetChecks")
 }
