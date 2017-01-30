@@ -260,7 +260,8 @@ func (at *AgentTracker) lookupChecks(a *agent) {
 				continue
 			}
 
-			go a.sendTo(protocol.MethodPollerChecksAdd, check)
+			log.WithField("check", check).Warn("TODO: implement poller.prepare")
+			// TODO ...implement version of poller.prepare exchange
 		}
 	}
 }
