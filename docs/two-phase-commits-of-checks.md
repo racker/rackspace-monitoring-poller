@@ -4,13 +4,13 @@
 `EleSession` runs frame decoding and is the immediate consumer of poller-AEP protocol messages, such as
 `poller.prepare` and related.
 
-A `Session`, upon receiving a `poller.prepare` message is responsible for creating a `CheckPreparation`.
+A `Session`, upon receiving a `poller.prepare` message is responsible for creating a `ChecksPreparation`.
 
-As a `poller.prepare.block` messages are received, the `CheckPreparation` is updated.
+As a `poller.prepare.block` messages are received, the `ChecksPreparation` is updated.
 
-The `CheckPreparation` is responsible for verification of itself as part of 
+The `ChecksPreparation` is responsible for verification of itself as part of 
 
-Upon receiving a `poller.commit` the `Session` will hand off the `CheckPreparation` to a `ChecksReconciler`.
+Upon receiving a `poller.commit` the `Session` will hand off the `ChecksPreparation` to a `ChecksReconciler`.
 
 `EleConnectionStream` implements `ChecksReconciler` but delegates to its `Scheduler` instances.
 
@@ -26,4 +26,4 @@ Each `EleScheduler` knows the zone it handles and as such can potentially filter
 reconciliation.
 
 `EleScheduler` avoids concurrent modifications of scheduled checks by consuming from an internal chan 
-of `CheckPreparation` and only the routine waiting on that channel modifies the scheduled set.
+of `ChecksPreparation` and only the routine waiting on that channel modifies the scheduled set.

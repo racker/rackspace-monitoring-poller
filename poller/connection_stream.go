@@ -96,8 +96,8 @@ func (cs *EleConnectionStream) GetConnections() map[string]Connection {
 	return cs.conns
 }
 
-// ReconcileChecks routes the CheckPreparation to its schedulers.
-func (cs *EleConnectionStream) ReconcileChecks(cp *CheckPreparation) {
+// ReconcileChecks routes the ChecksPreparation to its schedulers.
+func (cs *EleConnectionStream) ReconcileChecks(cp *ChecksPreparation) {
 	for _, sched := range cs.schedulers {
 		sched.ReconcileChecks(cp)
 	}

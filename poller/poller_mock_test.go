@@ -374,7 +374,7 @@ func (_m *MockChecksReconciler) EXPECT() *_MockChecksReconcilerRecorder {
 	return _m.recorder
 }
 
-func (_m *MockChecksReconciler) ReconcileChecks(cp *CheckPreparation) {
+func (_m *MockChecksReconciler) ReconcileChecks(cp *ChecksPreparation) {
 	_m.ctrl.Call(_m, "ReconcileChecks", cp)
 }
 
@@ -403,7 +403,7 @@ func (_m *MockScheduler) EXPECT() *_MockSchedulerRecorder {
 	return _m.recorder
 }
 
-func (_m *MockScheduler) ReconcileChecks(cp *CheckPreparation) {
+func (_m *MockScheduler) ReconcileChecks(cp *ChecksPreparation) {
 	_m.ctrl.Call(_m, "ReconcileChecks", cp)
 }
 

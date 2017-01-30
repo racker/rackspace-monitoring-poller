@@ -98,7 +98,7 @@ type CheckExecutor interface {
 }
 
 type ChecksReconciler interface {
-	ReconcileChecks(cp *CheckPreparation)
+	ReconcileChecks(cp *ChecksPreparation)
 }
 
 // Scheduler interface wraps the methods that schedule

@@ -45,8 +45,10 @@ const (
 // See Session for more information
 type EleSession struct {
 	// reference to the connection
-	connection       Connection
-	checksReconciler ChecksReconciler
+	connection Connection
+
+	checksReconciler        ChecksReconciler
+	activeChecksPreparation *ChecksPreparation
 
 	config *config.Config
 
@@ -192,19 +194,23 @@ done:
 }
 
 func (s *EleSession) handleFrame(f *protocol.FrameMsg) {
-	js, _ := f.Encode()
 	if log.GetLevel() >= log.DebugLevel {
+		js, _ := f.Encode()
 		log.Debugf("RECV: %s", js)
 	}
+
 	switch f.GetMethod() {
 	case protocol.MethodEmpty: // Responses do not have a method name
 		s.handleResponse(f)
-	case protocol.MethodPollerChecksAdd:
-		// in process of being modified
-		// s.connection.GetStream().GetScheduler().Input() <- f
 	case protocol.MethodHostInfoGet:
 		go s.handleHostInfo(f)
-	case protocol.MethodPollerChecksEnd:
+
+	case protocol.MethodPollerPrepare:
+	case protocol.MethodPollerPrepareBlock:
+	case protocol.MethodPollerPrepareEnd:
+	case protocol.MethodPollerCommit:
+		// TODO ...create/update ChecksPreparation
+
 	default:
 		log.Errorf("  Need to handle method: %v", f.GetMethod())
 	}

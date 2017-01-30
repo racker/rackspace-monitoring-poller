@@ -35,15 +35,15 @@ type ActionableCheck struct {
 	Populated bool
 }
 
-type CheckPreparation struct {
+type ChecksPreparation struct {
 	TrackingVersion int
 
 	// Actions is a 2D map of entityId->checkId->ActionableCheck
 	Actions map[string] /*entityId*/ map[string] /*checkId*/ ActionableCheck
 }
 
-func NewCheckPreparation(version int, manifest []protocol.PollerPrepareManifest) *CheckPreparation {
-	cp := &CheckPreparation{
+func NewCheckPreparation(version int, manifest []protocol.PollerPrepareManifest) *ChecksPreparation {
+	cp := &ChecksPreparation{
 		TrackingVersion: version,
 		Actions:         make(map[string] /*entityId*/ map[string] /*checkId*/ ActionableCheck),
 	}
@@ -76,11 +76,11 @@ func checkPreparationNeedsPopulating(action string) bool {
 	return action != protocol.PrepareActionContinue
 }
 
-func (cp *CheckPreparation) VersionApplies(version int) bool {
+func (cp *ChecksPreparation) VersionApplies(version int) bool {
 	return cp != nil && cp.TrackingVersion == version
 }
 
-func (cp *CheckPreparation) AddDefinitions(block []check.CheckIn) {
+func (cp *ChecksPreparation) AddDefinitions(block []check.CheckIn) {
 
 	for _, check := range block {
 		actionable := cp.Actions[check.EntityId][check.Id]
@@ -91,7 +91,7 @@ func (cp *CheckPreparation) AddDefinitions(block []check.CheckIn) {
 	}
 }
 
-func (cp *CheckPreparation) Validate(version int) error {
+func (cp *ChecksPreparation) Validate(version int) error {
 	if !cp.VersionApplies(version) {
 		return errors.New("Wrong version")
 	}

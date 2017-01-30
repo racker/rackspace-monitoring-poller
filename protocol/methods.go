@@ -8,8 +8,6 @@ const (
 	MethodHandshakeHello   = "handshake.hello"
 	MethodCheckScheduleGet = "check_schedule.get"
 	MethodPollerRegister   = "poller.register"
-	MethodPollerChecksAdd  = "poller.checks.add"
-	MethodPollerChecksEnd  = "poller.checks.end"
 	// MethodHeartbeatPost is SENT TO ---> endpoint server
 	MethodHeartbeatPost    = "heartbeat.post"
 	MethodCheckMetricsPost = "check_metrics.post_multi"

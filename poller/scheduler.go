@@ -37,7 +37,7 @@ type EleScheduler struct {
 
 	zoneID       string
 	checks       map[string]check.Check
-	preparations chan *CheckPreparation
+	preparations chan *ChecksPreparation
 
 	stream ConnectionStream
 
@@ -56,7 +56,7 @@ func NewScheduler(zoneID string, stream ConnectionStream) Scheduler {
 func NewCustomScheduler(zoneID string, stream ConnectionStream, checkScheduler CheckScheduler, checkExecutor CheckExecutor) Scheduler {
 	s := &EleScheduler{
 		checks:       make(map[string]check.Check),
-		preparations: make(chan *CheckPreparation, checkPreparationBufferSize),
+		preparations: make(chan *ChecksPreparation, checkPreparationBufferSize),
 		stream:       stream,
 		zoneID:       zoneID,
 		scheduler:    checkScheduler,
@@ -94,7 +94,7 @@ func (s *EleScheduler) Close() {
 	s.cancel()
 }
 
-func (s *EleScheduler) ReconcileChecks(cp *CheckPreparation) {
+func (s *EleScheduler) ReconcileChecks(cp *ChecksPreparation) {
 	s.preparations <- cp
 }
 
