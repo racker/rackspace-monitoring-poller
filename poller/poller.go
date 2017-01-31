@@ -97,7 +97,13 @@ type CheckExecutor interface {
 	Execute(ch check.Check)
 }
 
+// ChecksReconciler is implemented by receivers that can either reconcile prepared checks during a commit or
+// pre-validate the checks prior to committing.
 type ChecksReconciler interface {
+	// ReconcileChecks acts upon the given ChecksPreparation during a commit-phase.
+	// The bulk of the processing is likely handled in an alternate go routine, so errors in the given
+	// ChecksPreparation are handled but not reportable back to this caller. Use ValidateChecks prior to calling
+	// this to pre-compute those errors.
 	ReconcileChecks(cp *ChecksPreparation)
 
 	// Validate goes through the motions of ReconcileChecks in order to pre-validate consistency.
