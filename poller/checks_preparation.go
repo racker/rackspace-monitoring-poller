@@ -28,10 +28,10 @@ import (
 type ActionType int
 
 const (
-	ActionTypeUnknown  = iota
-	ActionTypeStart    = iota
-	ActionTypeRestart  = iota
-	ActionTypeContinue = iota
+	ActionTypeUnknown = iota
+	ActionTypeStart
+	ActionTypeRestart
+	ActionTypeContinue
 )
 
 // ActionableCheck enriches a check.CheckIn with an action indicator.
