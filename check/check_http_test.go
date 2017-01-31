@@ -22,7 +22,8 @@ import (
 	"strings"
 	"testing"
 
-	check "github.com/racker/rackspace-monitoring-poller/check"
+	"github.com/racker/rackspace-monitoring-poller/check"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -57,7 +58,8 @@ func TestHTTPSuccess(t *testing.T) {
 	  "target_resolver":"",
 	  "disabled":false
 	  }`, ts.URL)
-	check := check.NewCheck(context.Background(), []byte(checkData), func() {})
+	check, err := check.NewCheck(context.Background(), []byte(checkData))
+	require.NoError(t, err)
 
 	// Run check
 	crs, err := check.Run()
@@ -99,7 +101,8 @@ func TestHTTPSuccessIncludeBodyAndHeaders(t *testing.T) {
 	  "target_resolver":"",
 	  "disabled":false
 	  }`, ts.URL)
-	check := check.NewCheck(context.Background(), []byte(checkData), func() {})
+	check, err := check.NewCheck(context.Background(), []byte(checkData))
+	require.NoError(t, err)
 
 	// Run check
 	crs, err := check.Run()
@@ -151,7 +154,8 @@ func TestHTTPSuccessBodyMatch(t *testing.T) {
 	  "target_resolver":"",
 	  "disabled":false
 	  }`, ts.URL)
-	check := check.NewCheck(context.Background(), []byte(checkData), func() {})
+	check, err := check.NewCheck(context.Background(), []byte(checkData))
+	require.NoError(t, err)
 
 	// Run check
 	crs, err := check.Run()
@@ -215,7 +219,8 @@ func TestHTTPClosed(t *testing.T) {
 	  "target_resolver":"",
 	  "disabled":false
 	  }`, ts.URL)
-	check := check.NewCheck(context.Background(), []byte(checkData), func() {})
+	check, err := check.NewCheck(context.Background(), []byte(checkData))
+	require.NoError(t, err)
 
 	// Run check
 	crs, err := check.Run()
@@ -253,7 +258,8 @@ func TestHTTPTimeout(t *testing.T) {
 	  "target_resolver":"",
 	  "disabled":false
 	  }`, ts.URL)
-	check := check.NewCheck(context.Background(), []byte(checkData), func() {})
+	check, err := check.NewCheck(context.Background(), []byte(checkData))
+	require.NoError(t, err)
 
 	// Run check
 	crs, err := check.Run()
@@ -284,10 +290,11 @@ func TestHTTPInvalidUrl(t *testing.T) {
 	  "target_resolver":"",
 	  "disabled":false
 	}`, "http://192.168.0.%31/")
-	check := check.NewCheck(context.Background(), []byte(checkData), func() {})
+	check, err := check.NewCheck(context.Background(), []byte(checkData))
+	require.NoError(t, err)
 
 	// Run check
-	_, err := check.Run()
+	_, err = check.Run()
 	if err == nil {
 		t.Fatal("should have errored")
 	}
@@ -311,7 +318,8 @@ func TestHTTP_TLS(t *testing.T) {
 	  "target_resolver":"",
 	  "disabled":false
 	}`, ts.URL)
-	check := check.NewCheck(context.Background(), []byte(checkData), func() {})
+	check, err := check.NewCheck(context.Background(), []byte(checkData))
+	require.NoError(t, err)
 
 	// Run check
 	crs, err := check.Run()

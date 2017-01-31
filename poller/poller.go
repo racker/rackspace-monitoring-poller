@@ -99,6 +99,10 @@ type CheckExecutor interface {
 
 type ChecksReconciler interface {
 	ReconcileChecks(cp *ChecksPreparation)
+
+	// Validate goes through the motions of ReconcileChecks in order to pre-validate consistency.
+	// Returns an error upon finding the first entry that is not valid.
+	ValidateChecks(cp *ChecksPreparation) error
 }
 
 // Scheduler interface wraps the methods that schedule
@@ -110,6 +114,7 @@ type Scheduler interface {
 	SendMetrics(crs *check.ResultSet)
 	GetZoneID() string
 	GetContext() (ctx context.Context, cancel context.CancelFunc)
+	GetScheduledChecks() []check.Check
 }
 
 type ConnectionFactory func(address string, guid string, checksReconciler ChecksReconciler) Connection

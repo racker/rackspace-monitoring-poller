@@ -17,23 +17,28 @@
 package poller_test
 
 import (
+	"encoding/json"
 	"github.com/racker/rackspace-monitoring-poller/poller"
 	"github.com/racker/rackspace-monitoring-poller/protocol"
 	"github.com/racker/rackspace-monitoring-poller/protocol/check"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"io/ioutil"
 	"testing"
 )
 
 func TestNewCheckPreparation_VersionMatch(t *testing.T) {
-	cp := poller.NewCheckPreparation(1, []protocol.PollerPrepareManifest{})
+	cp, err := poller.NewChecksPreparation(1, []protocol.PollerPrepareManifest{})
 
+	assert.NoError(t, err)
 	assert.NotNil(t, cp)
 	assert.True(t, cp.VersionApplies(1))
 }
 
 func TestNewCheckPreparation_VersionMismatch(t *testing.T) {
-	cp := poller.NewCheckPreparation(1, []protocol.PollerPrepareManifest{})
+	cp, err := poller.NewChecksPreparation(1, []protocol.PollerPrepareManifest{})
 
+	assert.NoError(t, err)
 	assert.NotNil(t, cp)
 	assert.False(t, cp.VersionApplies(3))
 }
@@ -60,31 +65,15 @@ func TestCheckPreparation_AddDefinitions_Normal(t *testing.T) {
 		},
 	}
 
-	cp := poller.NewCheckPreparation(1, manifest)
+	cp, _ := poller.NewChecksPreparation(1, manifest)
 
-	block1 := []check.CheckIn{
-		{
-			CheckHeader: check.CheckHeader{
-				Id:        "ch2",
-				ZoneId:    "zn1",
-				EntityId:  "en2",
-				Period:    60,
-				CheckType: "remote.tcp",
-			},
-		},
-	}
+	block1 := loadTestDataChecks(t,
+		checkLoadInfo{name: "tcp_check", id: "ch2", entityId: "en2", zonedId: "zn1"},
+	)
 
-	block2 := []check.CheckIn{
-		{
-			CheckHeader: check.CheckHeader{
-				Id:        "ch1",
-				ZoneId:    "zn1",
-				EntityId:  "en1",
-				Period:    60,
-				CheckType: "remote.tcp",
-			},
-		},
-	}
+	block2 := loadTestDataChecks(t,
+		checkLoadInfo{name: "tcp_check", id: "ch1", entityId: "en1", zonedId: "zn1"},
+	)
 
 	cp.AddDefinitions(block1)
 	cp.AddDefinitions(block2)
@@ -115,19 +104,11 @@ func TestCheckPreparation_AddDefinitions_MissingOne(t *testing.T) {
 		},
 	}
 
-	cp := poller.NewCheckPreparation(1, manifest)
+	cp, _ := poller.NewChecksPreparation(1, manifest)
 
-	block1 := []check.CheckIn{
-		{
-			CheckHeader: check.CheckHeader{
-				Id:        "ch2",
-				ZoneId:    "zn1",
-				EntityId:  "en2",
-				Period:    60,
-				CheckType: "remote.tcp",
-			},
-		},
-	}
+	block1 := loadTestDataChecks(t,
+		checkLoadInfo{name: "tcp_check", id: "ch2", entityId: "en2", zonedId: "zn1"},
+	)
 
 	cp.AddDefinitions(block1)
 
@@ -146,23 +127,79 @@ func TestCheckPreparation_AddDefinitions_WrongVersion(t *testing.T) {
 		},
 	}
 
-	cp := poller.NewCheckPreparation(1, manifest)
+	cp, _ := poller.NewChecksPreparation(1, manifest)
 
-	block1 := []check.CheckIn{
-		{
-			CheckHeader: check.CheckHeader{
-				Id:        "ch2",
-				ZoneId:    "zn1",
-				EntityId:  "en2",
-				Period:    60,
-				CheckType: "remote.tcp",
-			},
-		},
-	}
+	block1 := loadTestDataChecks(t,
+		checkLoadInfo{name: "tcp_check", id: "ch2", entityId: "en2", zonedId: "zn1"},
+	)
 
 	cp.AddDefinitions(block1)
 
 	err := cp.Validate(2)
 	assert.Error(t, err)
 
+}
+
+func TestNewCheckPreparation_UnknownActionStr(t *testing.T) {
+	manifest := []protocol.PollerPrepareManifest{
+		{
+			Action:   "BOGUS ACTION",
+			ZoneId:   "zn1",
+			EntityId: "en2",
+			Id:       "ch2",
+		},
+	}
+
+	_, err := poller.NewChecksPreparation(1, manifest)
+
+	assert.Error(t, err)
+}
+
+type checkLoadInfo struct {
+	name     string
+	id       string
+	entityId string
+	zonedId  string
+
+	checkType string
+	action    string
+}
+
+func loadTestDataChecks(t *testing.T, info ...checkLoadInfo) (checks []check.CheckIn) {
+	checks = make([]check.CheckIn, len(info))
+
+	for i, entry := range info {
+		bytes, err := ioutil.ReadFile("testdata/" + entry.name + ".json")
+		require.NoError(t, err)
+
+		json.Unmarshal(bytes, &checks[i])
+		checks[i].Id = entry.id
+		checks[i].EntityId = entry.entityId
+		checks[i].ZoneId = entry.zonedId
+
+		assert.NotEmpty(t, checks[i].CheckType)
+	}
+
+	return
+}
+
+func loadChecksPreparation(t *testing.T, info ...checkLoadInfo) *poller.ChecksPreparation {
+	manifest := make([]protocol.PollerPrepareManifest, 0, len(info))
+	for _, entry := range info {
+		manifest = append(manifest, protocol.PollerPrepareManifest{
+			ZoneId:    entry.zonedId,
+			Action:    entry.action,
+			Id:        entry.id,
+			EntityId:  entry.entityId,
+			CheckType: entry.checkType,
+		})
+	}
+
+	cp, err := poller.NewChecksPreparation(1, manifest)
+	require.NoError(t, err)
+
+	block := loadTestDataChecks(t, info...)
+	cp.AddDefinitions(block)
+
+	return cp
 }

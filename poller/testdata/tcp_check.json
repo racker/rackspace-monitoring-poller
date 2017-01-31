@@ -1,0 +1,19 @@
+{
+  "id": "GETS REPLACED",
+  "zone_id": "pzA",
+  "entity_id": "enAAAAIPV4",
+  "details": {
+    "port": 8023,
+    "ssl": false
+  },
+  "type": "remote.tcp",
+  "timeout": 5,
+  "period": 10,
+  "ip_addresses": {
+    "default": "127.0.0.1"
+  },
+  "target_alias": "default",
+  "target_hostname": "",
+  "target_resolver": "",
+  "disabled": false
+}

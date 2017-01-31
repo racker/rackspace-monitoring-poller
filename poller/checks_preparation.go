@@ -19,8 +19,19 @@ package poller
 import (
 	"errors"
 	"fmt"
+	log "github.com/Sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/protocol"
 	"github.com/racker/rackspace-monitoring-poller/protocol/check"
+)
+
+// ActionType provides a non-protocol enumeration of valid check preparation actions
+type ActionType int
+
+const (
+	ActionTypeUnknown  = iota
+	ActionTypeStart    = iota
+	ActionTypeRestart  = iota
+	ActionTypeContinue = iota
 )
 
 // ActionableCheck enriches a check.CheckIn with an action indicator.
@@ -29,7 +40,7 @@ import (
 type ActionableCheck struct {
 	check.CheckIn
 
-	Action string
+	Action ActionType
 	// Populated indicates if the check.CheckIn has been fully populated; however,
 	// this is not applicable if Action is protocol.PrepareActionContinue.
 	Populated bool
@@ -38,30 +49,33 @@ type ActionableCheck struct {
 type ChecksPreparation struct {
 	TrackingVersion int
 
-	// Actions is a 2D map of entityId->checkId->ActionableCheck
-	Actions map[string] /*entityId*/ map[string] /*checkId*/ ActionableCheck
+	// Actions is a map of checkId->ActionableCheck
+	actions map[string] /*checkId*/ ActionableCheck
 }
 
-func NewCheckPreparation(version int, manifest []protocol.PollerPrepareManifest) *ChecksPreparation {
+// NewChecksPreparation initiates a new checks preparation session.
+// Returns the new ChecksPreparation if successful or an error if an unsupported action type was encountered.
+func NewChecksPreparation(version int, manifest []protocol.PollerPrepareManifest) (*ChecksPreparation, error) {
 	cp := &ChecksPreparation{
 		TrackingVersion: version,
-		Actions:         make(map[string] /*entityId*/ map[string] /*checkId*/ ActionableCheck),
+		actions:         make(map[string]ActionableCheck),
 	}
 
 	for _, m := range manifest {
-		byEntity := cp.Actions[m.EntityId]
-		if byEntity == nil {
-			byEntity = make(map[string] /*checkId*/ ActionableCheck)
-			cp.Actions[m.EntityId] = byEntity
-		}
 
-		byEntity[m.Id] = ActionableCheck{
-			Action: m.Action,
+		actionType := mapToActionType(m.Action)
+		if actionType == ActionTypeUnknown {
+			return nil, errors.New(fmt.Sprintf("Unsupported action in manifest: action=%s, check=%s", m.Action, m.Id))
+		}
+		cp.actions[m.Id] = ActionableCheck{
+			Action: actionType,
 			// "pre populate" actions we don't expect to see defined
 			Populated: !checkPreparationNeedsPopulating(m.Action),
 
 			CheckIn: check.CheckIn{
 				CheckHeader: check.CheckHeader{
+					Id:        m.Id,
+					EntityId:  m.EntityId,
 					ZoneId:    m.ZoneId,
 					CheckType: m.CheckType,
 				},
@@ -69,11 +83,35 @@ func NewCheckPreparation(version int, manifest []protocol.PollerPrepareManifest)
 		}
 	}
 
-	return cp
+	log.WithField("actions", cp.actions).Debug("Prepared checks from manifest")
+	return cp, nil
+}
+
+func mapToActionType(actionStr string) ActionType {
+	switch actionStr {
+	case protocol.PrepareActionStart:
+		return ActionTypeStart
+	case protocol.PrepareActionRestart:
+		return ActionTypeRestart
+	case protocol.PrepareActionContinue:
+		return ActionTypeContinue
+	default:
+		return ActionTypeUnknown
+	}
 }
 
 func checkPreparationNeedsPopulating(action string) bool {
 	return action != protocol.PrepareActionContinue
+}
+
+func (cp *ChecksPreparation) GetActionableChecks() (actionableChecks []ActionableCheck) {
+	actionableChecks = make([]ActionableCheck, 0, len(cp.actions))
+
+	for _, ac := range cp.actions {
+		actionableChecks = append(actionableChecks, ac)
+	}
+
+	return
 }
 
 func (cp *ChecksPreparation) VersionApplies(version int) bool {
@@ -82,13 +120,16 @@ func (cp *ChecksPreparation) VersionApplies(version int) bool {
 
 func (cp *ChecksPreparation) AddDefinitions(block []check.CheckIn) {
 
-	for _, check := range block {
-		actionable := cp.Actions[check.EntityId][check.Id]
+	for _, ch := range block {
+		actionable := cp.actions[ch.Id]
 		actionable.Populated = true
-		actionable.CheckIn = check
+		actionable.CheckIn = ch
 
-		cp.Actions[check.EntityId][check.Id] = actionable
+		cp.actions[ch.Id] = actionable
+
+		log.WithFields(log.Fields{"chId": ch.Id, "entry": actionable}).Debug("Added definition to actions")
 	}
+
 }
 
 func (cp *ChecksPreparation) Validate(version int) error {
@@ -96,19 +137,15 @@ func (cp *ChecksPreparation) Validate(version int) error {
 		return errors.New("Wrong version")
 	}
 
-	for entityId, byEntity := range cp.Actions {
-		for checkId, actionable := range byEntity {
-			if actionable.Action == "" {
-				return errors.New(fmt.Sprintf(
-					"Check defined but not declared in manifest. entity=%v, check=%v",
-					actionable.EntityId, actionable.Id))
-			}
+	for checkId, actionable := range cp.actions {
+		if actionable.Action == ActionTypeUnknown {
+			return errors.New(fmt.Sprintf(
+				"Check defined but not declared in manifest. check=%v", actionable.Id))
+		}
 
-			if !actionable.Populated {
-				return errors.New(fmt.Sprintf(
-					"Check declared in manifest but not defined. entity=%v, check=%v",
-					entityId, checkId))
-			}
+		if !actionable.Populated {
+			return errors.New(fmt.Sprintf(
+				"Check declared in manifest but not defined. check=%v", checkId))
 		}
 	}
 

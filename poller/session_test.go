@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/Sirupsen/logrus"
 	"github.com/golang/mock/gomock"
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/poller"
@@ -69,11 +68,8 @@ func setupConnStreamExpectations(ctrl *gomock.Controller) (eleConn *poller.MockC
 	writesHere = utils.NewBlockingReadBuffer()
 	readsHere = utils.NewBlockingReadBuffer()
 
-	connStream := poller.NewMockConnectionStream(ctrl)
-
 	eleConn.EXPECT().GetFarendWriter().AnyTimes().Return(writesHere)
 	eleConn.EXPECT().GetFarendReader().AnyTimes().Return(readsHere)
-	eleConn.EXPECT().GetStream().AnyTimes().Return(connStream)
 	eleConn.EXPECT().GetGUID().AnyTimes().Return("1-2-3")
 	eleConn.EXPECT().SetReadDeadline(gomock.Any()).AnyTimes()
 	eleConn.EXPECT().SetWriteDeadline(gomock.Any()).AnyTimes()
@@ -107,9 +103,6 @@ func prepareHandshakeResponse(heartbeatInterval uint64, readsHere io.Writer) {
 }
 
 func TestEleSession_HeartbeatSending(t *testing.T) {
-	if testing.Verbose() {
-		logrus.SetLevel(logrus.DebugLevel)
-	}
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
@@ -152,9 +145,6 @@ func TestEleSession_HeartbeatSending(t *testing.T) {
 }
 
 func TestEleSession_HeartbeatConsumption(t *testing.T) {
-	if testing.Verbose() {
-		logrus.SetLevel(logrus.DebugLevel)
-	}
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 

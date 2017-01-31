@@ -103,6 +103,18 @@ func (cs *EleConnectionStream) ReconcileChecks(cp *ChecksPreparation) {
 	}
 }
 
+func (cs *EleConnectionStream) ValidateChecks(cp *ChecksPreparation) error {
+	for _, sched := range cs.schedulers {
+		err := sched.ValidateChecks(cp)
+		log.WithFields(log.Fields{"scheduler": sched, "cp": cp}).Warn("Scheduler was not able to validate check preparation")
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // Stop explicitly stops all connections in the stream and notifies the channel
 func (cs *EleConnectionStream) Stop() {
 	if cs.conns == nil {

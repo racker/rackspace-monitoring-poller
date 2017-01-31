@@ -122,16 +122,6 @@ func (_m *MockConnection) EXPECT() *_MockConnectionRecorder {
 	return _m.recorder
 }
 
-func (_m *MockConnection) GetStream() ConnectionStream {
-	ret := _m.ctrl.Call(_m, "GetStream")
-	ret0, _ := ret[0].(ConnectionStream)
-	return ret0
-}
-
-func (_mr *_MockConnectionRecorder) GetStream() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetStream")
-}
-
 func (_m *MockConnection) GetSession() Session {
 	ret := _m.ctrl.Call(_m, "GetSession")
 	ret0, _ := ret[0].(Session)
@@ -382,6 +372,16 @@ func (_mr *_MockChecksReconcilerRecorder) ReconcileChecks(arg0 interface{}) *gom
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ReconcileChecks", arg0)
 }
 
+func (_m *MockChecksReconciler) ValidateChecks(cp *ChecksPreparation) error {
+	ret := _m.ctrl.Call(_m, "ValidateChecks", cp)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+func (_mr *_MockChecksReconcilerRecorder) ValidateChecks(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "ValidateChecks", arg0)
+}
+
 // Mock of Scheduler interface
 type MockScheduler struct {
 	ctrl     *gomock.Controller
@@ -409,6 +409,16 @@ func (_m *MockScheduler) ReconcileChecks(cp *ChecksPreparation) {
 
 func (_mr *_MockSchedulerRecorder) ReconcileChecks(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ReconcileChecks", arg0)
+}
+
+func (_m *MockScheduler) ValidateChecks(cp *ChecksPreparation) error {
+	ret := _m.ctrl.Call(_m, "ValidateChecks", cp)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+func (_mr *_MockSchedulerRecorder) ValidateChecks(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "ValidateChecks", arg0)
 }
 
 func (_m *MockScheduler) Close() {
@@ -446,4 +456,14 @@ func (_m *MockScheduler) GetContext() (context.Context, context.CancelFunc) {
 
 func (_mr *_MockSchedulerRecorder) GetContext() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetContext")
+}
+
+func (_m *MockScheduler) GetScheduledChecks() []check.Check {
+	ret := _m.ctrl.Call(_m, "GetScheduledChecks")
+	ret0, _ := ret[0].([]check.Check)
+	return ret0
+}
+
+func (_mr *_MockSchedulerRecorder) GetScheduledChecks() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetScheduledChecks")
 }

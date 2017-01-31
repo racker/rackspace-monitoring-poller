@@ -21,7 +21,10 @@ import (
 	"math/rand"
 	"time"
 
+	"errors"
+	"fmt"
 	log "github.com/Sirupsen/logrus"
+	set "github.com/deckarep/golang-set"
 	"github.com/racker/rackspace-monitoring-poller/check"
 )
 
@@ -94,6 +97,16 @@ func (s *EleScheduler) Close() {
 	s.cancel()
 }
 
+func (s *EleScheduler) GetScheduledChecks() []check.Check {
+	checks := make([]check.Check, 0, len(s.checks))
+
+	for _, entry := range s.checks {
+		checks = append(checks, entry)
+	}
+
+	return checks
+}
+
 func (s *EleScheduler) ReconcileChecks(cp *ChecksPreparation) {
 	s.preparations <- cp
 }
@@ -102,18 +115,104 @@ func (s *EleScheduler) runReconciler() {
 	for {
 		select {
 		case cp := <-s.preparations:
-
-			log.WithField("cp", cp).Debug("Reconciling prepared checks")
-
-		// TODO
-		// ... compute removed checks by finding non-intersecting checks
-		// ... cancel modified/removed checks
-		// ... reschedule modified/added checks
+			s.reconcile(cp)
 
 		case <-s.ctx.Done():
 			return
 		}
 	}
+}
+
+func (s *EleScheduler) ValidateChecks(cp *ChecksPreparation) error {
+	actionableChecks := cp.GetActionableChecks()
+	for _, ac := range actionableChecks {
+
+		switch ac.Action {
+		case ActionTypeStart:
+			_, exists := s.checks[ac.Id]
+			if exists {
+				return errors.New(fmt.Sprintf("Reconciling was told to start a check, but it already existed: %v", ac.Id))
+			}
+		case ActionTypeRestart:
+			_, exists := s.checks[ac.Id]
+			if !exists {
+				return errors.New(fmt.Sprintf("Reconciling was told to restart a check, but it does not exist: %v", ac.Id))
+			}
+		case ActionTypeContinue:
+			_, exists := s.checks[ac.Id]
+			if !exists {
+				return errors.New(fmt.Sprintf("Reconciling was told to continue a check, but it does not exist: %v", ac.Id))
+			}
+		}
+	}
+
+	return nil
+}
+
+func (s *EleScheduler) reconcile(cp *ChecksPreparation) {
+	log.WithField("cp", cp).Debug("Reconciling prepared checks")
+
+	// remainder will be used at the end to find ones were implicitly removed and need to be canceled out
+	remainder := set.NewThreadUnsafeSet()
+	for id, _ := range s.checks {
+		remainder.Add(id)
+	}
+
+	actionableChecks := cp.GetActionableChecks()
+	for _, ac := range actionableChecks {
+		remainder.Remove(ac.Id)
+
+		switch ac.Action {
+		case ActionTypeStart:
+			existingCheck, exists := s.checks[ac.Id]
+			if exists {
+				log.WithField("checkId", ac.Id).Warn("Reconciling was told to start a check, but it already existed.")
+				existingCheck.Cancel()
+			}
+			err := s.initiateCheck(ac)
+			if err != nil {
+				log.WithField("details", string(*ac.RawDetails)).Warn("Unable to initiate check")
+			}
+
+		case ActionTypeRestart:
+			existingCheck, exists := s.checks[ac.Id]
+			if exists {
+				existingCheck.Cancel()
+			} else {
+				log.WithField("checkId", ac.Id).Warn("Reconciling was told to restart a check, but it does not exist.")
+			}
+			err := s.initiateCheck(ac)
+			if err != nil {
+				log.WithField("details", string(*ac.RawDetails)).Warn("Unable to initiate check")
+			}
+
+		case ActionTypeContinue:
+			_, exists := s.checks[ac.Id]
+			if !exists {
+				log.WithField("checkId", ac.Id).Warn("Reconciling was told to continue a check, but it does not exist.")
+			}
+		}
+	}
+
+	for checkIdToRemove := range remainder.Iter() {
+		log.WithField("checkId", checkIdToRemove).Debug("Removing check implicitly due to absence in check preparation")
+
+		checkIdToRemoveStr := checkIdToRemove.(string)
+		checkToRemove := s.checks[checkIdToRemoveStr]
+		delete(s.checks, checkIdToRemoveStr)
+		checkToRemove.Cancel()
+	}
+}
+
+func (s *EleScheduler) initiateCheck(ac ActionableCheck) error {
+	newCheck, err := check.NewCheckParsed(s.ctx, ac.CheckIn)
+	if err != nil {
+		return err
+	}
+	s.checks[newCheck.GetID()] = newCheck
+	s.scheduler.Schedule(newCheck)
+
+	return nil
 }
 
 // Schedule is the default implementation of CheckScheduler that kicks off a go routine to run a check's timer.

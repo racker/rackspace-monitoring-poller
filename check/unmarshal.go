@@ -19,30 +19,48 @@ package check
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"errors"
+	"fmt"
+	"github.com/racker/rackspace-monitoring-poller/protocol/check"
 )
 
 // NewCheck will unmarshal the request into one of the known polymorphic types given a received check request.
 // This method needs to be updated to add to the known types.
-func NewCheck(checkCtx context.Context, rawParams json.RawMessage, cancel context.CancelFunc) Check {
+func NewCheck(parentContext context.Context, rawParams json.RawMessage) (Check, error) {
+	ctx, cancel := context.WithCancel(parentContext)
+
 	checkBase := &Base{
-		context: checkCtx,
+		context: ctx,
 		cancel:  cancel,
 	}
 	err := json.Unmarshal(rawParams, &checkBase)
 	if err != nil {
-		log.Printf("Error unmarshalling checkbase")
-		return nil
+		return nil, err
 	}
+
+	return resolveCheckType(checkBase)
+}
+
+func NewCheckParsed(parentContext context.Context, checkIn check.CheckIn) (Check, error) {
+	ctx, cancel := context.WithCancel(parentContext)
+
+	checkBase := &Base{
+		CheckIn: checkIn,
+		context: ctx,
+		cancel:  cancel,
+	}
+
+	return resolveCheckType(checkBase)
+}
+
+func resolveCheckType(checkBase *Base) (Check, error) {
 	switch checkBase.CheckType {
 	case "remote.tcp":
-		return NewTCPCheck(checkBase)
+		return NewTCPCheck(checkBase), nil
 	case "remote.http":
-		return NewHTTPCheck(checkBase)
+		return NewHTTPCheck(checkBase), nil
 	case "remote.ping":
-		return NewPingCheck(checkBase)
-	default:
-		log.Printf("Invalid check type: %v", checkBase.CheckType)
+		return NewPingCheck(checkBase), nil
 	}
-	return nil
+	return nil, errors.New(fmt.Sprintf("Invalid check type: %v", checkBase.CheckType))
 }
