@@ -155,6 +155,33 @@ func TestNewCheckPreparation_UnknownActionStr(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestChecksPreparation_IsNewer_ThanNil(t *testing.T) {
+	var cp *poller.ChecksPreparation
+
+	assert.True(t, cp.IsNewer(1))
+}
+
+func TestChecksPreparation_IsNewer_Value(t *testing.T) {
+	cp, err := poller.NewChecksPreparation(1, []protocol.PollerPrepareManifest{})
+	assert.NoError(t, err)
+
+	assert.True(t, cp.IsNewer(2))
+}
+
+func TestChecksPreparation_IsNewer_Same(t *testing.T) {
+	cp, err := poller.NewChecksPreparation(1, []protocol.PollerPrepareManifest{})
+	assert.NoError(t, err)
+
+	assert.False(t, cp.IsNewer(1))
+}
+
+func TestChecksPreparation_IsNewer_Older(t *testing.T) {
+	cp, err := poller.NewChecksPreparation(50, []protocol.PollerPrepareManifest{})
+	assert.NoError(t, err)
+
+	assert.False(t, cp.IsNewer(1))
+}
+
 type checkLoadInfo struct {
 	name     string
 	id       string

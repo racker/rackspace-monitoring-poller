@@ -118,6 +118,14 @@ func (cp *ChecksPreparation) VersionApplies(version int) bool {
 	return cp != nil && cp.TrackingVersion == version
 }
 
+func (cp *ChecksPreparation) IsNewer(version int) bool {
+	return cp == nil || version > cp.TrackingVersion
+}
+
+func (cp *ChecksPreparation) IsOlder(version int) bool {
+	return cp != nil || version < cp.TrackingVersion
+}
+
 func (cp *ChecksPreparation) AddDefinitions(block []check.CheckIn) {
 
 	for _, ch := range block {

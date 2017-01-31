@@ -101,6 +101,7 @@ type ChecksReconciler interface {
 	ReconcileChecks(cp *ChecksPreparation)
 
 	// Validate goes through the motions of ReconcileChecks in order to pre-validate consistency.
+	// Unlike ReconcileChecks, this function should only require the manifest level of detail in the ChecksPreparation.
 	// Returns an error upon finding the first entry that is not valid.
 	ValidateChecks(cp *ChecksPreparation) error
 }

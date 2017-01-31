@@ -23,6 +23,7 @@ import (
 	"sync"
 	"time"
 
+	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/hostinfo"
@@ -41,14 +42,21 @@ const (
 	sendChannelSize = 128
 )
 
+type prepDetails struct {
+	reconciler             ChecksReconciler
+	activePrep             *ChecksPreparation
+	newestCommittedVersion int
+	srcPrepMsg             *protocol.FrameMsg
+	prepared               bool
+}
+
 // EleSession implements Session interface
 // See Session for more information
 type EleSession struct {
 	// reference to the connection
 	connection Connection
 
-	checksReconciler        ChecksReconciler
-	activeChecksPreparation *ChecksPreparation
+	prepDetails
 
 	config *config.Config
 
@@ -85,8 +93,10 @@ type EleSession struct {
 
 func NewSession(ctx context.Context, connection Connection, checksReconciler ChecksReconciler, config *config.Config) Session {
 	session := &EleSession{
-		connection:         connection,
-		checksReconciler:   checksReconciler,
+		connection: connection,
+		prepDetails: prepDetails{
+			reconciler: checksReconciler,
+		},
 		config:             config,
 		dec:                json.NewDecoder(connection.GetFarendReader()),
 		seq:                0, // so that handshake req gets ID 1 after incrementing
@@ -94,11 +104,9 @@ func NewSession(ctx context.Context, connection Connection, checksReconciler Che
 		heartbeatResponses: make(chan *protocol.HeartbeatResponse, 1),
 		completions:        make(map[uint64]*CompletionFrame),
 	}
-	ctx, cancel := context.WithCancel(ctx)
+	session.ctx, session.cancel = context.WithCancel(ctx)
 	go session.runFrameReading(ctx)
 	go session.runFrameSending(ctx)
-	session.ctx = ctx
-	session.cancel = cancel
 	session.Auth()
 	return session
 }
@@ -206,10 +214,13 @@ func (s *EleSession) handleFrame(f *protocol.FrameMsg) {
 		go s.handleHostInfo(f)
 
 	case protocol.MethodPollerPrepare:
+		s.handlePollerPrepare(f)
 	case protocol.MethodPollerPrepareBlock:
+		s.handlePollerPrepareBlock(f)
 	case protocol.MethodPollerPrepareEnd:
+		s.handlePollerPrepareEnd(f)
 	case protocol.MethodPollerCommit:
-		// TODO ...create/update ChecksPreparation
+		s.handlePollerCommit(f)
 
 	default:
 		log.Errorf("  Need to handle method: %v", f.GetMethod())
@@ -225,6 +236,125 @@ func (s *EleSession) handleHostInfo(f *protocol.FrameMsg) {
 			s.Respond(response)
 		}
 	}
+}
+
+func (s *EleSession) handlePollerPrepare(f *protocol.FrameMsg) {
+	req := protocol.DecodePollerPrepareStartRequest(f)
+	reqVer := req.Params.Version
+
+	if reqVer <= s.prepDetails.newestCommittedVersion {
+		s.respondFailureToPollerPrepare(f, req, protocol.PrepareResultStatusIgnored,
+			"Request contains version older than newest committed version")
+		return
+	}
+
+	if s.prepDetails.activePrep.IsOlder(reqVer) {
+		s.respondFailureToPollerPrepare(f, req, protocol.PrepareResultStatusIgnored,
+			"Request contains version older than active preparation")
+		return
+	}
+
+	if s.prepDetails.activePrep.IsNewer(reqVer) {
+		s.respondFailureToPollerPrepare(s.prepDetails.srcPrepMsg, req, protocol.PrepareResultStatusIgnored,
+			"Request superceded by a newer preparation")
+
+		// fall through
+	}
+
+	cp, err := NewChecksPreparation(reqVer, req.Params.Manifest)
+	if err != nil {
+		s.respondFailureToPollerPrepare(s.prepDetails.srcPrepMsg, req, protocol.PrepareResultStatusFailed, err.Error())
+		return
+	}
+
+	err = s.prepDetails.reconciler.ValidateChecks(cp)
+	if err != nil {
+		s.respondFailureToPollerPrepare(s.prepDetails.srcPrepMsg, req, protocol.PrepareResultStatusFailed, err.Error())
+		return
+	}
+
+	// It's all good, so note it and proceed
+	s.prepDetails.srcPrepMsg = f
+	s.prepDetails.activePrep = cp
+}
+
+func (s *EleSession) handlePollerPrepareBlock(f *protocol.FrameMsg) {
+	req := protocol.DecodePollerPrepareBlockRequest(f)
+
+	if !s.prepDetails.activePrep.VersionApplies(req.Params.Version) {
+		log.WithFields(log.Fields{"req": req, "details": s.prepDetails}).Warn("Ignoring prepare block with wrong version")
+		return
+	}
+
+	s.prepDetails.activePrep.AddDefinitions(req.Params.Block)
+}
+
+func (s *EleSession) handlePollerPrepareEnd(f *protocol.FrameMsg) {
+	req := protocol.DecodePollerPrepareEndRequest(f)
+
+	if req.Params.Directive == protocol.PrepareDirectiveAbort {
+		s.respondFailureToPollerPrepare(s.prepDetails.srcPrepMsg, req, protocol.PrepareResultStatusAborted,
+			"Aborting poller prepare per request of the server")
+		s.prepDetails.clear()
+		return
+	}
+
+	if !s.prepDetails.activePrep.VersionApplies(req.Params.Version) {
+		s.respondFailureToPollerPrepare(s.prepDetails.srcPrepMsg, req, protocol.PrepareResultStatusIgnored,
+			"Prepare end request specified non-applicable version")
+		return
+	}
+
+	s.prepDetails.prepared = true
+
+	log.WithFields(log.Fields{"req": req, "details": s.prepDetails}).Debug("Responding to end of poller prepare")
+	result := protocol.PollerPrepareResult{
+		Version: req.Params.Version,
+		Status:  protocol.PrepareResultStatusPrepared,
+	}
+	resp := protocol.NewPollerPrepareResponse(s.prepDetails.srcPrepMsg, result)
+
+	s.Respond(resp)
+}
+
+func (s *EleSession) handlePollerCommit(f *protocol.FrameMsg) {
+	req := protocol.DecodePollerPrepareCommitRequest(f)
+
+	if !s.prepDetails.activePrep.VersionApplies(req.Params.Version) {
+		details := "Poller commit request specified non-applicable version"
+		log.WithField("req", req).Warn(details)
+
+		result := protocol.PollerPrepareCommitResult{
+			Version: req.Params.Version,
+			Status:  protocol.PrepareResultStatusIgnored,
+			Details: details,
+		}
+
+		resp := protocol.NewPollerPrepareCommitResponse(f, result)
+		s.Respond(resp)
+
+		return
+	}
+
+	s.prepDetails.commit()
+}
+
+func (s *EleSession) respondFailureToPollerPrepare(f *protocol.FrameMsg, req protocol.PollerPrepareRequest, status string, details string) {
+	if details != "" {
+		log.WithFields(log.Fields{
+			"req":  req,
+			"prep": s.prepDetails,
+		}).Warn(details)
+	}
+	result := protocol.PollerPrepareResult{
+		Version: req.GetPreparationVersion(),
+		Status:  status,
+		Details: details,
+	}
+	resp := protocol.NewPollerPrepareResponse(s.prepDetails.srcPrepMsg, result)
+
+	s.Respond(resp)
+
 }
 
 // runHeartbeats is driven by a timer on heartbeatInterval
@@ -363,4 +493,20 @@ func (s *EleSession) Close() {
 // Wait waits for the context to complete
 func (s *EleSession) Wait() {
 	<-s.ctx.Done()
+}
+
+func (cp *prepDetails) String() string {
+	return fmt.Sprintf("active=%v, newestCommittedVersion=%v, srcPrepMsg=%v",
+		cp.activePrep, cp.newestCommittedVersion, cp.srcPrepMsg)
+}
+
+func (cp *prepDetails) clear() {
+	cp.activePrep = nil
+	cp.srcPrepMsg = nil
+	cp.prepared = false
+}
+
+func (cp *prepDetails) commit() {
+	cp.reconciler.ReconcileChecks(cp.activePrep)
+	cp.clear()
 }
