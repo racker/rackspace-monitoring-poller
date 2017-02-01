@@ -80,7 +80,7 @@ func NewChecksPreparation(version int, manifest []protocol.PollerPrepareManifest
 		cp.actions[m.Id] = ActionableCheck{
 			Action: actionType,
 			// "pre populate" actions we don't expect to see defined
-			Populated: !checkPreparationNeedsPopulating(m.Action),
+			Populated: !doesCheckPreparationNeedPopulating(m.Action),
 
 			CheckIn: check.CheckIn{
 				CheckHeader: check.CheckHeader{
@@ -110,7 +110,7 @@ func mapToActionType(actionStr string) ActionType {
 	}
 }
 
-func checkPreparationNeedsPopulating(action string) bool {
+func doesCheckPreparationNeedPopulating(action string) bool {
 	return action != protocol.PrepareActionContinue
 }
 

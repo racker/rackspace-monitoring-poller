@@ -3,6 +3,8 @@
 
 [[_overview]]
 == Overview
+This protocol is actually not REST based, but rather a line-oriented streaming JSON protocol.
+
 
 === Version information
 [%hardbreaks]

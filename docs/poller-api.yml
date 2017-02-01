@@ -1,6 +1,7 @@
 swagger: '2.0'
 info:
   version: '1'
+  description: This protocol is actually not REST based, but rather a line-oriented streaming JSON protocol.
   title: Poller-Endpoint Protocol
   license:
     name: Apache V2.0
