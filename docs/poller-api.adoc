@@ -1,0 +1,480 @@
+= Poller-Endpoint Protocol
+
+
+[[_overview]]
+== Overview
+
+=== Version information
+[%hardbreaks]
+__Version__ : 1
+
+
+=== License information
+[%hardbreaks]
+__License__ : Apache V2.0
+__Terms of service__ : null
+
+
+=== Produces
+
+* `application/json`
+
+
+
+
+[[_paths]]
+== Paths
+
+[[_post]]
+=== N/A
+....
+POST /
+....
+
+
+==== Parameters
+
+[options="header", cols=".^2,.^3,.^4"]
+|===
+|Type|Name|Schema
+|**Body**|**body** +
+__optional__|<<_frame,Frame>>
+|===
+
+
+==== Responses
+
+[options="header", cols=".^2,.^14,.^4"]
+|===
+|HTTP Code|Description|Schema
+|**200**|N/A|<<_frame,Frame>>
+|===
+
+
+[[_poller_commit_post]]
+=== POST /poller/commit
+
+==== Parameters
+
+[options="header", cols=".^2,.^3,.^4"]
+|===
+|Type|Name|Schema
+|**Body**|**body** +
+__optional__|<<_pollercommit,PollerCommit>>
+|===
+
+
+==== Responses
+
+[options="header", cols=".^2,.^14,.^4"]
+|===
+|HTTP Code|Description|Schema
+|**200**|OK|<<_pollercommitresponse,PollerCommitResponse>>
+|===
+
+
+[[_poller_prepare_post]]
+=== POST /poller/prepare
+
+==== Parameters
+
+[options="header", cols=".^2,.^3,.^4"]
+|===
+|Type|Name|Schema
+|**Body**|**body** +
+__optional__|<<_pollerprepare,PollerPrepare>>
+|===
+
+
+==== Responses
+
+[options="header", cols=".^2,.^14,.^4"]
+|===
+|HTTP Code|Description|Schema
+|**200**|OK|<<_pollerprepareresponse,PollerPrepareResponse>>
+|===
+
+
+[[_poller_prepare_block_post]]
+=== POST /poller/prepare/block
+
+==== Parameters
+
+[options="header", cols=".^2,.^3,.^4"]
+|===
+|Type|Name|Schema
+|**Body**|**body** +
+__optional__|<<_pollerprepareblock,PollerPrepareBlock>>
+|===
+
+
+==== Responses
+
+[options="header", cols=".^2,.^14,.^4"]
+|===
+|HTTP Code|Description|Schema
+|**200**|none|No Content
+|===
+
+
+[[_poller_prepare_end_post]]
+=== POST /poller/prepare/end
+
+==== Parameters
+
+[options="header", cols=".^2,.^3,.^4"]
+|===
+|Type|Name|Schema
+|**Body**|**body** +
+__optional__|<<_pollerprepareend,PollerPrepareEnd>>
+|===
+
+
+==== Responses
+
+[options="header", cols=".^2,.^14,.^4"]
+|===
+|HTTP Code|Description|Schema
+|**200**|none|No Content
+|===
+
+
+
+
+[[_definitions]]
+== Definitions
+
+[[_check]]
+=== Check
+
+[options="header", cols=".^3,.^4"]
+|===
+|Name|Schema
+|**disabled** +
+__optional__|boolean
+|**entity_id** +
+__required__|string
+|**id** +
+__required__|string
+|**ip_addresses** +
+__optional__|< string, string > map
+|**period** +
+__required__|integer(int64)
+|**target_alias** +
+__optional__|string
+|**target_hostname** +
+__optional__|string
+|**target_resolver** +
+__optional__|string
+|**timeout** +
+__required__|integer(int64)
+|**type** +
+__required__|string
+|**zone_id** +
+__required__|string
+|===
+
+
+[[_error]]
+=== Error
+
+[options="header", cols=".^3,.^4"]
+|===
+|Name|Schema
+|**code** +
+__optional__|integer(int64)
+|**message** +
+__optional__|string
+|===
+
+
+[[_frame]]
+=== Frame
+
+[options="header", cols=".^3,.^4"]
+|===
+|Name|Schema
+|**error** +
+__optional__|<<_error,Error>>
+|**id** +
+__required__|integer(int64)
+|**method** +
+__optional__|enum (poller.prepare, poller.prepare.block, poller.prepare.end, poller.commit)
+|**source** +
+__required__|string
+|**target** +
+__required__|string
+|**v** +
+__required__|string
+|===
+
+
+[[_partitionversion]]
+=== PartitionVersion
+__Type__ : integer(int64)
+
+
+[[_pollercommit]]
+=== PollerCommit
+poller.commit
+
+[%hardbreaks]
+__Polymorphism__ : Inheritance
+__Discriminator__ : method
+
+
+[options="header", cols=".^3,.^4"]
+|===
+|Name|Schema
+|**error** +
+__optional__|<<_error,Error>>
+|**id** +
+__required__|integer(int64)
+|**method** +
+__optional__|enum (poller.prepare, poller.prepare.block, poller.prepare.end, poller.commit)
+|**params** +
+__optional__|<<_pollercommit_params,params>>
+|**source** +
+__required__|string
+|**target** +
+__required__|string
+|**v** +
+__required__|string
+|===
+
+[[_pollercommit_params]]
+**params**
+
+[options="header", cols=".^3,.^4"]
+|===
+|Name|Schema
+|**version** +
+__optional__|<<_partitionversion,PartitionVersion>>
+|===
+
+
+[[_pollercommitresponse]]
+=== PollerCommitResponse
+response to poller.commit
+
+[%hardbreaks]
+__Polymorphism__ : Inheritance
+__Discriminator__ : method
+
+
+[options="header", cols=".^3,.^4"]
+|===
+|Name|Schema
+|**error** +
+__optional__|<<_error,Error>>
+|**id** +
+__required__|integer(int64)
+|**method** +
+__optional__|enum (poller.prepare, poller.prepare.block, poller.prepare.end, poller.commit)
+|**result** +
+__optional__|<<_pollercommitresponse_result,result>>
+|**source** +
+__required__|string
+|**target** +
+__required__|string
+|**v** +
+__required__|string
+|===
+
+[[_pollercommitresponse_result]]
+**result**
+
+[options="header", cols=".^3,.^4"]
+|===
+|Name|Schema
+|**status** +
+__optional__|enum (committed, ignored)
+|**version** +
+__optional__|<<_partitionversion,PartitionVersion>>
+|===
+
+
+[[_pollerprepare]]
+=== PollerPrepare
+poller.prepare
+
+[%hardbreaks]
+__Polymorphism__ : Inheritance
+__Discriminator__ : method
+
+
+[options="header", cols=".^3,.^4"]
+|===
+|Name|Schema
+|**error** +
+__optional__|<<_error,Error>>
+|**id** +
+__required__|integer(int64)
+|**method** +
+__optional__|enum (poller.prepare, poller.prepare.block, poller.prepare.end, poller.commit)
+|**params** +
+__optional__|<<_pollerprepare_params,params>>
+|**source** +
+__required__|string
+|**target** +
+__required__|string
+|**v** +
+__required__|string
+|===
+
+[[_pollerprepare_params]]
+**params**
+
+[options="header", cols=".^3,.^4"]
+|===
+|Name|Schema
+|**manifest** +
+__optional__|< <<_pollerpreparemanifest,PollerPrepareManifest>> > array
+|**version** +
+__optional__|<<_partitionversion,PartitionVersion>>
+|===
+
+
+[[_pollerprepareblock]]
+=== PollerPrepareBlock
+poller.prepare.block
+
+[%hardbreaks]
+__Polymorphism__ : Inheritance
+__Discriminator__ : method
+
+
+[options="header", cols=".^3,.^4"]
+|===
+|Name|Schema
+|**error** +
+__optional__|<<_error,Error>>
+|**id** +
+__required__|integer(int64)
+|**method** +
+__optional__|enum (poller.prepare, poller.prepare.block, poller.prepare.end, poller.commit)
+|**params** +
+__optional__|<<_pollerprepareblock_params,params>>
+|**source** +
+__required__|string
+|**target** +
+__required__|string
+|**v** +
+__required__|string
+|===
+
+[[_pollerprepareblock_params]]
+**params**
+
+[options="header", cols=".^3,.^4"]
+|===
+|Name|Schema
+|**block** +
+__required__|< <<_check,Check>> > array
+|**version** +
+__required__|<<_partitionversion,PartitionVersion>>
+|===
+
+
+[[_pollerprepareend]]
+=== PollerPrepareEnd
+poller.prepare.end
+
+[%hardbreaks]
+__Polymorphism__ : Inheritance
+__Discriminator__ : method
+
+
+[options="header", cols=".^3,.^4"]
+|===
+|Name|Schema
+|**error** +
+__optional__|<<_error,Error>>
+|**id** +
+__required__|integer(int64)
+|**method** +
+__optional__|enum (poller.prepare, poller.prepare.block, poller.prepare.end, poller.commit)
+|**params** +
+__optional__|<<_pollerprepareend_params,params>>
+|**source** +
+__required__|string
+|**target** +
+__required__|string
+|**v** +
+__required__|string
+|===
+
+[[_pollerprepareend_params]]
+**params**
+
+[options="header", cols=".^3,.^4"]
+|===
+|Name|Schema
+|**directive** +
+__required__|enum (prepare, abort)
+|**version** +
+__required__|<<_partitionversion,PartitionVersion>>
+|===
+
+
+[[_pollerpreparemanifest]]
+=== PollerPrepareManifest
+
+[options="header", cols=".^3,.^4"]
+|===
+|Name|Schema
+|**action** +
+__optional__|enum (continue, restart, start)
+|**entity_id** +
+__optional__|string
+|**id** +
+__optional__|string
+|**type** +
+__optional__|string
+|===
+
+
+[[_pollerprepareresponse]]
+=== PollerPrepareResponse
+[%hardbreaks]
+__Polymorphism__ : Inheritance
+__Discriminator__ : method
+
+
+[options="header", cols=".^3,.^4"]
+|===
+|Name|Schema
+|**error** +
+__optional__|<<_error,Error>>
+|**id** +
+__required__|integer(int64)
+|**method** +
+__optional__|enum (poller.prepare, poller.prepare.block, poller.prepare.end, poller.commit)
+|**result** +
+__optional__|<<_pollerprepareresponse_result,result>>
+|**source** +
+__required__|string
+|**target** +
+__required__|string
+|**v** +
+__required__|string
+|===
+
+[[_pollerprepareresponse_result]]
+**result**
+
+[options="header", cols=".^3,.^4"]
+|===
+|Name|Schema
+|**details** +
+__optional__|string
+|**status** +
+__required__|enum (prepared, aborted, failed, ignored)
+|**version** +
+__required__|<<_partitionversion,PartitionVersion>>
+|===
+
+
+
+
+

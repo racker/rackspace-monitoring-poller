@@ -240,7 +240,8 @@ func loadTestDataChecks(t *testing.T, info ...checkLoadInfo) (checks []check.Che
 		bytes, err := ioutil.ReadFile("testdata/" + entry.name + ".json")
 		require.NoError(t, err)
 
-		json.Unmarshal(bytes, &checks[i])
+		err = json.Unmarshal(bytes, &checks[i])
+		require.NoError(t, err)
 		checks[i].Id = entry.id
 		checks[i].EntityId = entry.entityId
 		checks[i].ZoneId = entry.zonedId
