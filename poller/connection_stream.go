@@ -97,13 +97,13 @@ func (cs *EleConnectionStream) GetConnections() map[string]Connection {
 }
 
 // ReconcileChecks routes the ChecksPreparation to its schedulers.
-func (cs *EleConnectionStream) ReconcileChecks(cp *ChecksPreparation) {
+func (cs *EleConnectionStream) ReconcileChecks(cp ChecksPrepared) {
 	for _, sched := range cs.schedulers {
 		sched.ReconcileChecks(cp)
 	}
 }
 
-func (cs *EleConnectionStream) ValidateChecks(cp *ChecksPreparation) error {
+func (cs *EleConnectionStream) ValidateChecks(cp ChecksPreparing) error {
 	for _, sched := range cs.schedulers {
 		err := sched.ValidateChecks(cp)
 		log.WithFields(log.Fields{"scheduler": sched, "cp": cp}).Warn("Scheduler was not able to validate check preparation")

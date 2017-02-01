@@ -82,61 +82,84 @@ func TestCheckPreparation_AddDefinitions_Normal(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestCheckPreparation_AddDefinitions_MissingOne(t *testing.T) {
-	manifest := []protocol.PollerPrepareManifest{
+func TestCheckPreparation_AddDefinitions_Fails(t *testing.T) {
+
+	tests := []struct {
+		name     string
+		manifest []protocol.PollerPrepareManifest
+		block    []check.CheckIn
+		validate int
+	}{
 		{
-			Action:   protocol.PrepareActionStart,
-			ZoneId:   "zn1",
-			EntityId: "en1",
-			Id:       "ch1",
+			name: "missingOne",
+			manifest: []protocol.PollerPrepareManifest{
+				{
+					Action:   protocol.PrepareActionStart,
+					ZoneId:   "zn1",
+					EntityId: "en1",
+					Id:       "ch1",
+				},
+				{
+					Action:   protocol.PrepareActionRestart,
+					ZoneId:   "zn1",
+					EntityId: "en2",
+					Id:       "ch2",
+				},
+				{
+					Action:   protocol.PrepareActionContinue,
+					ZoneId:   "zn1",
+					EntityId: "en2",
+					Id:       "ch3",
+				},
+			},
+			block: loadTestDataChecks(t,
+				checkLoadInfo{name: "tcp_check", id: "ch2", entityId: "en2", zonedId: "zn1"},
+			),
+			validate: 1,
 		},
 		{
-			Action:   protocol.PrepareActionRestart,
-			ZoneId:   "zn1",
-			EntityId: "en2",
-			Id:       "ch2",
+			name: "notDeclared",
+			manifest: []protocol.PollerPrepareManifest{
+				{
+					Action:   protocol.PrepareActionContinue,
+					ZoneId:   "zn1",
+					EntityId: "en2",
+					Id:       "ch3",
+				},
+			},
+			block: loadTestDataChecks(t,
+				checkLoadInfo{name: "tcp_check", id: "ch2", entityId: "en2", zonedId: "zn1"},
+			),
+			validate: 1,
 		},
 		{
-			Action:   protocol.PrepareActionContinue,
-			ZoneId:   "zn1",
-			EntityId: "en2",
-			Id:       "ch3",
+			name: "wrongVersion",
+			manifest: []protocol.PollerPrepareManifest{
+				{
+					Action:   protocol.PrepareActionRestart,
+					ZoneId:   "zn1",
+					EntityId: "en2",
+					Id:       "ch2",
+				},
+			},
+			block: loadTestDataChecks(t,
+				checkLoadInfo{name: "tcp_check", id: "ch2", entityId: "en2", zonedId: "zn1"},
+			),
+			validate: 2,
 		},
 	}
 
-	cp, _ := poller.NewChecksPreparation(1, manifest)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cp, _ := poller.NewChecksPreparation(1, tt.manifest)
 
-	block1 := loadTestDataChecks(t,
-		checkLoadInfo{name: "tcp_check", id: "ch2", entityId: "en2", zonedId: "zn1"},
-	)
+			cp.AddDefinitions(tt.block)
 
-	cp.AddDefinitions(block1)
+			err := cp.Validate(tt.validate)
+			assert.Error(t, err)
 
-	err := cp.Validate(1)
-	assert.Error(t, err)
-
-}
-
-func TestCheckPreparation_AddDefinitions_WrongVersion(t *testing.T) {
-	manifest := []protocol.PollerPrepareManifest{
-		{
-			Action:   protocol.PrepareActionRestart,
-			ZoneId:   "zn1",
-			EntityId: "en2",
-			Id:       "ch2",
-		},
+		})
 	}
-
-	cp, _ := poller.NewChecksPreparation(1, manifest)
-
-	block1 := loadTestDataChecks(t,
-		checkLoadInfo{name: "tcp_check", id: "ch2", entityId: "en2", zonedId: "zn1"},
-	)
-
-	cp.AddDefinitions(block1)
-
-	err := cp.Validate(2)
-	assert.Error(t, err)
 
 }
 
@@ -162,24 +185,42 @@ func TestChecksPreparation_IsNewer_ThanNil(t *testing.T) {
 }
 
 func TestChecksPreparation_IsNewer_Value(t *testing.T) {
-	cp, err := poller.NewChecksPreparation(1, []protocol.PollerPrepareManifest{})
-	assert.NoError(t, err)
 
-	assert.True(t, cp.IsNewer(2))
-}
+	tests := []struct {
+		name      string
+		preparing int
+		checking  int
+		expect    bool
+	}{
+		{
+			name:      "good",
+			preparing: 1,
+			checking:  2,
+			expect:    true,
+		},
+		{
+			name:      "same",
+			preparing: 1,
+			checking:  1,
+			expect:    false,
+		},
+		{
+			name:      "older",
+			preparing: 50,
+			checking:  1,
+			expect:    false,
+		},
+	}
 
-func TestChecksPreparation_IsNewer_Same(t *testing.T) {
-	cp, err := poller.NewChecksPreparation(1, []protocol.PollerPrepareManifest{})
-	assert.NoError(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cp, err := poller.NewChecksPreparation(tt.preparing, []protocol.PollerPrepareManifest{})
+			assert.NoError(t, err)
 
-	assert.False(t, cp.IsNewer(1))
-}
+			assert.Equal(t, tt.expect, cp.IsNewer(tt.checking))
+		})
+	}
 
-func TestChecksPreparation_IsNewer_Older(t *testing.T) {
-	cp, err := poller.NewChecksPreparation(50, []protocol.PollerPrepareManifest{})
-	assert.NoError(t, err)
-
-	assert.False(t, cp.IsNewer(1))
 }
 
 type checkLoadInfo struct {

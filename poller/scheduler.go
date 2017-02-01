@@ -40,7 +40,7 @@ type EleScheduler struct {
 
 	zoneID       string
 	checks       map[string]check.Check
-	preparations chan *ChecksPreparation
+	preparations chan ChecksPrepared
 
 	stream ConnectionStream
 
@@ -59,7 +59,7 @@ func NewScheduler(zoneID string, stream ConnectionStream) Scheduler {
 func NewCustomScheduler(zoneID string, stream ConnectionStream, checkScheduler CheckScheduler, checkExecutor CheckExecutor) Scheduler {
 	s := &EleScheduler{
 		checks:       make(map[string]check.Check),
-		preparations: make(chan *ChecksPreparation, checkPreparationBufferSize),
+		preparations: make(chan ChecksPrepared, checkPreparationBufferSize),
 		stream:       stream,
 		zoneID:       zoneID,
 		scheduler:    checkScheduler,
@@ -107,7 +107,7 @@ func (s *EleScheduler) GetScheduledChecks() []check.Check {
 	return checks
 }
 
-func (s *EleScheduler) ReconcileChecks(cp *ChecksPreparation) {
+func (s *EleScheduler) ReconcileChecks(cp ChecksPrepared) {
 	s.preparations <- cp
 }
 
@@ -123,7 +123,7 @@ func (s *EleScheduler) runReconciler() {
 	}
 }
 
-func (s *EleScheduler) ValidateChecks(cp *ChecksPreparation) error {
+func (s *EleScheduler) ValidateChecks(cp ChecksPreparing) error {
 	actionableChecks := cp.GetActionableChecks()
 	for _, ac := range actionableChecks {
 
@@ -149,7 +149,7 @@ func (s *EleScheduler) ValidateChecks(cp *ChecksPreparation) error {
 	return nil
 }
 
-func (s *EleScheduler) reconcile(cp *ChecksPreparation) {
+func (s *EleScheduler) reconcile(cp ChecksPrepared) {
 	log.WithField("cp", cp).Debug("Reconciling prepared checks")
 
 	// remainder will be used at the end to find ones were implicitly removed and need to be canceled out

@@ -46,8 +46,18 @@ type ActionableCheck struct {
 	Populated bool
 }
 
+// ChecksPreparing conveys ActionableCheck instances are are ready to be validated.
+type ChecksPreparing interface {
+	GetActionableChecks() (actionableChecks []ActionableCheck)
+}
+
+// ChecksPrepared conveys ActionableCheck instances that are fully populated and ready to be reconciled
+type ChecksPrepared interface {
+	GetActionableChecks() (actionableChecks []ActionableCheck)
+}
+
 type ChecksPreparation struct {
-	TrackingVersion int
+	Version int
 
 	// Actions is a map of checkId->ActionableCheck
 	actions map[string] /*checkId*/ ActionableCheck
@@ -57,8 +67,8 @@ type ChecksPreparation struct {
 // Returns the new ChecksPreparation if successful or an error if an unsupported action type was encountered.
 func NewChecksPreparation(version int, manifest []protocol.PollerPrepareManifest) (*ChecksPreparation, error) {
 	cp := &ChecksPreparation{
-		TrackingVersion: version,
-		actions:         make(map[string]ActionableCheck),
+		Version: version,
+		actions: make(map[string]ActionableCheck),
 	}
 
 	for _, m := range manifest {
@@ -115,15 +125,15 @@ func (cp *ChecksPreparation) GetActionableChecks() (actionableChecks []Actionabl
 }
 
 func (cp *ChecksPreparation) VersionApplies(version int) bool {
-	return cp != nil && cp.TrackingVersion == version
+	return cp != nil && cp.Version == version
 }
 
 func (cp *ChecksPreparation) IsNewer(version int) bool {
-	return cp == nil || version > cp.TrackingVersion
+	return cp == nil || version > cp.Version
 }
 
 func (cp *ChecksPreparation) IsOlder(version int) bool {
-	return cp != nil || version < cp.TrackingVersion
+	return cp != nil && version < cp.Version
 }
 
 func (cp *ChecksPreparation) AddDefinitions(block []check.CheckIn) {

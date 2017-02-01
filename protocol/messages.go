@@ -199,10 +199,11 @@ const (
 	PrepareDirectivePrepare = "prepare"
 	PrepareDirectiveAbort   = "abort"
 
-	PrepareResultStatusPrepared = "prepared"
-	PrepareResultStatusAborted  = "aborted"
-	PrepareResultStatusFailed   = "failed"
-	PrepareResultStatusIgnored  = "ignored"
+	PrepareResultStatusPrepared  = "prepared"
+	PrepareResultStatusAborted   = "aborted"
+	PrepareResultStatusFailed    = "failed"
+	PrepareResultStatusIgnored   = "ignored"
+	PrepareResultStatusCommitted = "committed"
 )
 
 type PollerPrepareManifest struct {
@@ -221,8 +222,8 @@ type PollerPrepareRequest interface {
 
 // PollerPrepareStartParams is the params of a message with method=MethodPollerPrepare
 type PollerPrepareStartParams struct {
-	Version  int
-	Manifest []PollerPrepareManifest
+	Version  int                     `json:"version"`
+	Manifest []PollerPrepareManifest `json:"manifest"`
 }
 
 type PollerPrepareStartRequest struct {
@@ -245,8 +246,8 @@ func DecodePollerPrepareStartRequest(frame *FrameMsg) *PollerPrepareStartRequest
 
 // PollerPrepareBlockParams is the params of a message with method=MethodPollerPrepareBlock
 type PollerPrepareBlockParams struct {
-	Version int
-	Block   []check.CheckIn
+	Version int             `json:"version"`
+	Block   []check.CheckIn `json:"block"`
 }
 
 type PollerPrepareBlockRequest struct {
@@ -269,9 +270,9 @@ func DecodePollerPrepareBlockRequest(frame *FrameMsg) *PollerPrepareBlockRequest
 
 // PollerPrepareBlockParams is the params of a message with method=MethodPollerPrepareEnd
 type PollerPrepareEndParams struct {
-	Version int
+	Version int `json:"version"`
 	// Directive is one of PrepareDirective* constants
-	Directive string
+	Directive string `json:"directive"`
 }
 
 type PollerPrepareEndRequest struct {
@@ -294,7 +295,7 @@ func DecodePollerPrepareEndRequest(frame *FrameMsg) *PollerPrepareEndRequest {
 
 // PollerPrepareCommitParams is the params of a message with method=MethodPollerPrepareCommit
 type PollerPrepareCommitParams struct {
-	Version int
+	Version int `json:"version"`
 }
 
 type PollerPrepareCommitRequest struct {
@@ -316,6 +317,11 @@ type PollerPrepareResult struct {
 	// Status is one of PrepareResultStatus* constants
 	Status  string `json:"status"`
 	Details string `json:"details"`
+}
+
+type PollerPrepareResponse struct {
+	FrameMsg
+	Result PollerPrepareResult `json:"result"`
 }
 
 func NewPollerPrepareResponse(source *FrameMsg, result PollerPrepareResult) Frame {

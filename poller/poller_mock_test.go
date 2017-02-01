@@ -364,7 +364,7 @@ func (_m *MockChecksReconciler) EXPECT() *_MockChecksReconcilerRecorder {
 	return _m.recorder
 }
 
-func (_m *MockChecksReconciler) ReconcileChecks(cp *ChecksPreparation) {
+func (_m *MockChecksReconciler) ReconcileChecks(cp ChecksPrepared) {
 	_m.ctrl.Call(_m, "ReconcileChecks", cp)
 }
 
@@ -372,7 +372,7 @@ func (_mr *_MockChecksReconcilerRecorder) ReconcileChecks(arg0 interface{}) *gom
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ReconcileChecks", arg0)
 }
 
-func (_m *MockChecksReconciler) ValidateChecks(cp *ChecksPreparation) error {
+func (_m *MockChecksReconciler) ValidateChecks(cp ChecksPreparing) error {
 	ret := _m.ctrl.Call(_m, "ValidateChecks", cp)
 	ret0, _ := ret[0].(error)
 	return ret0
@@ -403,7 +403,7 @@ func (_m *MockScheduler) EXPECT() *_MockSchedulerRecorder {
 	return _m.recorder
 }
 
-func (_m *MockScheduler) ReconcileChecks(cp *ChecksPreparation) {
+func (_m *MockScheduler) ReconcileChecks(cp ChecksPrepared) {
 	_m.ctrl.Call(_m, "ReconcileChecks", cp)
 }
 
@@ -411,7 +411,7 @@ func (_mr *_MockSchedulerRecorder) ReconcileChecks(arg0 interface{}) *gomock.Cal
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ReconcileChecks", arg0)
 }
 
-func (_m *MockScheduler) ValidateChecks(cp *ChecksPreparation) error {
+func (_m *MockScheduler) ValidateChecks(cp ChecksPreparing) error {
 	ret := _m.ctrl.Call(_m, "ValidateChecks", cp)
 	ret0, _ := ret[0].(error)
 	return ret0

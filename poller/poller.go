@@ -100,16 +100,17 @@ type CheckExecutor interface {
 // ChecksReconciler is implemented by receivers that can either reconcile prepared checks during a commit or
 // pre-validate the checks prior to committing.
 type ChecksReconciler interface {
-	// ReconcileChecks acts upon the given ChecksPreparation during a commit-phase.
+	// ReconcileChecks acts upon the given ChecksPrepared during a commit-phase.
 	// The bulk of the processing is likely handled in an alternate go routine, so errors in the given
-	// ChecksPreparation are handled but not reportable back to this caller. Use ValidateChecks prior to calling
+	// ChecksPrepared are handled but not reportable back to this caller. Use ValidateChecks prior to calling
 	// this to pre-compute those errors.
-	ReconcileChecks(cp *ChecksPreparation)
+	ReconcileChecks(cp ChecksPrepared)
 
 	// Validate goes through the motions of ReconcileChecks in order to pre-validate consistency.
-	// Unlike ReconcileChecks, this function should only require the manifest level of detail in the ChecksPreparation.
+	// Unlike ReconcileChecks, this function should only require the manifest level of detail in the ActionableCheck
+	// instances.
 	// Returns an error upon finding the first entry that is not valid.
-	ValidateChecks(cp *ChecksPreparation) error
+	ValidateChecks(cp ChecksPreparing) error
 }
 
 // Scheduler interface wraps the methods that schedule
