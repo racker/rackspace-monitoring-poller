@@ -20,7 +20,52 @@ paths:
       responses:
         '200':
           description: N/A
-
+          schema:
+            $ref: '#/definitions/Frame'
+  /poller/prepare:
+    post:
+      parameters:
+        - in: body
+          name: body
+          schema:
+            $ref: '#/definitions/PollerPrepare'
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/PollerPrepareResponse'
+  /poller/prepare/block:
+    post:
+      parameters:
+        - in: body
+          name: body
+          schema:
+            $ref: '#/definitions/PollerPrepareBlock'
+      responses:
+        '200':
+          description: none
+  /poller/prepare/end:
+    post:
+      parameters:
+        - in: body
+          name: body
+          schema:
+            $ref: '#/definitions/PollerPrepareEnd'
+      responses:
+        '200':
+          description: none
+  /poller/commit:
+    post:
+      parameters:
+        - in: body
+          name: body
+          schema:
+            $ref: '#/definitions/PollerCommit'
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/PollerCommitResponse'
 definitions:
   Error:
     type: object
@@ -185,7 +230,7 @@ definitions:
             required:
               - version
               - status
-  PollerPrepareCommit:
+  PollerCommit:
     description: poller.commit
     allOf:
       - $ref: '#/definitions/Frame'
@@ -196,3 +241,19 @@ definitions:
             properties:
               version:
                 $ref: '#/definitions/PartitionVersion'
+  PollerCommitResponse:
+    description: response to poller.commit
+    allOf:
+      - $ref: '#/definitions/Frame'
+      - type: object
+        properties:
+          result:
+            type: object
+            properties:
+              version:
+                $ref: '#/definitions/PartitionVersion'
+              status:
+                type: string
+                enum:
+                  - committed
+                  - ignored
