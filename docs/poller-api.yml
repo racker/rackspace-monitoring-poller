@@ -1,0 +1,198 @@
+swagger: '2.0'
+info:
+  version: '1'
+  title: Poller-Endpoint Protocol
+  license:
+    name: Apache V2.0
+
+produces:
+  - application/json
+
+paths:
+  /:
+    post:
+      summary: N/A
+      parameters:
+        - in: body
+          name: body
+          schema:
+            $ref: '#/definitions/Frame'
+      responses:
+        '200':
+          description: N/A
+
+definitions:
+  Error:
+    type: object
+    properties:
+      code:
+        type: integer
+        format: int64
+      message:
+        type: string
+  Frame:
+    type: object
+    discriminator: method
+    properties:
+      v:
+        type: string
+      id:
+        type: integer
+        format: int64
+      target:
+        type: string
+      source:
+        type: string
+      method:
+        type: string
+        enum:
+          - poller.prepare
+          - poller.prepare.block
+          - poller.prepare.end
+          - poller.commit
+      error:
+        $ref: '#/definitions/Error'
+    required:
+      - v
+      - id
+      - target
+      - source
+  PollerPrepareManifest:
+    type: object
+    properties:
+      action:
+        type: string
+        enum:
+          - continue
+          - restart
+          - start
+      id:
+        type: string
+      type:
+        type: string
+      entity_id:
+        type: string
+  PartitionVersion:
+    type: integer
+    format: int64
+  PollerPrepare:
+    description: poller.prepare
+    allOf:
+      - $ref: '#/definitions/Frame'
+      - type: object
+        properties:
+          params:
+            type: object
+            properties:
+              version:
+                $ref: '#/definitions/PartitionVersion'
+              manifest:
+                type: array
+                items:
+                  $ref: '#/definitions/PollerPrepareManifest'
+  Check:
+    type: object
+    properties:
+      id:
+        type: string
+      type:
+        type: string
+      period:
+        type: integer
+        format: int64
+      timeout:
+        type: integer
+        format: int64
+      entity_id:
+        type: string
+      zone_id:
+        type: string
+      disabled:
+        type: boolean
+      ip_addresses:
+        type: object
+        additionalProperties:
+          type: string
+      target_alias:
+        type: string
+      target_hostname:
+        type: string
+      target_resolver:
+        type: string
+    required:
+      - id
+      - type
+      - period
+      - timeout
+      - entity_id
+      - zone_id
+  PollerPrepareBlock:
+    description: poller.prepare.block
+    allOf:
+      - $ref: '#/definitions/Frame'
+      - type: object
+        properties:
+          params:
+            type: object
+            properties:
+              version:
+                $ref: '#/definitions/PartitionVersion'
+              block:
+                type: array
+                items:
+                  $ref: '#/definitions/Check'
+            required:
+              - version
+              - block
+  PollerPrepareEnd:
+    description: poller.prepare.end
+    allOf:
+      - $ref: '#/definitions/Frame'
+      - type: object
+        properties:
+          params:
+            type: object
+            properties:
+              version:
+                $ref: '#/definitions/PartitionVersion'
+              directive:
+                type: string
+                enum:
+                  - prepare
+                  - abort
+            required:
+              - version
+              - directive
+  PollerPrepareResponse:
+    allOf:
+      - $ref: '#/definitions/Frame'
+      - type: object
+        properties:
+          result:
+            type: object
+            properties:
+              version:
+                $ref: '#/definitions/PartitionVersion'
+              status:
+                type: string
+                enum:
+                  - prepared
+                  - aborted
+                  - failed
+                  - ignored
+              details:
+                type: string
+            required:
+              - version
+              - status
+  PollerPrepareCommit:
+    description: poller.commit
+    allOf:
+      - $ref: '#/definitions/Frame'
+      - type: object
+        properties:
+          params:
+            type: object
+            properties:
+              version:
+                $ref: '#/definitions/PartitionVersion'
