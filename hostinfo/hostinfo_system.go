@@ -17,13 +17,11 @@
 package hostinfo
 
 import (
-	"runtime"
-
 	log "github.com/Sirupsen/logrus"
-	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/protocol/hostinfo"
-	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	"github.com/shirou/gopsutil/host"
+	"runtime"
+	"strings"
 )
 
 type HostInfoSystem struct {
@@ -37,35 +35,16 @@ func NewHostInfoSystem(base *hostinfo.HostInfoBase) HostInfo {
 	return &HostInfoSystem{HostInfoBase: *base}
 }
 
-func (*HostInfoSystem) Run() (*check.ResultSet, error) {
+func (*HostInfoSystem) Run() (interface{}, error) {
 	log.Debug("Running System")
-	info, _ := host.Info()
-	crs := check.NewResultSet(nil, nil)
-	cr := check.NewResult()
-	cr.AddMetrics(
-		metric.NewMetric("arch", "", metric.MetricString, runtime.GOOS, ""),
-		metric.NewMetric("name", "", metric.MetricString, info.OS, ""),
-		metric.NewMetric("version", "", metric.MetricString, info.KernelVersion, ""),
-		metric.NewMetric("vendor_name", "", metric.MetricString, info.OS, ""),
-		metric.NewMetric("vendor", "", metric.MetricString, info.Platform, ""),
-		metric.NewMetric("vendor_version", "", metric.MetricString, info.PlatformVersion, ""),
-	)
-	crs.Add(cr)
-	return crs, nil
-}
-
-func (*HostInfoSystem) BuildResult(crs *check.ResultSet) interface{} {
 	result := &hostinfo.HostInfoSystemResult{}
-	if crs == nil {
-		log.Infoln("Check result set is unset")
-		return result
-	}
-	cr := crs.Get(0)
-	result.Metrics.Arch, _ = cr.GetMetric("arch").ToString()
-	result.Metrics.Name, _ = cr.GetMetric("name").ToString()
-	result.Metrics.Version, _ = cr.GetMetric("version").ToString()
-	result.Metrics.VendorName, _ = cr.GetMetric("vendor_name").ToString()
-	result.Metrics.Vendor, _ = cr.GetMetric("vendor").ToString()
-	result.Metrics.VendorVersion, _ = cr.GetMetric("vendor_version").ToString()
-	return result
+	info, _ := host.Info()
+	os := strings.ToLower(info.OS)
+	result.Metrics.Arch = runtime.GOOS
+	result.Metrics.Name = os
+	result.Metrics.Version = info.KernelVersion
+	result.Metrics.VendorName = os
+	result.Metrics.Vendor = info.Platform
+	result.Metrics.VendorVersion = info.PlatformVersion
+	return result, nil
 }

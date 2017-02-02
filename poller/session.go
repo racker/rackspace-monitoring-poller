@@ -210,11 +210,11 @@ func (s *EleSession) handleFrame(f *protocol.FrameMsg) {
 
 func (s *EleSession) handleHostInfo(f *protocol.FrameMsg) {
 	if hinfo := hostinfo.NewHostInfo(f.GetRawParams()); hinfo != nil {
-		cr, err := hinfo.Run()
+		result, err := hinfo.Run()
 		if err != nil {
+			log.Error("Hostinfo returned error", err)
 		} else {
-			response := hostinfo.NewHostInfoResponse(cr, f, hinfo)
-			s.Respond(response)
+			s.Respond(hostinfo.NewHostInfoResponse(result, f))
 		}
 	}
 }

@@ -18,18 +18,16 @@
 package hostinfo
 
 import (
-	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/protocol"
 )
 
 type HostInfo interface {
-	Run() (*check.ResultSet, error)
-	BuildResult(cr *check.ResultSet) interface{}
+	Run() (interface{}, error)
 }
 
-func NewHostInfoResponse(cr *check.ResultSet, f *protocol.FrameMsg, hinfo HostInfo) *protocol.HostInfoResponse {
+func NewHostInfoResponse(result interface{}, f *protocol.FrameMsg) *protocol.HostInfoResponse {
 	resp := &protocol.HostInfoResponse{}
-	resp.Result = hinfo.BuildResult(cr)
+	resp.Result = result
 	resp.SetResponseFrameMsg(f)
 
 	return resp

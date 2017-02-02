@@ -18,47 +18,24 @@
 package hostinfo_test
 
 import (
-	"bytes"
-	"testing"
-
-	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/hostinfo"
 	"github.com/racker/rackspace-monitoring-poller/protocol"
 	hostinfo_proto "github.com/racker/rackspace-monitoring-poller/protocol/hostinfo"
-	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	"github.com/racker/rackspace-monitoring-poller/utils"
+	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func TestHostInfoMemory_PopulateResult(t *testing.T) {
 	hinfo := &hostinfo_proto.HostInfoBase{Type: "MEMORY"}
 	hostInfoMemory := hostinfo.NewHostInfoMemory(hinfo)
-
-	crs := check.NewResultSet(nil, nil)
-	cr := check.NewResult()
-	cr.AddMetrics(
-		metric.NewMetric("UsedPercentage", "", metric.MetricFloat, 0.75, ""),
-		metric.NewMetric("Free", "", metric.MetricNumber, 250, ""),
-		metric.NewMetric("Total", "", metric.MetricNumber, 1000, ""),
-		metric.NewMetric("Used", "", metric.MetricNumber, 750, ""),
-		metric.NewMetric("SwapFree", "", metric.MetricNumber, 50, ""),
-		metric.NewMetric("SwapTotal", "", metric.MetricNumber, 200, ""),
-		metric.NewMetric("SwapUsed", "", metric.MetricNumber, 150, ""),
-		metric.NewMetric("SwapUsedPercentage", "", metric.MetricFloat, 0.75, ""),
-	)
-	crs.Add(cr)
-
+	result, err := hostInfoMemory.Run()
 	sourceFrame := &protocol.FrameMsg{}
 	utils.NowTimestampMillis = func() int64 { return 100 }
-	response := hostinfo.NewHostInfoResponse(crs, sourceFrame, hostInfoMemory)
+	response := hostinfo.NewHostInfoResponse(result, sourceFrame)
 	encoded, err := response.Encode()
-	if err != nil {
-		t.Error(err)
-	}
-
-	expected := []byte(`{"v":"","id":0,"target":"","source":"","result":{"metrics":{"used_percentage":0.75,"actual_free":0,"actual_used":0,"free":0,"total":0,"used":0,"ram":0,"swap_free":0,"swap_total":0,"swap_used":0,"swap_percentage":0.75},"timestamp":100}}`)
-	if !bytes.Equal(encoded, expected) {
-		t.Error("wrong encoding")
-	}
+	assert.NoError(t, err)
+	assert.NotEmpty(t, encoded)
 }
 
 func TestHostInfoProcesses_PopulateResult(t *testing.T) {
@@ -68,13 +45,4 @@ func TestHostInfoProcesses_PopulateResult(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-}
-
-func getMetricResults(name string, checkResultList []*check.Result) *metric.Metric {
-	for _, got_check_result := range checkResultList {
-		if got_check_result.Metrics[name] != nil {
-			return got_check_result.Metrics[name]
-		}
-	}
-	return nil
 }

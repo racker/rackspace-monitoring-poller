@@ -18,9 +18,7 @@ package hostinfo
 
 import (
 	log "github.com/Sirupsen/logrus"
-	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/protocol/hostinfo"
-	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	"github.com/racker/rackspace-monitoring-poller/utils"
 	"github.com/shirou/gopsutil/disk"
 )
@@ -38,54 +36,26 @@ func NewHostInfoFilesystem(base *hostinfo.HostInfoBase) HostInfo {
 	return &HostInfoFilesystem{HostInfoBase: *base}
 }
 
-func (*HostInfoFilesystem) Run() (*check.ResultSet, error) {
+func (*HostInfoFilesystem) Run() (interface{}, error) {
 	log.Debug("Running Filesystem")
-	crs := check.NewResultSet(nil, nil)
+	result := &hostinfo.HostInfoFilesystemResult{}
+	result.Timestamp = utils.NowTimestampMillis()
 	partitions, _ := disk.Partitions(false)
 	for _, part := range partitions {
 		if usage, err := disk.Usage(part.Mountpoint); err == nil {
-			cr := check.NewResult()
-			cr.AddMetrics(
-				metric.NewMetric("dir_name", "", metric.MetricString, part.Mountpoint, ""),
-				metric.NewMetric("dev_name", "", metric.MetricString, part.Device, ""),
-				metric.NewMetric("sys_type_name", "", metric.MetricString, part.Fstype, ""),
-				metric.NewMetric("options", "", metric.MetricString, part.Opts, ""),
-
-				metric.NewMetric("total", "", metric.MetricNumber, usage.Total/BytesToKilobytes, ""),
-				metric.NewMetric("free", "", metric.MetricNumber, usage.Free/BytesToKilobytes, ""),
-				metric.NewMetric("used", "", metric.MetricNumber, usage.Used/BytesToKilobytes, ""),
-				metric.NewMetric("avail", "", metric.MetricNumber, usage.Free/BytesToKilobytes, ""),
-				metric.NewMetric("files", "", metric.MetricNumber, usage.InodesUsed, ""),
-				metric.NewMetric("free_files", "", metric.MetricNumber, usage.InodesFree, ""),
-			)
-			crs.Add(cr)
+			metrics := hostinfo.HostInfoFilesystemMetrics{}
+			metrics.DirectoryName = part.Mountpoint
+			metrics.DeviceName = part.Device
+			metrics.SystemTypeName = part.Fstype
+			metrics.Options = part.Opts
+			metrics.Total = usage.Total / BytesToKilobytes
+			metrics.Free = usage.Free / BytesToKilobytes
+			metrics.Used = usage.Used / BytesToKilobytes
+			metrics.Available = usage.Free / BytesToKilobytes
+			metrics.Files = usage.InodesUsed
+			metrics.FreeFiles = usage.InodesFree
+			result.Metrics = append(result.Metrics, metrics)
 		}
 	}
-	return crs, nil
-}
-
-func (*HostInfoFilesystem) BuildResult(crs *check.ResultSet) interface{} {
-	result := &hostinfo.HostInfoFilesystemResult{}
-	result.Timestamp = utils.NowTimestampMillis()
-	if crs == nil {
-		log.Infoln("Check result set is unset")
-		return result
-	}
-	for i := 0; i < crs.Length(); i++ {
-		cr := crs.Get(i)
-		metrics := hostinfo.HostInfoFilesystemMetrics{}
-		metrics.DirectoryName, _ = cr.GetMetric("dir_name").ToString()
-		metrics.DeviceName, _ = cr.GetMetric("dev_name").ToString()
-		metrics.SystemTypeName, _ = cr.GetMetric("sys_type_name").ToString()
-		metrics.Options, _ = cr.GetMetric("options").ToString()
-
-		metrics.Total, _ = cr.GetMetric("total").ToUint64()
-		metrics.Free, _ = cr.GetMetric("free").ToUint64()
-		metrics.Used, _ = cr.GetMetric("used").ToUint64()
-		metrics.Available, _ = cr.GetMetric("avail").ToUint64()
-		metrics.Files, _ = cr.GetMetric("files").ToUint64()
-		metrics.FreeFiles, _ = cr.GetMetric("free_files").ToUint64()
-		result.Metrics = append(result.Metrics, metrics)
-	}
-	return result
+	return result, nil
 }
