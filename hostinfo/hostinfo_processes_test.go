@@ -159,7 +159,7 @@ func TestHostInfoProcesses_Run(t *testing.T) {
 			h := &hostinfo.HostInfoProcesses{
 				HostInfoBase: protocol_hostinfo.HostInfoBase{},
 			}
-			got, _ := h.Run()
+			got, err := h.Run()
 			if tt.expectedErr {
 				assert.Error(t, err, fmt.Sprintf("HostInfoProcesses.Run() error = %v, expectedErr %v", err, tt.expectedErr))
 			} else {
