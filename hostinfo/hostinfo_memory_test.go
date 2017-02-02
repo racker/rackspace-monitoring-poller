@@ -87,19 +87,13 @@ func TestHostInfoMemory_Run(t *testing.T) {
 			if tt.expectedErr {
 				assert.Error(t, err, fmt.Sprintf("HostInfoMemory.Run() error = %v, expectedErr %v", err, tt.expectedErr))
 			} else {
-				fmt.Println(got)
-				// loop through sample set and validate it exists in result
-				//for name, sample_metric := range tt.expected {
-				// first, get the metric
-				//gotMetric := getMetricResults(name, got.Metrics)
-				//if gotMetric == nil {
-				//	t.Errorf("Metric not found in result = %v ", name)
-				//} else {
-				//	assert.Equal(
-				//		t, sample_metric, gotMetric,
-				//		fmt.Sprintf("Metric did not have correct values = %v ", sample_metric))
-				//}
-				//}
+				result := got.(*protocol_hostinfo.HostInfoMemoryResult)
+				assert.NotZero(t, result.Metrics.ActualFree)
+				assert.NotZero(t, result.Metrics.Free)
+				assert.NotZero(t, result.Metrics.Used)
+				assert.NotZero(t, result.Metrics.ActualUsed)
+				assert.NotZero(t, result.Metrics.Total)
+				assert.NotZero(t, result.Metrics.RAM)
 			}
 		})
 	}
