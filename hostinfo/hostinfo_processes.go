@@ -18,9 +18,7 @@ package hostinfo
 
 import (
 	log "github.com/Sirupsen/logrus"
-	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/protocol/hostinfo"
-	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	"github.com/racker/rackspace-monitoring-poller/utils"
 	"github.com/shirou/gopsutil/process"
 )
@@ -36,85 +34,54 @@ func NewHostInfoProcesses(base *hostinfo.HostInfoBase) HostInfo {
 	return &HostInfoProcesses{HostInfoBase: *base}
 }
 
-func (*HostInfoProcesses) Run() (*check.ResultSet, error) {
+func (*HostInfoProcesses) Run() (interface{}, error) {
 	log.Debug("Running Processes")
-	crs := check.NewResultSet(nil, nil)
+	result := &hostinfo.HostInfoProcessesResult{}
+	result.Timestamp = utils.NowTimestampMillis()
 	pids, err := process.Pids()
 	if err != nil {
 		return nil, err
 	}
 	for _, pid := range pids {
-		cr := check.NewResult()
+		metrics := hostinfo.HostInfoProcessesMetrics{}
 		pr, err := process.NewProcess(pid)
 		if err != nil {
 			continue
 		}
-		cr.AddMetric(metric.NewMetric("pid", "", metric.MetricNumber, pr.Pid, ""))
+		metrics.Pid = pr.Pid
 		if name, err := pr.Name(); err == nil {
-			cr.AddMetric(
-				metric.NewMetric("state_name", "", metric.MetricString, name, ""),
-			)
+			metrics.StateName = name
 		} else {
 			continue
 		}
 		if cwd, err := pr.Cwd(); err == nil {
-			cr.AddMetric(
-				metric.NewMetric("exe_cwd", "", metric.MetricString, cwd, ""),
-			)
+			metrics.ExeCwd = cwd
 		} else {
 			continue
 		}
 		if root, err := pr.Exe(); err == nil {
-			cr.AddMetric(
-				metric.NewMetric("exe_root", "", metric.MetricString, root, ""),
-			)
+			metrics.ExeRoot = root
 		} else {
 			continue
 		}
 		if createTime, err := pr.CreateTime(); err == nil {
-			cr.AddMetric(
-				metric.NewMetric("time_start_time", "", metric.MetricNumber, createTime, ""),
-			)
+			metrics.StartTime = createTime
 		} else {
 			continue
 		}
 		if times, err := pr.Times(); err == nil {
-			cr.AddMetrics(
-				metric.NewMetric("time_user", "", metric.MetricFloat, times.User, ""),
-				metric.NewMetric("time_sys", "", metric.MetricFloat, times.System, ""),
-				metric.NewMetric("time_total", "", metric.MetricFloat, times.Total, ""),
-			)
+			metrics.TimeUser = times.User
+			metrics.TimeSys = times.System
+			metrics.TimeTotal = times.Total()
 		} else {
 			continue
 		}
 		if memory, err := pr.MemoryInfo(); err == nil {
-			cr.AddMetrics(
-				metric.NewMetric("memory_resident", "", metric.MetricNumber, memory.RSS, ""),
-			)
+			metrics.MemoryRes = memory.RSS
 		} else {
 			continue
 		}
-		crs.Add(cr)
-	}
-	return crs, nil
-}
-
-func (hi *HostInfoProcesses) BuildResult(crs *check.ResultSet) interface{} {
-	result := &hostinfo.HostInfoProcessesResult{}
-	result.Timestamp = utils.NowTimestampMillis()
-	for i := 0; i < crs.Length(); i++ {
-		cr := crs.Get(i)
-		metrics := hostinfo.HostInfoProcessesMetrics{}
-		metrics.Pid, _ = cr.GetMetric("pid").ToInt32()
-		metrics.StateName, _ = cr.GetMetric("state_name").ToString()
-		metrics.ExeCwd, _ = cr.GetMetric("exe_cwd").ToString()
-		metrics.ExeRoot, _ = cr.GetMetric("exe_root").ToString()
-		metrics.StartTime, _ = cr.GetMetric("time_start_time").ToInt64()
-		metrics.TimeUser, _ = cr.GetMetric("time_user").ToFloat64()
-		metrics.TimeSys, _ = cr.GetMetric("time_sys").ToFloat64()
-		metrics.TimeTotal, _ = cr.GetMetric("time_total").ToFloat64()
-		metrics.MemoryRes, _ = cr.GetMetric("memory_resident").ToUint64()
 		result.Metrics = append(result.Metrics, metrics)
 	}
-	return result
+	return result, nil
 }

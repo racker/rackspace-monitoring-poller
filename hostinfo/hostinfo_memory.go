@@ -18,9 +18,7 @@ package hostinfo
 
 import (
 	log "github.com/Sirupsen/logrus"
-	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/protocol/hostinfo"
-	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	"github.com/racker/rackspace-monitoring-poller/utils"
 	"github.com/shirou/gopsutil/mem"
 )
@@ -38,7 +36,9 @@ func NewHostInfoMemory(base *hostinfo.HostInfoBase) HostInfo {
 	return &HostInfoMemory{HostInfoBase: *base}
 }
 
-func (*HostInfoMemory) Run() (*check.ResultSet, error) {
+func (*HostInfoMemory) Run() (interface{}, error) {
+	result := &hostinfo.HostInfoMemoryResult{}
+	result.Timestamp = utils.NowTimestampMillis()
 	log.Debug("Running Memory")
 	v, err := mem.VirtualMemory()
 	if err != nil {
@@ -48,42 +48,16 @@ func (*HostInfoMemory) Run() (*check.ResultSet, error) {
 	if err != nil {
 		return nil, err
 	}
-	crs := check.NewResultSet(nil, nil)
-	cr := check.NewResult()
-	cr.AddMetrics(
-		metric.NewMetric("UsedPercentage", "", metric.MetricFloat, v.UsedPercent, ""),
-		metric.NewMetric("Free", "", metric.MetricNumber, v.Free, ""),
-		metric.NewMetric("Total", "", metric.MetricNumber, v.Total, ""),
-		metric.NewMetric("Used", "", metric.MetricNumber, v.Used, ""),
-		metric.NewMetric("SwapFree", "", metric.MetricNumber, s.Free, ""),
-		metric.NewMetric("SwapTotal", "", metric.MetricNumber, s.Total, ""),
-		metric.NewMetric("SwapUsed", "", metric.MetricNumber, s.Used, ""),
-		metric.NewMetric("SwapUsedPercentage", "", metric.MetricFloat, s.UsedPercent, ""),
-	)
-	crs.Add(cr)
-	return crs, nil
-}
-
-func (hi *HostInfoMemory) BuildResult(crs *check.ResultSet) interface{} {
-	result := &hostinfo.HostInfoMemoryResult{}
-	result.Timestamp = utils.NowTimestampMillis()
-	if crs == nil {
-		log.Infoln("Check result set is unset")
-		return result
-	}
-	cr := crs.Get(0)
-	result.Metrics.UsedPercentage, _ = cr.GetMetric("UsedPercentage").ToFloat64()
-	result.Metrics.Free, _ = cr.GetMetric("Free").ToUint64()
-	result.Metrics.ActualFree, _ = cr.GetMetric("Free").ToUint64()
-	result.Metrics.Total, _ = cr.GetMetric("Total").ToUint64()
-	result.Metrics.Used, _ = cr.GetMetric("Used").ToUint64()
-	result.Metrics.ActualUsed, _ = cr.GetMetric("Used").ToUint64()
-	result.Metrics.SwapFree, _ = cr.GetMetric("SwapFree").ToUint64()
-	result.Metrics.SwapTotal, _ = cr.GetMetric("SwapTotal").ToUint64()
-	result.Metrics.SwapUsed, _ = cr.GetMetric("SwapUsed").ToUint64()
-	result.Metrics.SwapUsedPercentage, _ = cr.GetMetric("SwapUsedPercentage").ToFloat64()
-	ram, _ := cr.GetMetric("Total").ToUint64()
-	result.Metrics.RAM = uint64(ram / Megabyte)
-
-	return result
+	result.Metrics.UsedPercentage = v.UsedPercent
+	result.Metrics.Free = v.Free
+	result.Metrics.ActualFree = v.Free
+	result.Metrics.Total = v.Total
+	result.Metrics.Used = v.Used
+	result.Metrics.ActualUsed = v.Used
+	result.Metrics.SwapFree = s.Free
+	result.Metrics.SwapTotal = s.Total
+	result.Metrics.SwapUsed = s.Used
+	result.Metrics.SwapUsedPercentage = s.UsedPercent
+	result.Metrics.RAM = uint64(v.Total / Megabyte)
+	return result, nil
 }
