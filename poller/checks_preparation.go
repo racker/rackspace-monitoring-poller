@@ -60,7 +60,7 @@ type ChecksPreparation struct {
 	Version int
 
 	// Actions is a map of checkId->ActionableCheck
-	actions map[string] /*checkId*/ ActionableCheck
+	Actions map[string] /*checkId*/ ActionableCheck
 }
 
 // NewChecksPreparation initiates a new checks preparation session.
@@ -68,7 +68,7 @@ type ChecksPreparation struct {
 func NewChecksPreparation(version int, manifest []protocol.PollerPrepareManifest) (*ChecksPreparation, error) {
 	cp := &ChecksPreparation{
 		Version: version,
-		actions: make(map[string]ActionableCheck),
+		Actions: make(map[string]ActionableCheck),
 	}
 
 	for _, m := range manifest {
@@ -77,7 +77,7 @@ func NewChecksPreparation(version int, manifest []protocol.PollerPrepareManifest
 		if actionType == ActionTypeUnknown {
 			return nil, errors.New(fmt.Sprintf("Unsupported action in manifest: action=%s, check=%s", m.Action, m.Id))
 		}
-		cp.actions[m.Id] = ActionableCheck{
+		cp.Actions[m.Id] = ActionableCheck{
 			Action: actionType,
 			// "pre populate" actions we don't expect to see defined
 			Populated: !doesCheckPreparationNeedPopulating(m.Action),
@@ -93,7 +93,7 @@ func NewChecksPreparation(version int, manifest []protocol.PollerPrepareManifest
 		}
 	}
 
-	log.WithField("actions", cp.actions).Debug("Prepared checks from manifest")
+	log.WithField("actions", cp.Actions).Debug("Prepared checks from manifest")
 	return cp, nil
 }
 
@@ -115,9 +115,9 @@ func doesCheckPreparationNeedPopulating(action string) bool {
 }
 
 func (cp *ChecksPreparation) GetActionableChecks() (actionableChecks []ActionableCheck) {
-	actionableChecks = make([]ActionableCheck, 0, len(cp.actions))
+	actionableChecks = make([]ActionableCheck, 0, len(cp.Actions))
 
-	for _, ac := range cp.actions {
+	for _, ac := range cp.Actions {
 		actionableChecks = append(actionableChecks, ac)
 	}
 
@@ -139,11 +139,11 @@ func (cp *ChecksPreparation) IsOlder(version int) bool {
 func (cp *ChecksPreparation) AddDefinitions(block []*check.CheckIn) {
 
 	for _, ch := range block {
-		actionable := cp.actions[ch.Id]
+		actionable := cp.Actions[ch.Id]
 		actionable.Populated = true
 		actionable.CheckIn = *ch
 
-		cp.actions[ch.Id] = actionable
+		cp.Actions[ch.Id] = actionable
 
 		log.WithFields(log.Fields{"chId": ch.Id, "entry": actionable}).Debug("Added definition to actions")
 	}
@@ -155,7 +155,7 @@ func (cp *ChecksPreparation) Validate(version int) error {
 		return errors.New("Wrong version")
 	}
 
-	for checkId, actionable := range cp.actions {
+	for checkId, actionable := range cp.Actions {
 		if actionable.Action == ActionTypeUnknown {
 			return errors.New(fmt.Sprintf(
 				"Check defined but not declared in manifest. check=%v", actionable.Id))

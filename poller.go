@@ -51,7 +51,11 @@ var (
 
 func init() {
 	rand.Seed(time.Now().UTC().UnixNano())
-	log.SetFormatter(Formatter)
+	if os.Getenv("LOG_TEXT_FORMAT") == "true" {
+		log.SetFormatter(&log.TextFormatter{ForceColors: true})
+	} else {
+		log.SetFormatter(Formatter)
+	}
 	log.SetOutput(os.Stderr)
 	pollerCmd.PersistentFlags().BoolVar(&globalFlags.Debug, "debug", false, "Enable debug")
 }

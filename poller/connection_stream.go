@@ -106,8 +106,12 @@ func (cs *EleConnectionStream) ReconcileChecks(cp ChecksPrepared) {
 func (cs *EleConnectionStream) ValidateChecks(cp ChecksPreparing) error {
 	for _, sched := range cs.schedulers {
 		err := sched.ValidateChecks(cp)
-		log.WithFields(log.Fields{"scheduler": sched, "cp": cp}).Warn("Scheduler was not able to validate check preparation")
 		if err != nil {
+			log.WithFields(log.Fields{
+				"scheduler": sched,
+				"cp":        cp,
+				"err":       err,
+			}).Warn("Scheduler was not able to validate check preparation")
 			return err
 		}
 	}
