@@ -39,7 +39,8 @@ func NewHostInfoFilesystem(base *hostinfo.HostInfoBase) HostInfo {
 func (*HostInfoFilesystem) Run() (interface{}, error) {
 	log.Debug("Running Filesystem")
 	result := &hostinfo.HostInfoFilesystemResult{}
-	result.Timestamp = utils.NowTimestampMillis() partitions, _ := disk.Partitions(false)
+	result.Timestamp = utils.NowTimestampMillis()
+	partitions, _ := disk.Partitions(false)
 	for _, part := range partitions {
 		if usage, err := disk.Usage(part.Mountpoint); err == nil {
 			metrics := hostinfo.HostInfoFilesystemMetrics{}
