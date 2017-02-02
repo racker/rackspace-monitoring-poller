@@ -21,8 +21,10 @@ func TestNewEndpointConfig(t *testing.T) {
 		expected *config.EndpointConfig
 	}{
 		{
-			name:     "Init test",
-			expected: &config.EndpointConfig{},
+			name: "Init test",
+			expected: &config.EndpointConfig{
+				PrepareBlockSize: 2,
+			},
 		},
 	}
 	for _, tt := range tests {
