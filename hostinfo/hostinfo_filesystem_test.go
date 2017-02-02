@@ -96,7 +96,7 @@ func TestHostInfoFilesystem_Run(t *testing.T) {
 			h := &hostinfo.HostInfoFilesystem{
 				HostInfoBase: protocol_hostinfo.HostInfoBase{},
 			}
-			got, _ := h.Run()
+			got, err := h.Run()
 			if tt.expectedErr {
 				assert.Error(t, err, fmt.Sprintf("HostInfoFilesystem.Run() error = %v, expectedErr %v", err, tt.expectedErr))
 			} else {
