@@ -3,5 +3,7 @@
   "KeyFile":  "data/server-certs/key.pem",
   "BindAddr": ":55000",
 
-  "AgentsConfigDir": "contrib/endpoint-agents"
+  "AgentsConfigDir": "contrib/endpoint-agents",
+
+  "PrepareBlockSize": 2
 }

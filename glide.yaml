@@ -20,3 +20,5 @@ import:
   - assert
 - package: github.com/deckarep/golang-set
   version: ^1.5.0
+- package: github.com/fsnotify/fsnotify
+  version: ^1.4.2

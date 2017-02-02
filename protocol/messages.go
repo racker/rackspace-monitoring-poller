@@ -246,8 +246,8 @@ func DecodePollerPrepareStartRequest(frame *FrameMsg) *PollerPrepareStartRequest
 
 // PollerPrepareBlockParams is the params of a message with method=MethodPollerPrepareBlock
 type PollerPrepareBlockParams struct {
-	Version int             `json:"version"`
-	Block   []check.CheckIn `json:"block"`
+	Version int              `json:"version"`
+	Block   []*check.CheckIn `json:"block"`
 }
 
 type PollerPrepareBlockRequest struct {
@@ -293,18 +293,18 @@ func DecodePollerPrepareEndRequest(frame *FrameMsg) *PollerPrepareEndRequest {
 	return req
 }
 
-// PollerPrepareCommitParams is the params of a message with method=MethodPollerPrepareCommit
-type PollerPrepareCommitParams struct {
+// PollerCommitParams is the params of a message with method=MethodPollerCommit
+type PollerCommitParams struct {
 	Version int `json:"version"`
 }
 
-type PollerPrepareCommitRequest struct {
+type PollerCommitRequest struct {
 	FrameMsg
-	Params PollerPrepareCommitParams `json:"params"`
+	Params PollerCommitParams `json:"params"`
 }
 
-func DecodePollerPrepareCommitRequest(frame *FrameMsg) *PollerPrepareCommitRequest {
-	req := &PollerPrepareCommitRequest{}
+func DecodePollerCommitRequest(frame *FrameMsg) *PollerCommitRequest {
+	req := &PollerCommitRequest{}
 	req.SetFromFrameMsg(frame)
 	if frame.GetRawParams() != nil {
 		json.Unmarshal(frame.GetRawParams(), &req.Params)
@@ -338,14 +338,14 @@ func NewPollerPrepareResponse(source *FrameMsg, result PollerPrepareResult) Fram
 	return resp
 }
 
-type PollerPrepareCommitResult struct {
+type PollerCommitResult struct {
 	Version int `json:"version"`
 	// Status is one of PrepareResultStatus* constants
 	Status  string `json:"status"`
 	Details string `json:"details"`
 }
 
-func NewPollerPrepareCommitResponse(source *FrameMsg, result PollerPrepareCommitResult) Frame {
+func NewPollerPrepareCommitResponse(source *FrameMsg, result PollerCommitResult) Frame {
 	resp := &FrameMsg{}
 	resp.SetResponseFrameMsg(source)
 
@@ -357,4 +357,9 @@ func NewPollerPrepareCommitResponse(source *FrameMsg, result PollerPrepareCommit
 	resp.RawResult = json.RawMessage(raw)
 
 	return resp
+}
+
+type PollerCommitResponse struct {
+	FrameMsg
+	Result PollerCommitResult `json:"result"`
 }

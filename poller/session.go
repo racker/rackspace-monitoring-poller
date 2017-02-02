@@ -329,7 +329,7 @@ func (s *EleSession) handlePollerPrepareEnd(f *protocol.FrameMsg) {
 }
 
 func (s *EleSession) handlePollerCommit(f *protocol.FrameMsg) {
-	req := protocol.DecodePollerPrepareCommitRequest(f)
+	req := protocol.DecodePollerCommitRequest(f)
 
 	if !s.prepDetails.activePrep.VersionApplies(req.Params.Version) {
 		details := "Poller commit request specified non-applicable version"
@@ -344,9 +344,9 @@ func (s *EleSession) handlePollerCommit(f *protocol.FrameMsg) {
 	s.prepDetails.commit()
 }
 
-func (s *EleSession) respondCommitResult(f *protocol.FrameMsg, req *protocol.PollerPrepareCommitRequest,
+func (s *EleSession) respondCommitResult(f *protocol.FrameMsg, req *protocol.PollerCommitRequest,
 	status string, details string) {
-	result := protocol.PollerPrepareCommitResult{
+	result := protocol.PollerCommitResult{
 		Version: req.Params.Version,
 		Status:  status,
 		Details: details,

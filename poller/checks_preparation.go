@@ -136,12 +136,12 @@ func (cp *ChecksPreparation) IsOlder(version int) bool {
 	return cp != nil && version < cp.Version
 }
 
-func (cp *ChecksPreparation) AddDefinitions(block []check.CheckIn) {
+func (cp *ChecksPreparation) AddDefinitions(block []*check.CheckIn) {
 
 	for _, ch := range block {
 		actionable := cp.actions[ch.Id]
 		actionable.Populated = true
-		actionable.CheckIn = ch
+		actionable.CheckIn = *ch
 
 		cp.actions[ch.Id] = actionable
 

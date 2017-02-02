@@ -207,7 +207,7 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 		prepareSeq             string
 		commitSeq              string
 		expectedPrepResponses  []protocol.PollerPrepareResult
-		expectedCommitResponse protocol.PollerPrepareCommitResult
+		expectedCommitResponse protocol.PollerCommitResult
 		expectValidate         bool
 		expectReconcile        bool
 		reconcileValidateErr   error
@@ -222,7 +222,7 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 					Version: 5,
 				},
 			},
-			expectedCommitResponse: protocol.PollerPrepareCommitResult{
+			expectedCommitResponse: protocol.PollerCommitResult{
 				Status:  "committed",
 				Version: 5,
 			},
@@ -243,7 +243,7 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 					Version: 5,
 				},
 			},
-			expectedCommitResponse: protocol.PollerPrepareCommitResult{
+			expectedCommitResponse: protocol.PollerCommitResult{
 				Status:  "committed",
 				Version: 5,
 			},
@@ -260,7 +260,7 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 					Version: 5,
 				},
 			},
-			expectedCommitResponse: protocol.PollerPrepareCommitResult{
+			expectedCommitResponse: protocol.PollerCommitResult{
 				Status:  "ignored",
 				Version: 6,
 			},
