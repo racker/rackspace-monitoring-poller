@@ -65,7 +65,8 @@ func TestCheckPreparation_AddDefinitions_Normal(t *testing.T) {
 		},
 	}
 
-	cp, _ := poller.NewChecksPreparation(1, manifest)
+	cp, err := poller.NewChecksPreparation(1, manifest)
+	require.NoError(t, err)
 
 	block1 := loadTestDataChecks(t,
 		checkLoadInfo{name: "tcp_check", id: "ch2", entityId: "en2", zonedId: "zn1"},
@@ -78,7 +79,7 @@ func TestCheckPreparation_AddDefinitions_Normal(t *testing.T) {
 	cp.AddDefinitions(block1)
 	cp.AddDefinitions(block2)
 
-	err := cp.Validate(1)
+	err = cp.Validate(1)
 	assert.NoError(t, err)
 }
 
@@ -87,7 +88,7 @@ func TestCheckPreparation_AddDefinitions_Fails(t *testing.T) {
 	tests := []struct {
 		name     string
 		manifest []protocol.PollerPrepareManifest
-		block    []check.CheckIn
+		block    []*check.CheckIn
 		validate int
 	}{
 		{
@@ -233,20 +234,22 @@ type checkLoadInfo struct {
 	action    string
 }
 
-func loadTestDataChecks(t *testing.T, info ...checkLoadInfo) (checks []check.CheckIn) {
-	checks = make([]check.CheckIn, len(info))
+func loadTestDataChecks(t *testing.T, info ...checkLoadInfo) (checks []*check.CheckIn) {
+	checks = make([]*check.CheckIn, 0, len(info))
 
-	for i, entry := range info {
+	for _, entry := range info {
 		bytes, err := ioutil.ReadFile("testdata/" + entry.name + ".json")
 		require.NoError(t, err)
 
-		err = json.Unmarshal(bytes, &checks[i])
+		var ch check.CheckIn
+		err = json.Unmarshal(bytes, &ch)
 		require.NoError(t, err)
-		checks[i].Id = entry.id
-		checks[i].EntityId = entry.entityId
-		checks[i].ZoneId = entry.zonedId
+		ch.Id = entry.id
+		ch.EntityId = entry.entityId
+		ch.ZoneId = entry.zonedId
 
-		assert.NotEmpty(t, checks[i].CheckType)
+		assert.NotEmpty(t, ch.CheckType)
+		checks = append(checks, &ch)
 	}
 
 	return
