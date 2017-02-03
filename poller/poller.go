@@ -56,12 +56,13 @@ type ConnectionStream interface {
 	SendMetrics(crs *check.ResultSet) error
 	Connect()
 	WaitCh() <-chan struct{}
-	GetConnections() map[string]Connection
 }
 
 // Connection interface wraps the methods required to manage a
 // single connection.
 type Connection interface {
+	ConnectionHealthProvider
+
 	GetSession() Session
 	SetReadDeadline(deadline time.Time)
 	SetWriteDeadline(deadline time.Time)
@@ -73,18 +74,22 @@ type Connection interface {
 	GetGUID() string
 }
 
+type ConnectionHealthProvider interface {
+	GetClockOffset() int64
+	GetLatency() int64
+}
+
 // Session interface wraps the methods required to manage a
 // session in a connection.  It includes authentication, request/
 // response timeout management, and transferring data
 type Session interface {
+	ConnectionHealthProvider
+
 	Auth()
 	Send(msg protocol.Frame)
 	Respond(msg protocol.Frame)
 	Close()
 	Wait()
-
-	GetClockOffset() int64
-	GetLatency() int64
 }
 
 // CheckScheduler arranges the periodic invocation of the given Check
@@ -126,3 +131,5 @@ type Scheduler interface {
 }
 
 type ConnectionFactory func(address string, guid string, checksReconciler ChecksReconciler) Connection
+
+type ConnectionsByHost map[string]Connection

@@ -28,6 +28,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/config"
+	"math"
 )
 
 // EleConnectionStream implements ConnectionStream
@@ -41,7 +42,7 @@ type EleConnectionStream struct {
 
 	connectionFactory ConnectionFactory
 	connsMu           sync.Mutex
-	conns             map[string]Connection
+	conns             ConnectionsByHost
 	wg                sync.WaitGroup
 
 	// map is the private zone ID as a string
@@ -66,7 +67,7 @@ func NewCustomConnectionStream(config *config.Config, rootCAs *x509.CertPool, co
 		connectionFactory: connectionFactory,
 	}
 	stream.ctx = context.Background()
-	stream.conns = make(map[string]Connection)
+	stream.conns = make(ConnectionsByHost)
 	stream.stopCh = make(chan struct{}, 1)
 	for _, pz := range config.ZoneIds {
 		stream.schedulers[pz] = NewScheduler(pz, stream)
@@ -89,11 +90,6 @@ func (cs *EleConnectionStream) RegisterConnection(qry string, conn Connection) e
 	log.WithField("connections", cs.conns).
 		Debug("Currently registered connections")
 	return nil
-}
-
-// GetConnections returns a map of connections set up in the stream
-func (cs *EleConnectionStream) GetConnections() map[string]Connection {
-	return cs.conns
 }
 
 // ReconcileChecks routes the ChecksPreparation to its schedulers.
@@ -138,14 +134,14 @@ func (cs *EleConnectionStream) StopNotify() chan struct{} {
 // SendMetrics sends a CheckResultSet via the first connection it can
 // retrieve in the connection list
 func (cs *EleConnectionStream) SendMetrics(crs *check.ResultSet) error {
-	if cs.GetConnections() == nil {
+	if cs.conns == nil || len(cs.conns) == 0 {
 		return ErrNoConnections
 	}
-	for _, conn := range cs.GetConnections() {
-		// TODO make this better
+
+	if conn := cs.conns.ChooseBest(); conn != nil {
 		conn.GetSession().Send(check.NewMetricsPostRequest(crs))
-		break
 	}
+
 	return nil
 
 }
@@ -233,4 +229,21 @@ func (cs *EleConnectionStream) buildTLSConfig(addr string) *tls.Config {
 		RootCAs:            cs.rootCAs,
 	}
 	return conf
+}
+
+// ChooseBest selects the best of its connections for posting metrics, etc.
+// Returns nil if no connections were present.
+func (conns ConnectionsByHost) ChooseBest() Connection {
+	var minLatency int64 = math.MaxInt64
+	var best Connection
+
+	for _, conn := range conns {
+		latency := conn.GetLatency()
+		if latency < minLatency {
+			minLatency = latency
+			best = conn
+		}
+	}
+
+	return best
 }

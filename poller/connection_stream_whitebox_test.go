@@ -116,6 +116,7 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockSession := NewMockSession(mockCtrl)
+	mockSession.EXPECT().GetLatency().AnyTimes().Return(int64(0))
 	ctx := context.Background()
 
 	basicCheck, err := check.NewCheck(ctx, []byte(`{
@@ -180,7 +181,7 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 			crs: &check.ResultSet{
 				Check: basicCheck,
 			},
-			expectedErr: false,
+			expectedErr: true,
 		},
 		{
 			name:        "Connections set to nil",
