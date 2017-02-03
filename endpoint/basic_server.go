@@ -92,7 +92,8 @@ func (s *BasicServer) ListenAndServe() error {
 
 func (s *BasicServer) runConnectionHandler(ctx context.Context, c net.Conn) {
 	defer c.Close()
-	log.WithField("remoteAddr", c.RemoteAddr()).Info("Handling connection")
+	log.WithField("remoteAddr", c.RemoteAddr()).Info("Started handling connection")
+	defer log.WithField("remoteAddr", c.RemoteAddr()).Info("Stopped handling connection")
 
 	smartC := utils.NewSmartConn(c)
 
@@ -115,6 +116,11 @@ func (s *BasicServer) runConnectionHandler(ctx context.Context, c net.Conn) {
 			return
 
 		case frame := <-frames:
+			if frame.IsFinished() {
+				log.WithField("remoteAddr", c.RemoteAddr()).Debug("Handling finished frame")
+				s.AgentTracker.CloseAgentByAddr(c.RemoteAddr())
+				return
+			}
 			err := s.handleFrame(ctx, smartC, frame)
 			if err != nil {
 				log.Warnln("Failed to consume frame", err)
@@ -142,9 +148,14 @@ func (s *BasicServer) runFrameDecoder(c *utils.SmartConn, frames chan<- *protoco
 			return
 		}
 
-		log.WithField("remoteAddr", c.RemoteAddr()).Debug("Received frame")
+		log.WithFields(log.Fields{
+			"id":     frame.Id,
+			"method": frame.Method,
+			"from":   c.RemoteAddr(),
+		}).Debug("RECV frame")
 		frames <- &frame
 	}
+	frames <- protocol.NewFinishedFrame()
 }
 
 func (s *BasicServer) handleFrame(ctx context.Context, c *utils.SmartConn, frame protocol.Frame) error {
@@ -166,7 +177,7 @@ func (s *BasicServer) handleFrame(ctx context.Context, c *utils.SmartConn, frame
 
 		sendHandshakeResponse(c, frame)
 
-		agentErrors := s.AgentTracker.handleHello(frame, params, c)
+		agentErrors := s.AgentTracker.NewAgentFromHello(frame, params, c)
 		go waitOnAgentError(ctx, agentErrors, c)
 
 	case protocol.MethodCheckMetricsPost:

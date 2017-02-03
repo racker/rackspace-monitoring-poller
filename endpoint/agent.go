@@ -31,7 +31,6 @@ import (
 	"os"
 	"path"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -42,6 +41,10 @@ type pendingPrepare struct {
 	// committing indicates if the poller.commit has been sent
 	committing bool
 	sent       time.Time
+}
+
+type prepareBundle struct {
+	checksToStart, checksToRestart, unclassified []check.Check
 }
 
 type agent struct {
@@ -62,9 +65,11 @@ type agent struct {
 	zones            []string
 	prepareBlockSize int
 
-	outMsgId uint64
+	preparations chan prepareBundle
+	responses    chan protocol.Frame
+	// The following are only accessed within runPrepareResponseCoordinator go routine
 
-	checksLocker    sync.Mutex
+	outMsgId        uint64
 	checksVersion   uint64
 	committedChecks set.Set // of check IDs
 	// pendingPrepares is keyed by prepare message ID
@@ -93,9 +98,25 @@ func newAgent(parentCtx context.Context, frame protocol.Frame, params *protocol.
 		cancel:           cancel,
 
 		pendingPrepares: make(map[uint64]*pendingPrepare, 0),
+		preparations:    make(chan prepareBundle),
+		responses:       make(chan protocol.Frame),
 	}
 
+	go newAgent.runPrepareResponseCoordinator()
+
 	return newAgent, errors
+}
+
+func (a *agent) GetSourceId() string {
+	return a.sourceId
+}
+
+func (a *agent) Close() {
+	a.cancel()
+}
+
+func (a *agent) HandleResponse(frame protocol.Frame) {
+	a.responses <- frame
 }
 
 func (a *agent) handleResponse(frame protocol.Frame) {
@@ -104,10 +125,8 @@ func (a *agent) handleResponse(frame protocol.Frame) {
 		"frame": frame,
 	}).Debug("Agent handling response frame")
 
-	a.checksLocker.Lock()
 	pending, exists := a.pendingPrepares[frame.GetId()]
 	committing := pending.committing
-	a.checksLocker.Unlock()
 
 	if !exists {
 		log.WithFields(log.Fields{
@@ -196,7 +215,8 @@ func (a *agent) applyInitialChecks(pathToChecks string, zone string) {
 		log.WithField("err", err).Warn("Unable to load checks during initialization")
 		return
 	}
-	a.prepareChecks(startChecks, nil)
+
+	a.preparations <- prepareBundle{checksToStart: startChecks}
 
 	go a.runFileWatcher(pathToChecks, zone)
 }
@@ -210,6 +230,7 @@ func (a *agent) runFileWatcher(pathToChecks string, zone string) {
 	defer watcher.Close()
 
 	log.WithField("path", pathToChecks).Debug("Starting file watching")
+	defer log.WithField("path", pathToChecks).Debug("Stopping file watching")
 	watcher.Add(pathToChecks)
 
 	for {
@@ -231,20 +252,8 @@ func (a *agent) runFileWatcher(pathToChecks string, zone string) {
 					continue
 				}
 
-				checksToStart := make([]check.Check, 0)
-				checksToRestart := make([]check.Check, 0)
+				a.preparations <- prepareBundle{unclassified: checks}
 
-				a.checksLocker.Lock()
-				for _, ch := range checks {
-					if a.committedChecks.Contains(ch.GetID()) {
-						checksToRestart = append(checksToRestart, ch)
-					} else {
-						checksToStart = append(checksToStart, ch)
-					}
-				}
-				a.checksLocker.Unlock()
-
-				a.prepareChecks(checksToStart, checksToRestart)
 			} else {
 				log.WithField("event", evt).Debug("Ignoring filesystem event")
 			}
@@ -254,6 +263,43 @@ func (a *agent) runFileWatcher(pathToChecks string, zone string) {
 				"err":  err,
 				"path": pathToChecks,
 			}).Warn("Error while watching for filesystem events")
+			return
+		}
+	}
+}
+
+func (a *agent) runPrepareResponseCoordinator() {
+	log.Debug("Starting prepare-response coodinator")
+	defer log.Debug("Stopping prepare-response coodinator")
+
+	for {
+		select {
+		case <-a.ctx.Done():
+			return
+
+		case bundle := <-a.preparations:
+			if bundle.unclassified != nil {
+				bundle.checksToStart = make([]check.Check, 0)
+				bundle.checksToRestart = make([]check.Check, 0)
+
+				for _, ch := range bundle.unclassified {
+					if a.committedChecks.Contains(ch.GetID()) {
+						bundle.checksToStart =
+							append(bundle.checksToStart, ch)
+					} else {
+						bundle.checksToRestart =
+							append(bundle.checksToRestart, ch)
+					}
+				}
+
+				bundle.unclassified = nil
+			}
+
+			a.prepareChecks(bundle.checksToStart, bundle.checksToRestart)
+
+		case respFrame := <-a.responses:
+			a.handleResponse(respFrame)
+
 		}
 	}
 }
@@ -288,7 +334,6 @@ func (a *agent) prepareChecks(checksToStart, checksToRestart []check.Check) {
 		allCheckIds = append(allCheckIds, ch.GetID())
 	}
 
-	a.checksLocker.Lock()
 	a.checksVersion++
 	ourPending := &pendingPrepare{
 		version:  a.checksVersion,
@@ -297,7 +342,6 @@ func (a *agent) prepareChecks(checksToStart, checksToRestart []check.Check) {
 	}
 	msgId := a.allocateMsgId()
 	a.pendingPrepares[msgId] = ourPending
-	a.checksLocker.Unlock()
 
 	prepareParams := &protocol.PollerPrepareStartParams{
 		Version:  int(a.checksVersion),
@@ -347,8 +391,6 @@ func (a *agent) handlePollerPrepareResponse(frame protocol.Frame, result *protoc
 	switch result.Status {
 	case protocol.PrepareResultStatusPrepared:
 
-		a.checksLocker.Lock()
-
 		prepareCommitParams := &protocol.PollerCommitParams{
 			Version: int(ourPending.version),
 		}
@@ -356,8 +398,6 @@ func (a *agent) handlePollerPrepareResponse(frame protocol.Frame, result *protoc
 		msgId := a.allocateMsgId()
 		delete(a.pendingPrepares, frame.GetId())
 		a.pendingPrepares[msgId] = ourPending
-
-		a.checksLocker.Unlock()
 
 		log.WithFields(log.Fields{
 			"agent":   a,
@@ -367,13 +407,11 @@ func (a *agent) handlePollerPrepareResponse(frame protocol.Frame, result *protoc
 
 	default:
 
-		a.checksLocker.Lock()
+		delete(a.pendingPrepares, frame.GetId())
 		log.WithFields(log.Fields{
 			"preparing": ourPending, // nil if unknown
 			"resp":      result,
 		}).Warn("Failed checks preparation")
-		delete(a.pendingPrepares, frame.GetId())
-		a.checksLocker.Unlock()
 
 	}
 }
@@ -382,12 +420,9 @@ func (a *agent) handlePollerCommitResponse(frame protocol.Frame, result *protoco
 
 	switch result.Status {
 	case protocol.PrepareResultStatusCommitted:
-		a.checksLocker.Lock()
 
 		a.committedChecks = set.NewSetFromSlice(ourPending.checkIds)
 		delete(a.pendingPrepares, frame.GetId())
-
-		a.checksLocker.Unlock()
 
 		log.WithFields(log.Fields{
 			"agent":   a,

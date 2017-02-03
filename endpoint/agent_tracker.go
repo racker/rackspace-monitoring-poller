@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/utils"
+	"net"
 	"path"
 )
 
@@ -50,7 +51,8 @@ type metricsPost struct {
 type AgentTracker struct {
 	cfg *config.EndpointConfig
 	// key is FrameMsgCommon.Source. All access to this map must be performed in the AgentTracker.start go routine
-	agents map[string]*agent
+	agentsBySource map[string]*agent
+	agentsByAddr   map[net.Addr]*agent
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -68,7 +70,8 @@ func NewAgentTracker(cfg *config.EndpointConfig) *AgentTracker {
 	return &AgentTracker{
 		cfg: cfg,
 
-		agents: make(map[string]*agent),
+		agentsBySource: make(map[string]*agent),
+		agentsByAddr:   make(map[net.Addr]*agent),
 
 		ctx:    ctx,
 		cancel: cancel,
@@ -89,11 +92,21 @@ func (at *AgentTracker) UseMetricsRouter(mr *MetricsRouter) {
 }
 
 // Returns a channel where errors observed about this agent are conveyed
-func (at *AgentTracker) handleHello(frame protocol.Frame, params *protocol.HandshakeParameters, responder *utils.SmartConn) <-chan error {
+func (at *AgentTracker) NewAgentFromHello(frame protocol.Frame, params *protocol.HandshakeParameters,
+	responder *utils.SmartConn) <-chan error {
 	newAgent, errors := newAgent(at.ctx, frame, params, responder, at.cfg.PrepareBlockSize)
 	at.agentsToGreet <- newAgent
+	at.agentsByAddr[responder.RemoteAddr()] = newAgent
 
 	return errors
+}
+
+func (at *AgentTracker) CloseAgentByAddr(addr net.Addr) {
+	if agent, ok := at.agentsByAddr[addr]; ok {
+		delete(at.agentsByAddr, addr)
+		delete(at.agentsBySource, agent.GetSourceId())
+		agent.Close()
+	}
 }
 
 func (at *AgentTracker) handleCheckMetricsPost(post *metricsPost) {
@@ -164,7 +177,7 @@ func (at *AgentTracker) runMetricsDecomposer(ctx context.Context) {
 }
 
 func (at *AgentTracker) handleMetricsPostReq(post *metricsPost) {
-	a, ok := at.agents[post.frame.GetSource()]
+	a, ok := at.agentsBySource[post.frame.GetSource()]
 	if !ok {
 		log.WithField("sourceId", post.frame.GetSource()).Warn("Trying to handle metrics from unknown source")
 		return
@@ -179,13 +192,13 @@ func (at *AgentTracker) handleMetricsPostReq(post *metricsPost) {
 }
 
 func (at *AgentTracker) handleResponse(frame protocol.Frame) {
-	a, ok := at.agents[frame.GetSource()]
+	a, ok := at.agentsBySource[frame.GetSource()]
 	if !ok {
 		log.WithField("sourceId", frame.GetSource()).Warn("Got response unknown source")
 		return
 	}
 
-	a.handleResponse(frame)
+	a.HandleResponse(frame)
 }
 
 func (at *AgentTracker) applyInitialChecks(a *agent) {
@@ -203,7 +216,7 @@ func (at *AgentTracker) handleGreetedAgent(greetedAgent *agent) {
 	log.WithField("agent", greetedAgent).Debug("Handling greeted agent")
 
 	sourceId := greetedAgent.sourceId
-	if _, exists := at.agents[sourceId]; exists {
+	if _, exists := at.agentsBySource[sourceId]; exists {
 		log.WithFields(log.Fields{
 			"sourceId": sourceId,
 		}).Warn("Agent greeting already observed")
@@ -214,7 +227,7 @@ func (at *AgentTracker) handleGreetedAgent(greetedAgent *agent) {
 		return
 	}
 
-	at.agents[sourceId] = greetedAgent
+	at.agentsBySource[sourceId] = greetedAgent
 
 	go at.applyInitialChecks(greetedAgent)
 }

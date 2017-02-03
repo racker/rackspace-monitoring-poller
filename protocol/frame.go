@@ -67,6 +67,14 @@ type FrameMsg struct {
 	RawResult json.RawMessage `json:"result,omitempty"`
 }
 
+func NewFinishedFrame() *FrameMsg {
+	return &FrameMsg{}
+}
+
+func (f *FrameMsg) IsFinished() bool {
+	return f.Version == "" && f.Id == 0 && f.Target == "" && f.Source == "" && f.Method == ""
+}
+
 func (f *FrameMsgCommon) SetRawId(id uint64) {
 	f.Id = id
 }
