@@ -22,6 +22,7 @@
 package main
 
 import (
+	"fmt"
 	"math/rand"
 	"os"
 	"time"
@@ -47,7 +48,17 @@ var (
 	Formatter log.Formatter = &log.JSONFormatter{
 		TimestampFormat: time.RFC1123,
 	}
+
+	Version = "1.0.0+git"
 )
+
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Prints version information",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println(Version)
+	},
+}
 
 func init() {
 	rand.Seed(time.Now().UTC().UnixNano())
@@ -67,6 +78,7 @@ func initEnv() {
 }
 
 func main() {
+	pollerCmd.AddCommand(versionCmd)
 	pollerCmd.AddCommand(commands.ServeCmd)
 	pollerCmd.AddCommand(commands.EndpointCmd)
 	pollerCmd.Execute()
