@@ -19,6 +19,7 @@ package protocol
 import (
 	"encoding/json"
 	"github.com/racker/rackspace-monitoring-poller/config"
+	"github.com/racker/rackspace-monitoring-poller/protocol/check"
 	"github.com/racker/rackspace-monitoring-poller/utils"
 )
 
@@ -42,8 +43,8 @@ type HandshakeRequest struct {
 
 func NewHandshakeRequest(cfg *config.Config) Frame {
 	f := &HandshakeRequest{}
-	f.Version = "1"
-	f.Method = "handshake.hello"
+	f.Version = Version
+	f.Method = MethodHandshakeHello
 	f.Params.Token = cfg.Token
 	f.Params.AgentId = cfg.AgentId
 	f.Params.AgentName = cfg.AgentName
@@ -112,8 +113,8 @@ func DecodeHeartbeatResponse(frame *FrameMsg) *HeartbeatResponse {
 
 func NewHeartbeatRequest() *HeartbeatRequest {
 	f := &HeartbeatRequest{}
-	f.Version = "1"
-	f.Method = "heartbeat.post"
+	f.Version = Version
+	f.Method = MethodHeartbeatPost
 	f.Params.Timestamp = utils.NowTimestampMillis()
 	return f
 }
@@ -132,8 +133,8 @@ type CheckScheduleGet struct {
 
 func NewCheckScheduleGet() Frame {
 	f := &CheckScheduleGet{}
-	f.Version = "1"
-	f.Method = "check_schedule.get"
+	f.Version = Version
+	f.Method = MethodCheckScheduleGet
 	f.Params = map[string]uint64{"blah": 1}
 	return f
 }
@@ -185,4 +186,180 @@ type MetricsPostRequest struct {
 
 func (r MetricsPostRequest) Encode() ([]byte, error) {
 	return json.Marshal(r)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Poller Prepare (start, block, end)
+
+const (
+	PrepareActionStart    = "start"
+	PrepareActionRestart  = "restart"
+	PrepareActionContinue = "continue"
+
+	PrepareDirectivePrepare = "prepare"
+	PrepareDirectiveAbort   = "abort"
+
+	PrepareResultStatusPrepared  = "prepared"
+	PrepareResultStatusAborted   = "aborted"
+	PrepareResultStatusFailed    = "failed"
+	PrepareResultStatusIgnored   = "ignored"
+	PrepareResultStatusCommitted = "committed"
+)
+
+type PollerPrepareManifest struct {
+	// Action is one of PrepareAction* constants
+	Action    string `json:"action"`
+	Id        string `json:"id"`
+	CheckType string `json:"type"`
+	EntityId  string `json:"entity_id"`
+	ZoneId    string `json:"zone_id"`
+}
+
+// PollerPrepareRequest abstracts common info across the "poller.prepare.*" methods
+type PollerPrepareRequest interface {
+	GetPreparationVersion() int
+}
+
+// PollerPrepareStartParams is the params of a message with method=MethodPollerPrepare
+type PollerPrepareStartParams struct {
+	Version  int                     `json:"version"`
+	Manifest []PollerPrepareManifest `json:"manifest"`
+}
+
+type PollerPrepareStartRequest struct {
+	FrameMsg
+	Params PollerPrepareStartParams `json:"params"`
+}
+
+func (req *PollerPrepareStartRequest) GetPreparationVersion() int {
+	return req.Params.Version
+}
+
+func DecodePollerPrepareStartRequest(frame *FrameMsg) *PollerPrepareStartRequest {
+	req := &PollerPrepareStartRequest{}
+	req.SetFromFrameMsg(frame)
+	if frame.GetRawParams() != nil {
+		json.Unmarshal(frame.GetRawParams(), &req.Params)
+	}
+	return req
+}
+
+// PollerPrepareBlockParams is the params of a message with method=MethodPollerPrepareBlock
+type PollerPrepareBlockParams struct {
+	Version int              `json:"version"`
+	Block   []*check.CheckIn `json:"block"`
+}
+
+type PollerPrepareBlockRequest struct {
+	FrameMsg
+	Params PollerPrepareBlockParams `json:"params"`
+}
+
+func (req *PollerPrepareBlockRequest) GetPreparationVersion() int {
+	return req.Params.Version
+}
+
+func DecodePollerPrepareBlockRequest(frame *FrameMsg) *PollerPrepareBlockRequest {
+	req := &PollerPrepareBlockRequest{}
+	req.SetFromFrameMsg(frame)
+	if frame.GetRawParams() != nil {
+		json.Unmarshal(frame.GetRawParams(), &req.Params)
+	}
+	return req
+}
+
+// PollerPrepareBlockParams is the params of a message with method=MethodPollerPrepareEnd
+type PollerPrepareEndParams struct {
+	Version int `json:"version"`
+	// Directive is one of PrepareDirective* constants
+	Directive string `json:"directive"`
+}
+
+type PollerPrepareEndRequest struct {
+	FrameMsg
+	Params PollerPrepareEndParams `json:"params"`
+}
+
+func (req *PollerPrepareEndRequest) GetPreparationVersion() int {
+	return req.Params.Version
+}
+
+func DecodePollerPrepareEndRequest(frame *FrameMsg) *PollerPrepareEndRequest {
+	req := &PollerPrepareEndRequest{}
+	req.SetFromFrameMsg(frame)
+	if frame.GetRawParams() != nil {
+		json.Unmarshal(frame.GetRawParams(), &req.Params)
+	}
+	return req
+}
+
+// PollerCommitParams is the params of a message with method=MethodPollerCommit
+type PollerCommitParams struct {
+	Version int `json:"version"`
+}
+
+type PollerCommitRequest struct {
+	FrameMsg
+	Params PollerCommitParams `json:"params"`
+}
+
+func DecodePollerCommitRequest(frame *FrameMsg) *PollerCommitRequest {
+	req := &PollerCommitRequest{}
+	req.SetFromFrameMsg(frame)
+	if frame.GetRawParams() != nil {
+		json.Unmarshal(frame.GetRawParams(), &req.Params)
+	}
+	return req
+}
+
+type PollerPrepareResult struct {
+	Version int `json:"version"`
+	// Status is one of PrepareResultStatus* constants
+	Status  string `json:"status"`
+	Details string `json:"details"`
+}
+
+type PollerPrepareResponse struct {
+	FrameMsg
+	Result PollerPrepareResult `json:"result"`
+}
+
+func NewPollerPrepareResponse(source *FrameMsg, result PollerPrepareResult) Frame {
+	resp := &FrameMsg{}
+	resp.SetResponseFrameMsg(source)
+
+	raw, err := json.Marshal(result)
+	if err != nil {
+		return nil
+	}
+
+	resp.RawResult = json.RawMessage(raw)
+
+	return resp
+}
+
+type PollerCommitResult struct {
+	Version int `json:"version"`
+	// Status is one of PrepareResultStatus* constants
+	Status  string `json:"status"`
+	Details string `json:"details"`
+}
+
+func NewPollerPrepareCommitResponse(source *FrameMsg, result PollerCommitResult) Frame {
+	resp := &FrameMsg{}
+	resp.SetResponseFrameMsg(source)
+
+	raw, err := json.Marshal(result)
+	if err != nil {
+		return nil
+	}
+
+	resp.RawResult = json.RawMessage(raw)
+
+	return resp
+}
+
+type PollerCommitResponse struct {
+	FrameMsg
+	Result PollerCommitResult `json:"result"`
 }

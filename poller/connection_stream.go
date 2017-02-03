@@ -70,7 +70,6 @@ func NewCustomConnectionStream(config *config.Config, rootCAs *x509.CertPool, co
 	stream.stopCh = make(chan struct{}, 1)
 	for _, pz := range config.ZoneIds {
 		stream.schedulers[pz] = NewScheduler(pz, stream)
-		go stream.schedulers[pz].RunFrameConsumer()
 	}
 	return stream
 }
@@ -97,6 +96,29 @@ func (cs *EleConnectionStream) GetConnections() map[string]Connection {
 	return cs.conns
 }
 
+// ReconcileChecks routes the ChecksPreparation to its schedulers.
+func (cs *EleConnectionStream) ReconcileChecks(cp ChecksPrepared) {
+	for _, sched := range cs.schedulers {
+		sched.ReconcileChecks(cp)
+	}
+}
+
+func (cs *EleConnectionStream) ValidateChecks(cp ChecksPreparing) error {
+	for _, sched := range cs.schedulers {
+		err := sched.ValidateChecks(cp)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"scheduler": sched,
+				"cp":        cp,
+				"err":       err,
+			}).Warn("Scheduler was not able to validate check preparation")
+			return err
+		}
+	}
+
+	return nil
+}
+
 // Stop explicitly stops all connections in the stream and notifies the channel
 func (cs *EleConnectionStream) Stop() {
 	if cs.conns == nil {
@@ -111,11 +133,6 @@ func (cs *EleConnectionStream) Stop() {
 // StopNotify returns a stop channel
 func (cs *EleConnectionStream) StopNotify() chan struct{} {
 	return cs.stopCh
-}
-
-// GetSchedulers returns a map of schedulers set up for the stream
-func (cs *EleConnectionStream) GetSchedulers() map[string]Scheduler {
-	return cs.schedulers
 }
 
 // SendMetrics sends a CheckResultSet via the first connection it can

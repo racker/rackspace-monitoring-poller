@@ -53,7 +53,6 @@ type ConnectionStream interface {
 	RegisterConnection(qry string, conn Connection) error
 	Stop()
 	StopNotify() chan struct{}
-	GetSchedulers() map[string]Scheduler
 	SendMetrics(crs *check.ResultSet) error
 	Connect()
 	WaitCh() <-chan struct{}
@@ -63,7 +62,6 @@ type ConnectionStream interface {
 // Connection interface wraps the methods required to manage a
 // single connection.
 type Connection interface {
-	GetStream() ConnectionStream
 	GetSession() Session
 	SetReadDeadline(deadline time.Time)
 	SetWriteDeadline(deadline time.Time)
@@ -99,17 +97,32 @@ type CheckExecutor interface {
 	Execute(ch check.Check)
 }
 
+// ChecksReconciler is implemented by receivers that can either reconcile prepared checks during a commit or
+// pre-validate the checks prior to committing.
+type ChecksReconciler interface {
+	// ReconcileChecks acts upon the given ChecksPrepared during a commit-phase.
+	// The bulk of the processing is likely handled in an alternate go routine, so errors in the given
+	// ChecksPrepared are handled but not reportable back to this caller. Use ValidateChecks prior to calling
+	// this to pre-compute those errors.
+	ReconcileChecks(cp ChecksPrepared)
+
+	// Validate goes through the motions of ReconcileChecks in order to pre-validate consistency.
+	// Unlike ReconcileChecks, this function should only require the manifest level of detail in the ActionableCheck
+	// instances.
+	// Returns an error upon finding the first entry that is not valid.
+	ValidateChecks(cp ChecksPreparing) error
+}
+
 // Scheduler interface wraps the methods that schedule
 // metric setup and sending
 type Scheduler interface {
-	GetInput() chan protocol.Frame
+	ChecksReconciler
+
 	Close()
 	SendMetrics(crs *check.ResultSet)
-	Register(ch check.Check) error
-	RunFrameConsumer()
 	GetZoneID() string
 	GetContext() (ctx context.Context, cancel context.CancelFunc)
-	GetChecks() map[string]check.Check
+	GetScheduledChecks() []check.Check
 }
 
-type ConnectionFactory func(address string, guid string, stream ConnectionStream) Connection
+type ConnectionFactory func(address string, guid string, checksReconciler ChecksReconciler) Connection

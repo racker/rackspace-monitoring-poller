@@ -21,9 +21,15 @@ import (
 	"math/rand"
 	"time"
 
+	"errors"
+	"fmt"
 	log "github.com/Sirupsen/logrus"
+	set "github.com/deckarep/golang-set"
 	"github.com/racker/rackspace-monitoring-poller/check"
-	"github.com/racker/rackspace-monitoring-poller/protocol"
+)
+
+const (
+	checkPreparationBufferSize = 10
 )
 
 // EleScheduler implements Scheduler interface.
@@ -32,9 +38,9 @@ type EleScheduler struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	zoneID string
-	checks map[string]check.Check
-	input  chan protocol.Frame
+	zoneID       string
+	checks       map[string]check.Check
+	preparations chan ChecksPrepared
 
 	stream ConnectionStream
 
@@ -52,12 +58,12 @@ func NewScheduler(zoneID string, stream ConnectionStream) Scheduler {
 // Nil can be passed to either checkScheduler and/or checkExecutor to enable the default behavior.
 func NewCustomScheduler(zoneID string, stream ConnectionStream, checkScheduler CheckScheduler, checkExecutor CheckExecutor) Scheduler {
 	s := &EleScheduler{
-		checks:    make(map[string]check.Check),
-		input:     make(chan protocol.Frame, 1024),
-		stream:    stream,
-		zoneID:    zoneID,
-		scheduler: checkScheduler,
-		executor:  checkExecutor,
+		checks:       make(map[string]check.Check),
+		preparations: make(chan ChecksPrepared, checkPreparationBufferSize),
+		stream:       stream,
+		zoneID:       zoneID,
+		scheduler:    checkScheduler,
+		executor:     checkExecutor,
 	}
 
 	// by default we are our own scheduler/executor of checks
@@ -69,6 +75,8 @@ func NewCustomScheduler(zoneID string, stream ConnectionStream, checkScheduler C
 	}
 
 	s.ctx, s.cancel = context.WithCancel(context.Background())
+
+	go s.runReconciler()
 
 	return s
 
@@ -84,22 +92,135 @@ func (s *EleScheduler) GetContext() (ctx context.Context, cancel context.CancelF
 	return s.ctx, s.cancel
 }
 
-// GetChecks retrieves check map
-func (s *EleScheduler) GetChecks() map[string]check.Check {
-	return s.checks
-}
-
-// GetInput returns protocol.Frame channel
-func (s *EleScheduler) GetInput() chan protocol.Frame {
-	return s.input
-}
-
 // Close cancels the context and closes the connection
 func (s *EleScheduler) Close() {
 	s.cancel()
 }
 
+func (s *EleScheduler) GetScheduledChecks() []check.Check {
+	checks := make([]check.Check, 0, len(s.checks))
+
+	for _, entry := range s.checks {
+		checks = append(checks, entry)
+	}
+
+	return checks
+}
+
+func (s *EleScheduler) ReconcileChecks(cp ChecksPrepared) {
+	s.preparations <- cp
+}
+
+func (s *EleScheduler) runReconciler() {
+	for {
+		select {
+		case cp := <-s.preparations:
+			s.reconcile(cp)
+
+		case <-s.ctx.Done():
+			return
+		}
+	}
+}
+
+func (s *EleScheduler) ValidateChecks(cp ChecksPreparing) error {
+	actionableChecks := cp.GetActionableChecks()
+	for _, ac := range actionableChecks {
+
+		switch ac.Action {
+		case ActionTypeStart:
+			_, exists := s.checks[ac.Id]
+			if exists {
+				return errors.New(fmt.Sprintf("Reconciling was told to start a check, but it already existed: %v", ac.Id))
+			}
+		case ActionTypeRestart:
+			_, exists := s.checks[ac.Id]
+			if !exists {
+				return errors.New(fmt.Sprintf("Reconciling was told to restart a check, but it does not exist: %v", ac.Id))
+			}
+		case ActionTypeContinue:
+			_, exists := s.checks[ac.Id]
+			if !exists {
+				return errors.New(fmt.Sprintf("Reconciling was told to continue a check, but it does not exist: %v", ac.Id))
+			}
+		}
+	}
+
+	return nil
+}
+
+func (s *EleScheduler) reconcile(cp ChecksPrepared) {
+	log.WithField("cp", cp).Debug("Reconciling prepared checks")
+
+	// remainder will be used at the end to find ones were implicitly removed and need to be canceled out
+	remainder := set.NewThreadUnsafeSet()
+	for id, _ := range s.checks {
+		remainder.Add(id)
+	}
+
+	actionableChecks := cp.GetActionableChecks()
+	for _, ac := range actionableChecks {
+		remainder.Remove(ac.Id)
+
+		switch ac.Action {
+		case ActionTypeStart:
+			existingCheck, exists := s.checks[ac.Id]
+			if exists {
+				log.WithField("checkId", ac.Id).Warn("Reconciling was told to start a check, but it already existed.")
+				existingCheck.Cancel()
+			}
+			err := s.initiateCheck(ac)
+			if err != nil {
+				log.WithField("details", string(*ac.RawDetails)).Warn("Unable to initiate check")
+			}
+
+		case ActionTypeRestart:
+			existingCheck, exists := s.checks[ac.Id]
+			if exists {
+				existingCheck.Cancel()
+			} else {
+				log.WithField("checkId", ac.Id).Warn("Reconciling was told to restart a check, but it does not exist.")
+			}
+			err := s.initiateCheck(ac)
+			if err != nil {
+				log.WithField("details", string(*ac.RawDetails)).Warn("Unable to initiate check")
+			}
+
+		case ActionTypeContinue:
+			_, exists := s.checks[ac.Id]
+			if !exists {
+				log.WithField("checkId", ac.Id).Warn("Reconciling was told to continue a check, but it does not exist.")
+			}
+		}
+	}
+
+	for checkIdToRemove := range remainder.Iter() {
+		log.WithField("checkId", checkIdToRemove).Debug("Removing check implicitly due to absence in check preparation")
+
+		checkIdToRemoveStr := checkIdToRemove.(string)
+		checkToRemove := s.checks[checkIdToRemoveStr]
+		delete(s.checks, checkIdToRemoveStr)
+		checkToRemove.Cancel()
+	}
+}
+
+func (s *EleScheduler) initiateCheck(ac ActionableCheck) error {
+	newCheck, err := check.NewCheckParsed(s.ctx, ac.CheckIn)
+	if err != nil {
+		return err
+	}
+	s.checks[newCheck.GetID()] = newCheck
+	s.scheduler.Schedule(newCheck)
+
+	return nil
+}
+
+// Schedule is the default implementation of CheckScheduler that kicks off a go routine to run a check's timer.
 func (s *EleScheduler) Schedule(ch check.Check) {
+	go s.runCheckTimerLoop(ch)
+}
+
+func (s *EleScheduler) runCheckTimerLoop(ch check.Check) {
 	// Spread the checks out over 30 seconds
 	jitter := rand.Intn(CheckSpreadInMilliseconds) + 1
 
@@ -109,22 +230,20 @@ func (s *EleScheduler) Schedule(ch check.Check) {
 		"waitPeriod": ch.GetWaitPeriod(),
 	}).Info("Starting check")
 
-	go func() {
-		time.Sleep(time.Duration(jitter) * time.Millisecond)
-		for {
-			select {
-			case <-time.After(ch.GetWaitPeriod()):
-				s.executor.Execute(ch)
+	time.Sleep(time.Duration(jitter) * time.Millisecond)
+	for {
+		select {
+		case <-time.After(ch.GetWaitPeriod()):
+			s.executor.Execute(ch)
 
-			case <-ch.Done(): // session cancellation is propagated since check context is child of session context
-				log.WithField("check", ch.GetID()).Info("Check or session has been cancelled")
-				return
-			}
+		case <-ch.Done(): // session cancellation is propagated since check context is child of session context
+			log.WithField("check", ch.GetID()).Info("Check or session has been cancelled")
+			return
 		}
-
-	}()
+	}
 }
 
+// Execute perform the default CheckExecutor behavior by running the check and sending its results via SendMetrics.
 func (s *EleScheduler) Execute(ch check.Check) {
 	crs, err := ch.Run()
 	if err != nil {
@@ -138,36 +257,4 @@ func (s *EleScheduler) Execute(ch check.Check) {
 // SendMetrics sends metrics passed in crs parameter via the stream
 func (s *EleScheduler) SendMetrics(crs *check.ResultSet) {
 	s.stream.SendMetrics(crs)
-}
-
-// Register registers the passed in ch check in the checks list
-func (s *EleScheduler) Register(ch check.Check) error {
-	if ch == nil {
-		return ErrCheckEmpty
-	}
-	s.checks[ch.GetID()] = ch
-	return nil
-}
-
-// RunFrameConsumer method runs the check.  It sets up the new check
-// and sends it.
-func (s *EleScheduler) RunFrameConsumer() {
-	for {
-		select {
-		case f := <-s.GetInput():
-
-			// TODO Later this will probably need to handle check cancellations in which case it can call ch.Cancel()
-
-			checkCtx, cancelFunc := context.WithCancel(s.ctx)
-			ch := check.NewCheck(checkCtx, f.GetRawParams(), cancelFunc)
-			if ch == nil {
-				log.Printf("Invalid Check")
-				continue
-			}
-			s.Register(ch)
-			s.scheduler.Schedule(ch)
-		case <-s.ctx.Done():
-			return
-		}
-	}
 }

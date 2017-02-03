@@ -41,10 +41,15 @@ type EndpointConfig struct {
 	//       checks/
 	//         *.json
 	AgentsConfigDir string
+
+	PrepareBlockSize int
 }
 
 func NewEndpointConfig() *EndpointConfig {
-	return &EndpointConfig{}
+	return &EndpointConfig{
+		// use a small default to purposely exercise multi-block prepare logic
+		PrepareBlockSize: 2,
+	}
 }
 
 func (cfg *EndpointConfig) LoadFromFile(filepath string) error {

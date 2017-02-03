@@ -86,13 +86,14 @@ func (s *BasicServer) ListenAndServe() error {
 		if err != nil {
 			log.Fatal("Failed to accept connection", err.Error())
 		}
-		go s.runConnectionHandling(rootContext, conn)
+		go s.runConnectionHandler(rootContext, conn)
 	}
 }
 
-func (s *BasicServer) runConnectionHandling(ctx context.Context, c net.Conn) {
+func (s *BasicServer) runConnectionHandler(ctx context.Context, c net.Conn) {
 	defer c.Close()
-	log.WithField("remoteAddr", c.RemoteAddr()).Info("Handling connection")
+	log.WithField("remoteAddr", c.RemoteAddr()).Info("Started handling connection")
+	defer log.WithField("remoteAddr", c.RemoteAddr()).Info("Stopped handling connection")
 
 	smartC := utils.NewSmartConn(c)
 
@@ -115,6 +116,11 @@ func (s *BasicServer) runConnectionHandling(ctx context.Context, c net.Conn) {
 			return
 
 		case frame := <-frames:
+			if frame.IsFinished() {
+				log.WithField("remoteAddr", c.RemoteAddr()).Debug("Handling finished frame")
+				s.AgentTracker.CloseAgentByAddr(c.RemoteAddr())
+				return
+			}
 			err := s.handleFrame(ctx, smartC, frame)
 			if err != nil {
 				log.Warnln("Failed to consume frame", err)
@@ -127,6 +133,7 @@ func (s *BasicServer) runConnectionHandling(ctx context.Context, c net.Conn) {
 	}
 }
 
+// runFrameDecoder needs to be spun off since json.Decoder is a blocking read
 func (s *BasicServer) runFrameDecoder(c *utils.SmartConn, frames chan<- *protocol.FrameMsg) {
 	log.WithField("remoteAddr", c.RemoteAddr()).Debug("Frame decoder starting")
 	defer log.WithField("remoteAddr", c.RemoteAddr()).Debug("Frame decoder stopped")
@@ -141,23 +148,28 @@ func (s *BasicServer) runFrameDecoder(c *utils.SmartConn, frames chan<- *protoco
 			return
 		}
 
-		log.WithField("remoteAddr", c.RemoteAddr()).Debug("Received frame")
+		log.WithFields(log.Fields{
+			"id":     frame.Id,
+			"method": frame.Method,
+			"from":   c.RemoteAddr(),
+		}).Debug("RECV frame")
 		frames <- &frame
 	}
+	frames <- protocol.NewFinishedFrame()
 }
 
-func (s *BasicServer) handleFrame(ctx context.Context, c *utils.SmartConn, frame *protocol.FrameMsg) error {
+func (s *BasicServer) handleFrame(ctx context.Context, c *utils.SmartConn, frame protocol.Frame) error {
 	log.WithFields(log.Fields{
 		"remoteAddr": c.RemoteAddr(),
-		"msgId":      frame.Id,
-		"source":     frame.Source,
-		"method":     frame.Method,
+		"msgId":      frame.GetId(),
+		"source":     frame.GetSource(),
+		"method":     frame.GetMethod(),
 	}).Debug("Consuming frame")
 
-	switch frame.Method {
+	switch frame.GetMethod() {
 	case protocol.MethodHandshakeHello:
-		handshakeReq := &protocol.HandshakeRequest{FrameMsg: *frame}
-		err := json.Unmarshal(frame.RawParams, &handshakeReq.Params)
+		params := &protocol.HandshakeParameters{}
+		err := json.Unmarshal(frame.GetRawParams(), params)
 		if err != nil {
 			logUnmarshalError(c, frame)
 			return err
@@ -165,59 +177,67 @@ func (s *BasicServer) handleFrame(ctx context.Context, c *utils.SmartConn, frame
 
 		sendHandshakeResponse(c, frame)
 
-		agentErrors := s.AgentTracker.ProcessHello(*handshakeReq, c)
-		go watchForAgentErrors(ctx, agentErrors, c)
+		agentErrors := s.AgentTracker.NewAgentFromHello(frame, params, c)
+		go waitOnAgentError(ctx, agentErrors, c)
 
 	case protocol.MethodCheckMetricsPost:
-		metricsPostReq := &protocol.MetricsPostRequest{FrameMsg: *frame}
-		err := json.Unmarshal(frame.RawParams, &metricsPostReq.Params)
+		params := &protocol.MetricsPostRequestParams{}
+
+		err := json.Unmarshal(frame.GetRawParams(), params)
 		if err != nil {
 			logUnmarshalError(c, frame)
 			return err
 		}
 
-		s.AgentTracker.ProcessCheckMetricsPost(*metricsPostReq)
+		s.AgentTracker.handleCheckMetricsPost(&metricsPost{
+			params: params,
+			frame:  frame,
+		})
 
 	case protocol.MethodHeartbeatPost:
-		log.WithField("remoteAddr", c.RemoteAddr()).Debug("Received heartbeat")
+		log.WithField("remoteAddr", c.RemoteAddr()).Debug("RECV heartbeat")
 		sendHeartbeatResponse(c, frame)
 
+	case "": // response
+		log.WithField("remoteAddr", c.RemoteAddr()).Debug("RECV response")
+		s.AgentTracker.handleResponse(frame)
+
 	default:
-		return types.Error{Msg: "Unsupported method: " + frame.Method}
+		return types.Error{Msg: "Unsupported method: " + frame.GetMethod()}
 	}
 
 	return nil
 }
 
-func sendHeartbeatResponse(c *utils.SmartConn, frame *protocol.FrameMsg) {
+func sendHeartbeatResponse(c *utils.SmartConn, frame protocol.Frame) {
 	resp := &protocol.HeartbeatResponse{}
 	resp.Method = protocol.MethodEmpty
-	resp.Id = frame.Id
+	resp.Id = frame.GetId()
 	resp.Result.Timestamp = utils.NowTimestampMillis()
 
 	log.WithField("resp", resp).Debug("SEND heartbeat resp")
 	c.WriteJSON(resp)
 }
 
-func sendHandshakeResponse(c *utils.SmartConn, frame *protocol.FrameMsg) {
+func sendHandshakeResponse(c *utils.SmartConn, frame protocol.Frame) {
 	resp := &protocol.HandshakeResponse{}
 	resp.Method = protocol.MethodEmpty
-	resp.Id = frame.Id
+	resp.Id = frame.GetId()
 	resp.Result.HeartbeatInterval = ExpectedAgentHeartbeatSec * 1000
 
 	log.WithField("resp", resp).Debug("SEND handshake resp")
 	c.WriteJSON(resp)
 }
 
-func logUnmarshalError(c *utils.SmartConn, frame *protocol.FrameMsg) {
+func logUnmarshalError(c *utils.SmartConn, frame protocol.Frame) {
 	log.WithFields(log.Fields{
-		"rawParams":  frame.RawParams,
-		"method":     frame.Method,
+		"rawParams":  frame.GetRawParams(),
+		"method":     frame.GetMethod(),
 		"remoteAddr": c.RemoteAddr(),
 	}).Warn("Failed to unmarshal raw params")
 }
 
-func watchForAgentErrors(ctx context.Context, agentErrors <-chan error, c *utils.SmartConn) {
+func waitOnAgentError(ctx context.Context, agentErrors <-chan error, c *utils.SmartConn) {
 	select {
 	case err := <-agentErrors:
 		log.WithField("remoteAddr", c.RemoteAddr()).Warn("Agent registration problem. Closing channel.", err)
@@ -226,5 +246,4 @@ func watchForAgentErrors(ctx context.Context, agentErrors <-chan error, c *utils
 	case <-ctx.Done():
 		return
 	}
-
 }

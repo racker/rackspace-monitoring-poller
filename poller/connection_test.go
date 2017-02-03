@@ -10,6 +10,7 @@ import (
 
 	"net/url"
 
+	"github.com/golang/mock/gomock"
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/poller"
 	"github.com/stretchr/testify/assert"
@@ -17,37 +18,6 @@ import (
 
 func staticResponse(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, []byte(`{"test": 1}`))
-}
-
-func TestNewConnection(t *testing.T) {
-	type args struct {
-		address string
-		guid    string
-		stream  poller.ConnectionStream
-	}
-	var testStream = &poller.EleConnectionStream{}
-	tests := []struct {
-		name     string
-		args     args
-		expected *poller.EleConnectionStream
-	}{
-		{
-			name: "Happy path",
-			args: args{
-				address: "http://example.com",
-				guid:    "my-pure-awesomeness",
-				stream:  testStream,
-			},
-			expected: testStream,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := poller.NewConnection(tt.args.address, tt.args.guid, tt.args.stream)
-			//validate stream
-			assert.Equal(t, tt.expected, got.GetStream(), fmt.Sprintf("NewConnection() stream = %v, expected %v", got, tt.expected))
-		})
-	}
 }
 
 func TestConnection_Connect(t *testing.T) {
@@ -106,7 +76,12 @@ func TestConnection_Connect(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			conn := poller.NewConnection(tt.url(), tt.guid, tt.stream)
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			reconciler := poller.NewMockChecksReconciler(ctrl)
+
+			conn := poller.NewConnection(tt.url(), tt.guid, reconciler)
 			if tt.expectedErr {
 				err := conn.Connect(tt.ctx, config.NewConfig("1-2-3", false), nil)
 				assert.EqualError(

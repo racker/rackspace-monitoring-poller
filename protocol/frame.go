@@ -59,10 +59,20 @@ type FrameMsgCommon struct {
 	Error *Error `json:"error,omitempty"`
 }
 
+// FrameMsg implements Frame and conveys the raw params and result of a frame.
+// This object is suitable for first-pass unmarshaling/decoding and for sending.
 type FrameMsg struct {
 	FrameMsgCommon
 	RawParams json.RawMessage `json:"params,omitempty"`
 	RawResult json.RawMessage `json:"result,omitempty"`
+}
+
+func NewFinishedFrame() *FrameMsg {
+	return &FrameMsg{}
+}
+
+func (f *FrameMsg) IsFinished() bool {
+	return f.Version == "" && f.Id == 0 && f.Target == "" && f.Source == "" && f.Method == ""
 }
 
 func (f *FrameMsgCommon) SetRawId(id uint64) {

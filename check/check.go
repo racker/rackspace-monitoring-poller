@@ -80,6 +80,7 @@ type Check interface {
 	GetID() string
 	SetID(id string)
 	GetEntityID() string
+	GetZoneID() string
 	GetCheckType() string
 	SetCheckType(checkType string)
 	GetPeriod() uint64
@@ -91,6 +92,7 @@ type Check interface {
 	Cancel()
 	Done() <-chan struct{}
 	Run() (*ResultSet, error)
+	GetCheckIn() *protocheck.CheckIn
 }
 
 // WaitPeriodTimeMeasurement sets up the time measurement
@@ -156,6 +158,11 @@ func (ch *Base) GetEntityID() string {
 	return ch.EntityId
 }
 
+// GetZoneID returns check's zone ID
+func (ch *Base) GetZoneID() string {
+	return ch.ZoneId
+}
+
 // GetTimeout returns check's timeout
 func (ch *Base) GetTimeout() uint64 {
 	return ch.Timeout
@@ -185,6 +192,11 @@ func (ch *Base) Cancel() {
 // Done method listens on channel's context to close
 func (ch *Base) Done() <-chan struct{} {
 	return ch.context.Done()
+}
+
+// GetCheckIn resolves the underlying instance
+func (ch *Base) GetCheckIn() *protocheck.CheckIn {
+	return &ch.CheckIn
 }
 
 // TLSMetrics is utilized the provide TLS metrics

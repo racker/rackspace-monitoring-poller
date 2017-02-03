@@ -61,7 +61,8 @@ func (mr *MetricsRouter) Route(metric Metric) {
 func (mr *MetricsRouter) start() {
 	for {
 		metric := <-mr.metrics
-		log.WithField("metric", metric).Debug("Routing to bit bucket...for now")
+		metricBlob := fmt.Sprintf("%v:%v|%v", metric.Name, metric.Value, metric.MetricType)
+		log.WithField("metric", metricBlob).Debug("Routing to bit bucket...for now")
 		//TODO
 	}
 }

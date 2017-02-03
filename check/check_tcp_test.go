@@ -24,8 +24,9 @@ import (
 	"testing"
 
 	log "github.com/Sirupsen/logrus"
-	check "github.com/racker/rackspace-monitoring-poller/check"
+	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/utils"
+	"github.com/stretchr/testify/require"
 )
 
 func ValidateMetrics(t *testing.T, metrics []string, cr *check.Result) {
@@ -62,7 +63,8 @@ func TestTCP_TLSRunSuccess(t *testing.T) {
 	  "target_resolver":"",
 	  "disabled":false
 	  }`, listenPort)
-	check := check.NewCheck(context.Background(), []byte(checkData), func() {})
+	check, err := check.NewCheck(context.Background(), []byte(checkData))
+	require.NoError(t, err)
 
 	// Run check
 	crs, err := check.Run()
@@ -133,7 +135,8 @@ func TestTCPRunSuccess(t *testing.T) {
 	  "target_resolver":"",
 	  "disabled":false
 	  }`, listenPort)
-	check := check.NewCheck(context.Background(), []byte(checkData), func() {})
+	check, err := check.NewCheck(context.Background(), []byte(checkData))
+	require.NoError(t, err)
 
 	// Run check
 	crs, err := check.Run()
@@ -181,7 +184,8 @@ func TestTCPRunFailureClosedPort(t *testing.T) {
 	  "target_resolver":"",
 	  "disabled":false
 	  }`, listenPort)
-	check := check.NewCheck(context.Background(), []byte(checkData), func() {})
+	check, err := check.NewCheck(context.Background(), []byte(checkData))
+	require.NoError(t, err)
 
 	// Run check
 	crs, err := check.Run()

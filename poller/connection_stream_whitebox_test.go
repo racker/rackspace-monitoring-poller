@@ -15,6 +15,7 @@ import (
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/utils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestConnectionStream_Stop(t *testing.T) {
@@ -111,20 +112,29 @@ func TestConnection_WaitCh(t *testing.T) {
 	assert.True(t, result, "wait channel never notified")
 }
 
-func TestConnection_GetScheduler(t *testing.T) {
-	cs := NewConnectionStream(config.NewConfig("test-guid", false), nil)
-	assert.Equal(t, cs.(*EleConnectionStream).schedulers, cs.GetSchedulers())
-}
-
 func TestConnectionStream_SendMetrics(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockSession := NewMockSession(mockCtrl)
-	cancelCtx, cancelFunc := context.WithCancel(context.Background())
+	ctx := context.Background()
+
+	basicCheck, err := check.NewCheck(ctx, []byte(`{
+	  "id":"chPzAHTTP",
+	  "zone_id":"pzA",
+	  "details":{"url":"localhost"},
+	  "type":"remote.http",
+	  "timeout":15,
+	  "period":30,
+	  "ip_addresses":{"default":"127.0.0.1"},
+	  "target_alias":"default",
+	  "target_hostname":"",
+	  "target_resolver":"",
+	  "disabled":false
+				}`))
+	require.NoError(t, err)
 
 	tests := []struct {
 		name        string
-		ctx         context.Context
 		stopCh      chan struct{}
 		config      *config.Config
 		connsMu     sync.Mutex
@@ -136,7 +146,6 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 	}{
 		{
 			name:   "Happy path - one session",
-			ctx:    context.Background(),
 			config: &config.Config{},
 			conns: map[string]Connection{
 				"test-query": &EleConnection{
@@ -144,25 +153,12 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 				},
 			},
 			crs: &check.ResultSet{
-				Check: check.NewCheck(cancelCtx, []byte(`{
-	  "id":"chPzAHTTP",
-	  "zone_id":"pzA",
-	  "details":{"url":"localhost"},
-	  "type":"remote.http",
-	  "timeout":15,
-	  "period":30,
-	  "ip_addresses":{"default":"127.0.0.1"},
-	  "target_alias":"default",
-	  "target_hostname":"",
-	  "target_resolver":"",
-	  "disabled":false
-				}`), cancelFunc),
+				Check: basicCheck,
 			},
 			expectedErr: false,
 		},
 		{
 			name:   "Happy path - two connections",
-			ctx:    context.Background(),
 			config: &config.Config{},
 			conns: map[string]Connection{
 				"test-query": &EleConnection{
@@ -173,71 +169,33 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 				},
 			},
 			crs: &check.ResultSet{
-				Check: check.NewCheck(cancelCtx, []byte(`{
-	  "id":"chPzAHTTP",
-	  "zone_id":"pzA",
-	  "details":{"url":"localhost"},
-	  "type":"remote.http",
-	  "timeout":15,
-	  "period":30,
-	  "ip_addresses":{"default":"127.0.0.1"},
-	  "target_alias":"default",
-	  "target_hostname":"",
-	  "target_resolver":"",
-	  "disabled":false
-				}`), cancelFunc),
+				Check: basicCheck,
 			},
 			expectedErr: false,
 		},
 		{
 			name:   "No connections",
-			ctx:    context.Background(),
 			config: &config.Config{},
 			conns:  map[string]Connection{},
 			crs: &check.ResultSet{
-				Check: check.NewCheck(cancelCtx, []byte(`{
-	  "id":"chPzAHTTP",
-	  "zone_id":"pzA",
-	  "details":{"url":"localhost"},
-	  "type":"remote.http",
-	  "timeout":15,
-	  "period":30,
-	  "ip_addresses":{"default":"127.0.0.1"},
-	  "target_alias":"default",
-	  "target_hostname":"",
-	  "target_resolver":"",
-	  "disabled":false
-				}`), cancelFunc),
+				Check: basicCheck,
 			},
 			expectedErr: false,
 		},
 		{
 			name:        "Connections set to nil",
-			ctx:         context.Background(),
 			config:      &config.Config{},
 			conns:       nil,
 			expectedErr: true,
 			crs: &check.ResultSet{
-				Check: check.NewCheck(cancelCtx, []byte(`{
-	  "id":"chPzAHTTP",
-	  "zone_id":"pzA",
-	  "details":{"url":"localhost"},
-	  "type":"remote.http",
-	  "timeout":15,
-	  "period":30,
-	  "ip_addresses":{"default":"127.0.0.1"},
-	  "target_alias":"default",
-	  "target_hostname":"",
-	  "target_resolver":"",
-	  "disabled":false
-				}`), cancelFunc),
+				Check: basicCheck,
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			cs := &EleConnectionStream{
-				ctx:        tt.ctx,
+				ctx:        ctx,
 				stopCh:     tt.stopCh,
 				config:     tt.config,
 				connsMu:    tt.connsMu,

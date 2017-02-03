@@ -30,7 +30,7 @@ import (
 // EleConnection implements Connection
 // See Connection interface for more information
 type EleConnection struct {
-	stream ConnectionStream
+	checksReconciler ChecksReconciler
 
 	session Session
 	conn    io.ReadWriteCloser
@@ -44,11 +44,11 @@ type EleConnection struct {
 // NewConnection instantiates a new EleConnection
 // It sets up the address, unique guid, and connection timeout
 // for this conneciton
-func NewConnection(address string, guid string, stream ConnectionStream) Connection {
+func NewConnection(address string, guid string, checksReconciler ChecksReconciler) Connection {
 	return &EleConnection{
 		address:           address,
 		guid:              guid,
-		stream:            stream,
+		checksReconciler:  checksReconciler,
 		connectionTimeout: time.Duration(10) * time.Second,
 	}
 }
@@ -66,11 +66,6 @@ func (conn *EleConnection) GetFarendWriter() io.Writer {
 // GetFarendReader gets a reader to consume from the endpoint server
 func (conn *EleConnection) GetFarendReader() io.Reader {
 	return conn.conn
-}
-
-// GetStream retrieves connection's stream
-func (conn *EleConnection) GetStream() ConnectionStream {
-	return conn.stream
 }
 
 // GetSession retrieves connection's session
@@ -116,7 +111,7 @@ func (conn *EleConnection) Connect(ctx context.Context, config *config.Config, t
 	}
 	log.Info("  ... Connected")
 	conn.conn = tlsConn
-	conn.session = NewSession(ctx, conn, config)
+	conn.session = NewSession(ctx, conn, conn.checksReconciler, config)
 	return nil
 }
 

@@ -1,10 +1,14 @@
-hash: 53e5daf7e91cd88b05dc21ccf0b3ad41f03021c9c211773ac1e0388a636e9525
-updated: 2017-01-25T16:44:04.46195673-06:00
+hash: ab982f1be54983bc3a85a757d7d1db00df477b336c3d51db75dce35f92140ab5
+updated: 2017-02-02T09:30:01.044509018-06:00
 imports:
 - name: github.com/davecgh/go-spew
   version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
   subpackages:
   - spew
+- name: github.com/deckarep/golang-set
+  version: 52ba7f28f319e9d560acbf47c7fcf9b9ee7aa7d3
+- name: github.com/fsnotify/fsnotify
+  version: 629574ca2a5df945712d3079857300b5e4da0236
 - name: github.com/go-ole/go-ole
   version: 5e9c030faf78847db7aa77e3661b9cc449de29b7
   subpackages:
@@ -39,9 +43,9 @@ imports:
 - name: github.com/sparrc/go-ping
   version: 416e72114cd1edce2f287648f935a60dfe6cf40e
 - name: github.com/spf13/cobra
-  version: 0f056af21f5f368e5b0646079d0094a2c64150f7
+  version: 35136c09d8da66b901337c6e86fd8e88a1a255bd
 - name: github.com/spf13/pflag
-  version: a9a634f3de0a7529baded7ad6b0c7467d5c6eca7
+  version: 9ff6c6923cfffbcd502984b8e0c80539a94968b7
 - name: github.com/StackExchange/wmi
   version: e54cbda6595d7293a7a468ccf9525f6bc8887f99
 - name: github.com/stretchr/testify
@@ -50,7 +54,7 @@ imports:
   - assert
   - require
 - name: golang.org/x/net
-  version: f2499483f923065a842d38eb4c7f1927e6fc6e6d
+  version: 007e530097ad7f954752df63046b4036f98ba6a6
   subpackages:
   - bpf
   - icmp
@@ -59,7 +63,7 @@ imports:
   - ipv4
   - ipv6
 - name: golang.org/x/sys
-  version: d75a52659825e75fff6158388dddc6a5b04f9ba5
+  version: 7a6e5648d140666db5d920909e082ca00a87ba2c
   subpackages:
   - unix
 testImports: []

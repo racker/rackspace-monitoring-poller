@@ -1,13 +1,24 @@
 package protocol
 
 const (
-	MethodEmpty            = ""
+	// MethodEmpty indicates this message is a response
+	MethodEmpty = ""
+
+	// MethodHandshakeHello is SENT TO ---> endpoint server
 	MethodHandshakeHello   = "handshake.hello"
 	MethodCheckScheduleGet = "check_schedule.get"
 	MethodPollerRegister   = "poller.register"
-	MethodPollerChecksAdd  = "poller.checks.add"
-	MethodPollerChecksEnd  = "poller.checks.end"
+	// MethodHeartbeatPost is SENT TO ---> endpoint server
 	MethodHeartbeatPost    = "heartbeat.post"
 	MethodCheckMetricsPost = "check_metrics.post_multi"
-	MethodHostInfoGet      = "host_info.get"
+	// MethodHostInfoGet is RECV FROM <--- endpoint server
+	MethodHostInfoGet = "host_info.get"
+	// MethodPollerPrepare is RECV FROM <--- endpoint server
+	MethodPollerPrepare = "poller.prepare"
+	// MethodPollerPrepareBlock is RECV FROM <--- endpoint server
+	MethodPollerPrepareBlock = "poller.prepare.block"
+	// MethodPollerPrepareEnd is RECV FROM <--- endpoint server
+	MethodPollerPrepareEnd = "poller.prepare.end"
+	// MethodPollerCommit is RECV FROM <--- endpoint server
+	MethodPollerCommit = "poller.commit"
 )

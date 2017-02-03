@@ -1,12 +1,11 @@
 package poller_test
 
 import (
-	"context"
 	"crypto/x509"
-	"encoding/json"
 	"testing"
 	"time"
 
+	"fmt"
 	"github.com/golang/mock/gomock"
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/config"
@@ -14,6 +13,7 @@ import (
 	"github.com/racker/rackspace-monitoring-poller/protocol"
 	"github.com/racker/rackspace-monitoring-poller/utils"
 	"github.com/stretchr/testify/assert"
+	"sync"
 )
 
 func TestNewScheduler(t *testing.T) {
@@ -71,154 +71,298 @@ func TestEleScheduler_SendMetrics(t *testing.T) {
 	schedule.SendMetrics(&check.ResultSet{})
 }
 
-func TestEleScheduler_Register(t *testing.T) {
-	cancelCtx, cancelFunc := context.WithCancel(context.Background())
+type checkIdMatcher struct {
+	id string
+}
+
+func (c checkIdMatcher) Matches(x interface{}) bool {
+	ch, ok := x.(check.Check)
+	if !ok {
+		return false
+	}
+
+	return ch.GetID() == c.id
+}
+
+func (c checkIdMatcher) String() string {
+	return fmt.Sprintf("has check ID %v", c.id)
+}
+
+func TestEleScheduler_ReconcileChecks_AllStart(t *testing.T) {
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	mockStream := poller.NewMockConnectionStream(mockCtrl)
+	checkScheduler := poller.NewMockCheckScheduler(mockCtrl)
+	checkExecutor := poller.NewMockCheckExecutor(mockCtrl)
+
+	scheduler := poller.NewCustomScheduler("znA", mockStream, checkScheduler, checkExecutor)
+	defer scheduler.Close()
+
+	var wg sync.WaitGroup
+	done := func(ch check.Check) { wg.Done() }
+	checkScheduler.EXPECT().Schedule(checkIdMatcher{id: "ch1"}).Do(done)
+	wg.Add(1)
+	checkScheduler.EXPECT().Schedule(checkIdMatcher{id: "ch2"}).Do(done)
+	wg.Add(1)
+
+	cp := loadChecksPreparation(t,
+		checkLoadInfo{action: protocol.PrepareActionStart, checkType: "remote.tcp", name: "tcp_check", id: "ch1", entityId: "en1", zonedId: "znA"},
+		checkLoadInfo{action: protocol.PrepareActionStart, checkType: "remote.ping", name: "ping_check", id: "ch2", entityId: "en1", zonedId: "znA"},
+	)
+
+	err := scheduler.ValidateChecks(cp)
+	assert.NoError(t, err)
+
+	scheduler.ReconcileChecks(cp)
+
+	utils.Timebox(t, 10*time.Second, func(t *testing.T) {
+		wg.Wait()
+	})
+
+	scheduled := scheduler.GetScheduledChecks()
+	assert.Len(t, scheduled, 2)
+
+	// ...verifies expected function calls, above
+}
+
+func TestEleScheduler_ReconcileChecks(t *testing.T) {
+	origCP := loadChecksPreparation(t,
+		checkLoadInfo{action: protocol.PrepareActionStart, checkType: "remote.tcp", name: "tcp_check", id: "ch1", entityId: "en1", zonedId: "znA"},
+		checkLoadInfo{action: protocol.PrepareActionStart, checkType: "remote.ping", name: "ping_check", id: "ch2", entityId: "en1", zonedId: "znA"},
+	)
+
 	tests := []struct {
-		name        string
-		ch          check.Check
-		expectedErr bool
+		name              string
+		prepMockScheduler func(checkScheduler *poller.MockCheckScheduler)
+		cp                *poller.ChecksPreparation
+		verify            func(t *testing.T, scheduled []check.Check, scheduledAfter []check.Check)
 	}{
 		{
-			name: "Happy path",
-			ch: check.NewCheck(cancelCtx, json.RawMessage(`{
-	  "id":"chPzATCP",
-	  "zone_id":"pzA",
-	  "entity_id":"enAAAAIPV4",
-	  "details":{"port":0,"ssl":false},
-	  "type":"remote.tcp",
-	  "timeout":1,
-	  "period":30,
-	  "ip_addresses":{"default":"127.0.0.1"},
-	  "target_alias":"default",
-	  "target_hostname":"",
-	  "target_resolver":"",
-	  "disabled":true
-			}`), cancelFunc),
-			expectedErr: false,
+			name: "continueAll",
+
+			cp: loadChecksPreparation(t,
+				checkLoadInfo{action: protocol.PrepareActionContinue, checkType: "remote.tcp", name: "tcp_check", id: "ch1", entityId: "en1", zonedId: "znA"},
+				checkLoadInfo{action: protocol.PrepareActionContinue, checkType: "remote.ping", name: "ping_check", id: "ch2", entityId: "en1", zonedId: "znA"},
+			),
+
+			verify: func(t *testing.T, scheduled []check.Check, scheduledAfter []check.Check) {
+				scheduledIdsAfter := extractCheckIds(scheduledAfter)
+				assert.Contains(t, scheduledIdsAfter, "ch1")
+				assert.Contains(t, scheduledIdsAfter, "ch2")
+
+				assert.Equal(t, findCheck(scheduled, "ch1"), findCheck(scheduledAfter, "ch1"))
+				assert.Equal(t, findCheck(scheduled, "ch2"), findCheck(scheduledAfter, "ch2"))
+			},
 		},
 		{
-			name:        "Check is nil",
-			ch:          nil,
-			expectedErr: true,
+			name: "restartOne",
+
+			prepMockScheduler: func(checkScheduler *poller.MockCheckScheduler) {
+				checkScheduler.EXPECT().Schedule(checkIdMatcher{id: "ch1"})
+			},
+
+			cp: loadChecksPreparation(t,
+				checkLoadInfo{action: protocol.PrepareActionRestart, checkType: "remote.tcp", name: "tcp_check", id: "ch1", entityId: "en1", zonedId: "znA"},
+				checkLoadInfo{action: protocol.PrepareActionContinue, checkType: "remote.ping", name: "ping_check", id: "ch2", entityId: "en1", zonedId: "znA"},
+			),
+
+			verify: func(t *testing.T, scheduled []check.Check, scheduledAfter []check.Check) {
+				scheduledIdsAfter := extractCheckIds(scheduledAfter)
+				assert.Contains(t, scheduledIdsAfter, "ch1")
+				assert.Contains(t, scheduledIdsAfter, "ch2")
+				assert.Equal(t, findCheck(scheduled, "ch2"), findCheck(scheduledAfter, "ch2"))
+
+				ch1 := findCheck(scheduled, "ch1")
+				assertCheckIsDone(t, ch1)
+				ch1After := findCheck(scheduledAfter, "ch1")
+				assert.NotEqual(t, ch1, ch1After)
+			},
+		},
+		{
+			name: "startAnother",
+
+			prepMockScheduler: func(checkScheduler *poller.MockCheckScheduler) {
+				checkScheduler.EXPECT().Schedule(checkIdMatcher{id: "ch3"})
+			},
+
+			cp: loadChecksPreparation(t,
+				checkLoadInfo{action: protocol.PrepareActionContinue, checkType: "remote.tcp", name: "tcp_check", id: "ch1", entityId: "en1", zonedId: "znA"},
+				checkLoadInfo{action: protocol.PrepareActionContinue, checkType: "remote.ping", name: "ping_check", id: "ch2", entityId: "en1", zonedId: "znA"},
+				checkLoadInfo{action: protocol.PrepareActionStart, checkType: "remote.ping", name: "ping_check", id: "ch3", entityId: "en1", zonedId: "znA"},
+			),
+
+			verify: func(t *testing.T, scheduled []check.Check, scheduledAfter []check.Check) {
+				scheduledIdsAfter := extractCheckIds(scheduledAfter)
+				assert.Contains(t, scheduledIdsAfter, "ch1")
+				assert.Contains(t, scheduledIdsAfter, "ch2")
+				assert.Contains(t, scheduledIdsAfter, "ch3")
+				assert.Equal(t, findCheck(scheduled, "ch1"), findCheck(scheduledAfter, "ch1"))
+				assert.Equal(t, findCheck(scheduled, "ch2"), findCheck(scheduledAfter, "ch2"))
+			},
+		},
+		{
+			name: "stopOne",
+
+			cp: loadChecksPreparation(t,
+				checkLoadInfo{action: protocol.PrepareActionContinue, checkType: "remote.tcp", name: "tcp_check", id: "ch1", entityId: "en1", zonedId: "znA"},
+			),
+
+			verify: func(t *testing.T, scheduled []check.Check, scheduledAfter []check.Check) {
+				ch2 := findCheck(scheduled, "ch2")
+				assertCheckIsDone(t, ch2)
+				assert.Len(t, scheduledAfter, 1)
+				assert.Contains(t, extractCheckIds(scheduledAfter), "ch1")
+				assert.Equal(t, findCheck(scheduled, "ch1"), findCheck(scheduledAfter, "ch1"))
+			},
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := poller.NewScheduler("pzAwesome",
-				poller.NewConnectionStream(
-					&config.Config{
-						AgentId: "test1",
-					},
-					x509.NewCertPool(),
-				))
-			if tt.expectedErr {
-				assert.Error(t, s.Register(tt.ch))
-			} else {
-				assert.NoError(t, s.Register(tt.ch))
-				checkList := []string{}
-				for checkId, _ := range s.GetChecks() {
-					checkList = append(checkList, checkId)
-				}
-				assert.Contains(t, checkList, tt.ch.GetID())
+
+			mockCtrl := gomock.NewController(t)
+			defer mockCtrl.Finish()
+
+			mockStream := poller.NewMockConnectionStream(mockCtrl)
+			checkScheduler := poller.NewMockCheckScheduler(mockCtrl)
+			checkExecutor := poller.NewMockCheckExecutor(mockCtrl)
+
+			scheduler := poller.NewCustomScheduler("znA", mockStream, checkScheduler, checkExecutor)
+			defer scheduler.Close()
+
+			var wg sync.WaitGroup
+			done := func(ch check.Check) { wg.Done() }
+			checkScheduler.EXPECT().Schedule(checkIdMatcher{id: "ch1"}).Do(done)
+			wg.Add(1)
+			checkScheduler.EXPECT().Schedule(checkIdMatcher{id: "ch2"}).Do(done)
+			wg.Add(1)
+
+			//origCP := loadChecksPreparation(t,
+			//	checkLoadInfo{action: protocol.PrepareActionStart, checkType: "remote.tcp", name:"tcp_check",id:"ch1", entityId:"en1", zonedId:"znA"},
+			//	checkLoadInfo{action: protocol.PrepareActionStart, checkType: "remote.ping", name:"ping_check",id:"ch2", entityId:"en1", zonedId:"znA"},
+			//)
+			//
+			err := scheduler.ValidateChecks(origCP)
+			assert.NoError(t, err)
+
+			scheduler.ReconcileChecks(origCP)
+			utils.Timebox(t, 10*time.Second, func(t *testing.T) {
+				wg.Wait()
+			})
+
+			scheduled := scheduler.GetScheduledChecks()
+
+			if tt.prepMockScheduler != nil {
+				tt.prepMockScheduler(checkScheduler)
 			}
+
+			scheduler.ReconcileChecks(tt.cp)
+
+			// allow time for channel ops
+			time.Sleep(10 * time.Millisecond)
+
+			scheduledAfter := scheduler.GetScheduledChecks()
+
+			tt.verify(t, scheduled, scheduledAfter)
 		})
 	}
 }
 
-func TestEleScheduler_RunFrameConsumer(t *testing.T) {
-	if testing.Short() {
-		t.Skip()
-	}
-	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
-	mockStream := poller.NewMockConnectionStream(mockCtrl)
-	mockStream.EXPECT().SendMetrics(gomock.Any()).AnyTimes()
-	schedule := poller.NewScheduler("pzAwesome", mockStream)
-
-	// set up wait period time measurement
-	bakWaitPeriodTimeMeasurement := check.WaitPeriodTimeMeasurement
-	bakCheckSpreadInMilliseconds := poller.CheckSpreadInMilliseconds
-	defer func() {
-		check.WaitPeriodTimeMeasurement = bakWaitPeriodTimeMeasurement
-		poller.CheckSpreadInMilliseconds = bakCheckSpreadInMilliseconds
-	}()
-
-	check.WaitPeriodTimeMeasurement = time.Millisecond
-	// set up jitter
-	poller.CheckSpreadInMilliseconds = 100
-
-	// NOTE: period is set to 90 seconds so that the check
-	// only runs once in the jitter period (jitter is set to 100 ms)
-	schedule.GetInput() <- &protocol.FrameMsg{
-		FrameMsgCommon: protocol.FrameMsgCommon{
-			Id: 123,
-		},
-		RawParams: json.RawMessage(`{
-	  "id":"chPzATCP",
-	  "zone_id":"pzA",
-	  "entity_id":"enAAAAIPV4",
-	  "details":{"port":0,"ssl":false},
-	  "type":"remote.tcp",
-	  "timeout":1,
-	  "period":120,
-	  "ip_addresses":{"default":"127.0.0.1"},
-	  "target_alias":"default",
-	  "target_hostname":"",
-	  "target_resolver":"",
-	  "disabled":true
-	  }`),
-	}
-	go schedule.RunFrameConsumer()
-
-	// wait for jitter amount of time (and add 100 milliseconds to catch the other close)
-	time.Sleep(200 * time.Millisecond)
-
-	// close session
-	schedule.Close()
-
-	ctx, _ := schedule.GetContext()
-	completed := utils.Timebox(t, 1000*time.Millisecond, func(t *testing.T) {
-		<-ctx.Done()
+func assertCheckIsDone(t *testing.T, ch check.Check) {
+	utils.Timebox(t, 10*time.Millisecond, func(t *testing.T) {
+		<-ch.Done()
 	})
-	assert.True(t, completed, "cancellation channel never notified")
 }
 
-// This is a variant of TestEleScheduler_RunFrameConsumer that eliminates all use of go routines, but narrows the
-// scope of testing.
-func TestEleScheduler_FrameConsumer_Scheduling(t *testing.T) {
-	mockCtrl := gomock.NewController(t)
-	defer mockCtrl.Finish()
-
-	mockCheckScheduler := poller.NewMockCheckScheduler(mockCtrl)
-	mockCheckExecutor := poller.NewMockCheckExecutor(mockCtrl)
-
-	mockStream := poller.NewMockConnectionStream(mockCtrl)
-	scheduler := poller.NewCustomScheduler("pzAwesome", mockStream, mockCheckScheduler, mockCheckExecutor)
-
-	scheduler.GetInput() <- &protocol.FrameMsg{
-		FrameMsgCommon: protocol.FrameMsgCommon{
-			Id: 123,
-		},
-		RawParams: json.RawMessage(`{
-	  "id":"chPzATCP",
-	  "zone_id":"pzA",
-	  "entity_id":"enAAAAIPV4",
-	  "details":{"port":0,"ssl":false},
-	  "type":"remote.tcp",
-	  "timeout":1,
-	  "period":120,
-	  "ip_addresses":{"default":"127.0.0.1"},
-	  "target_alias":"default",
-	  "target_hostname":"",
-	  "target_resolver":"",
-	  "disabled":true
-	  }`),
+func findCheck(checks []check.Check, id string) check.Check {
+	for _, ch := range checks {
+		if ch.GetID() == id {
+			return ch
+		}
 	}
 
-	mockCheckScheduler.EXPECT().Schedule(check.ExpectedCheckType("remote.tcp")).Do(func(ch check.Check) {
-		// then close the frame consumer
-		scheduler.Close()
-	})
+	return nil
+}
 
-	scheduler.RunFrameConsumer()
+func extractCheckIds(checks []check.Check) []string {
+	ids := make([]string, 0, len(checks))
+
+	for _, ch := range checks {
+		ids = append(ids, ch.GetID())
+	}
+
+	return ids
+}
+
+func TestEleScheduler_ValidateChecks_Fails(t *testing.T) {
+
+	tests := []struct {
+		name           string
+		preCP          *poller.ChecksPreparation
+		validateCP     *poller.ChecksPreparation
+		expectedErrStr string
+		extra          func(t *testing.T)
+	}{
+		{
+			name: "startExisting",
+			preCP: loadChecksPreparation(t,
+				checkLoadInfo{action: protocol.PrepareActionStart, checkType: "remote.tcp", name: "tcp_check", id: "ch1", entityId: "en1", zonedId: "znA"},
+				checkLoadInfo{action: protocol.PrepareActionStart, checkType: "remote.ping", name: "ping_check", id: "ch2", entityId: "en1", zonedId: "znA"},
+			),
+			validateCP: loadChecksPreparation(t,
+				checkLoadInfo{action: protocol.PrepareActionStart, checkType: "remote.tcp", name: "tcp_check", id: "ch1", entityId: "en1", zonedId: "znA"},
+			),
+			expectedErrStr: "Reconciling was told to start a check, but it already existed: ch1",
+		},
+		{
+			name: "restartMissing",
+			validateCP: loadChecksPreparation(t,
+				checkLoadInfo{action: protocol.PrepareActionRestart, checkType: "remote.tcp", name: "tcp_check", id: "ch1", entityId: "en1", zonedId: "znA"},
+			),
+			expectedErrStr: "Reconciling was told to restart a check, but it does not exist: ch1",
+		},
+		{
+			name: "continueMissing",
+			validateCP: loadChecksPreparation(t,
+				checkLoadInfo{action: protocol.PrepareActionContinue, checkType: "remote.tcp", name: "tcp_check", id: "ch1", entityId: "en1", zonedId: "znA"},
+			),
+			expectedErrStr: "Reconciling was told to continue a check, but it does not exist: ch1",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+			defer mockCtrl.Finish()
+
+			mockStream := poller.NewMockConnectionStream(mockCtrl)
+			checkScheduler := poller.NewMockCheckScheduler(mockCtrl)
+			checkExecutor := poller.NewMockCheckExecutor(mockCtrl)
+
+			scheduler := poller.NewCustomScheduler("znA", mockStream, checkScheduler, checkExecutor)
+			defer scheduler.Close()
+
+			if tt.preCP != nil {
+				var wg sync.WaitGroup
+				count := len(tt.preCP.GetActionableChecks())
+				wg.Add(count)
+				checkScheduler.EXPECT().Schedule(gomock.Any()).Times(count).Do(func(ch check.Check) { wg.Done() })
+
+				scheduler.ReconcileChecks(tt.preCP)
+				utils.Timebox(t, 10*time.Second, func(t *testing.T) {
+					wg.Wait()
+				})
+			}
+
+			err := scheduler.ValidateChecks(tt.validateCP)
+			assert.EqualError(t, err, tt.expectedErrStr)
+
+			if tt.extra != nil {
+				tt.extra(t)
+			}
+		})
+	}
+
 }

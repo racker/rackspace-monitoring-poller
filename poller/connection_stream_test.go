@@ -10,45 +10,6 @@ import (
 	"sync"
 )
 
-func TestConnectionStream_Register(t *testing.T) {
-	tests := []struct {
-		name        string
-		queryString string
-		conn        poller.Connection
-		cs          poller.ConnectionStream
-		expectedErr bool
-	}{
-		{
-			name:        "Happy path",
-			queryString: "test-query",
-			conn:        &poller.EleConnection{},
-			cs:          poller.NewConnectionStream(&config.Config{}, nil),
-			expectedErr: false,
-		},
-		{
-			name:        "Empty stream",
-			queryString: "test-query",
-			conn:        &poller.EleConnection{},
-			cs:          &poller.EleConnectionStream{},
-			expectedErr: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.NotContains(t, tt.cs.GetConnections(), tt.queryString)
-			if tt.expectedErr {
-				assert.Error(t, tt.cs.RegisterConnection(tt.queryString, tt.conn))
-				assert.NotContains(t, tt.cs.GetConnections(), tt.queryString)
-
-			} else {
-				assert.NoError(t, tt.cs.RegisterConnection(tt.queryString, tt.conn))
-				assert.Contains(t, tt.cs.GetConnections(), tt.queryString)
-
-			}
-		})
-	}
-}
-
 func TestConnectionStream_Connect(t *testing.T) {
 
 	tests := []struct {
@@ -118,7 +79,7 @@ func TestConnectionStream_Connect(t *testing.T) {
 				conn.EXPECT().Close()
 			}
 
-			connFactory := func(address string, guid string, stream poller.ConnectionStream) poller.Connection {
+			connFactory := func(address string, guid string, stream poller.ChecksReconciler) poller.Connection {
 				return conn
 			}
 

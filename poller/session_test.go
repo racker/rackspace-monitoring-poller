@@ -19,8 +19,8 @@ package poller_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/Sirupsen/logrus"
 	"github.com/golang/mock/gomock"
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/poller"
@@ -29,6 +29,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
+	"io/ioutil"
 	"testing"
 	"time"
 )
@@ -62,20 +63,20 @@ func (fm frameMatcher) Matches(in interface{}) bool {
 }
 
 func setupConnStreamExpectations(ctrl *gomock.Controller) (eleConn *poller.MockConnection,
+	reconciler *poller.MockChecksReconciler,
 	writesHere *utils.BlockingReadBuffer, readsHere *utils.BlockingReadBuffer) {
 	eleConn = poller.NewMockConnection(ctrl)
 
 	writesHere = utils.NewBlockingReadBuffer()
 	readsHere = utils.NewBlockingReadBuffer()
 
-	connStream := poller.NewMockConnectionStream(ctrl)
-
 	eleConn.EXPECT().GetFarendWriter().AnyTimes().Return(writesHere)
 	eleConn.EXPECT().GetFarendReader().AnyTimes().Return(readsHere)
-	eleConn.EXPECT().GetStream().AnyTimes().Return(connStream)
 	eleConn.EXPECT().GetGUID().AnyTimes().Return("1-2-3")
 	eleConn.EXPECT().SetReadDeadline(gomock.Any()).AnyTimes()
 	eleConn.EXPECT().SetWriteDeadline(gomock.Any()).AnyTimes()
+
+	reconciler = poller.NewMockChecksReconciler(ctrl)
 
 	return
 }
@@ -103,14 +104,25 @@ func prepareHandshakeResponse(heartbeatInterval uint64, readsHere io.Writer) {
 	json.NewEncoder(readsHere).Encode(handshakeResp)
 }
 
+func handshake(t *testing.T, writesHere, readsHere *utils.BlockingReadBuffer, heartbeatInterval uint64) *json.Decoder {
+	// decoder is used to consume frames sent out by the poller under test
+	decoder := json.NewDecoder(writesHere)
+
+	// We should see a handshake, but can ignore it
+	handshakeReq := new(protocol.HandshakeRequest)
+	err := decoder.Decode(handshakeReq)
+	require.NoError(t, err)
+
+	prepareHandshakeResponse(heartbeatInterval, readsHere)
+
+	return decoder
+}
+
 func TestEleSession_HeartbeatSending(t *testing.T) {
-	if testing.Verbose() {
-		logrus.SetLevel(logrus.DebugLevel)
-	}
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	eleConn, writesHere, readsHere := setupConnStreamExpectations(ctrl)
+	eleConn, reconciler, writesHere, readsHere := setupConnStreamExpectations(ctrl)
 	defer readsHere.Close()
 
 	origTimestamper := installDeterministicTimestamper(1000, 2000)
@@ -118,7 +130,7 @@ func TestEleSession_HeartbeatSending(t *testing.T) {
 
 	const heartbeatInterval = 10 // ms
 
-	es := poller.NewSession(context.Background(), eleConn, &config.Config{})
+	es := poller.NewSession(context.Background(), eleConn, reconciler, &config.Config{})
 	defer es.Close()
 
 	// decoder is used to consume frames sent out by the poller under test
@@ -149,13 +161,10 @@ func TestEleSession_HeartbeatSending(t *testing.T) {
 }
 
 func TestEleSession_HeartbeatConsumption(t *testing.T) {
-	if testing.Verbose() {
-		logrus.SetLevel(logrus.DebugLevel)
-	}
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	eleConn, writesHere, readsHere := setupConnStreamExpectations(ctrl)
+	eleConn, reconciler, writesHere, readsHere := setupConnStreamExpectations(ctrl)
 	defer readsHere.Close()
 
 	origTimestamper := installDeterministicTimestamper(1000, 2000)
@@ -163,24 +172,16 @@ func TestEleSession_HeartbeatConsumption(t *testing.T) {
 
 	const heartbeatInterval = 10 // ms
 
-	es := poller.NewSession(context.Background(), eleConn, &config.Config{})
+	es := poller.NewSession(context.Background(), eleConn, reconciler, &config.Config{})
 	defer es.Close()
+
+	decoder := handshake(t, writesHere, readsHere, heartbeatInterval)
 
 	// allow for handshake resp to fire up heartbeating
 	time.Sleep((heartbeatInterval * 1.5) * time.Millisecond)
 
-	// decoder is used to consume frames sent out by the poller under test
-	decoder := json.NewDecoder(writesHere)
-
-	// We should see a handshake, but can ignore it
-	handshakeReq := new(protocol.HandshakeRequest)
-	err := decoder.Decode(handshakeReq)
-	require.NoError(t, err)
-
-	prepareHandshakeResponse(heartbeatInterval, readsHere)
-
 	heartbeatReq := new(protocol.HeartbeatRequest)
-	err = decoder.Decode(heartbeatReq)
+	err := decoder.Decode(heartbeatReq)
 	// sanity check
 	assert.Equal(t, int64(1000), heartbeatReq.Params.Timestamp, "wrong timestamp")
 	require.NoError(t, err)
@@ -198,3 +199,278 @@ func TestEleSession_HeartbeatConsumption(t *testing.T) {
 	assert.Equal(t, int64(500), offset, "wrong offset")
 	assert.Equal(t, int64(2000), latency, "wrong latency")
 }
+
+func TestEleSession_PollerPrepare(t *testing.T) {
+
+	tests := []struct {
+		name                   string
+		prepareSeq             string
+		commitSeq              string
+		expectedPrepResponses  []protocol.PollerPrepareResult
+		expectedCommitResponse protocol.PollerCommitResult
+		expectValidate         bool
+		expectReconcile        bool
+		reconcileValidateErr   error
+	}{
+		{
+			name:       "normal",
+			prepareSeq: "normal",
+			commitSeq:  "5",
+			expectedPrepResponses: []protocol.PollerPrepareResult{
+				{
+					Status:  "prepared",
+					Version: 5,
+				},
+			},
+			expectedCommitResponse: protocol.PollerCommitResult{
+				Status:  "committed",
+				Version: 5,
+			},
+			expectValidate:  true,
+			expectReconcile: true,
+		},
+		{
+			name:       "oldPrepare",
+			prepareSeq: "oldPrepare",
+			commitSeq:  "5",
+			expectedPrepResponses: []protocol.PollerPrepareResult{
+				{
+					Status:  "ignored",
+					Version: 4,
+				},
+				{
+					Status:  "prepared",
+					Version: 5,
+				},
+			},
+			expectedCommitResponse: protocol.PollerCommitResult{
+				Status:  "committed",
+				Version: 5,
+			},
+			expectValidate:  true,
+			expectReconcile: true,
+		},
+		{
+			name:       "wrongCommit",
+			prepareSeq: "normal",
+			commitSeq:  "6",
+			expectedPrepResponses: []protocol.PollerPrepareResult{
+				{
+					Status:  "prepared",
+					Version: 5,
+				},
+			},
+			expectedCommitResponse: protocol.PollerCommitResult{
+				Status:  "ignored",
+				Version: 6,
+			},
+			expectValidate:  true,
+			expectReconcile: false,
+		},
+		{
+			name:       "abort",
+			prepareSeq: "abort",
+			commitSeq:  "",
+			expectedPrepResponses: []protocol.PollerPrepareResult{
+				{
+					Status:  "aborted",
+					Version: 5,
+				},
+			},
+			expectValidate:  true,
+			expectReconcile: false,
+		},
+		{
+			name:       "badDirective",
+			prepareSeq: "badDirective",
+			commitSeq:  "",
+			expectedPrepResponses: []protocol.PollerPrepareResult{
+				{
+					Status:  "failed",
+					Version: 5,
+				},
+			},
+			expectValidate:  true,
+			expectReconcile: false,
+		},
+		{
+			name:       "wrongEndVersion",
+			prepareSeq: "wrongEndVersion",
+			commitSeq:  "",
+			expectedPrepResponses: []protocol.PollerPrepareResult{
+				{
+					Status:  "failed",
+					Version: 6,
+				},
+			},
+			expectValidate:  true,
+			expectReconcile: false,
+		},
+		{
+			name:       "missingBlock",
+			prepareSeq: "missingBlock",
+			commitSeq:  "",
+			expectedPrepResponses: []protocol.PollerPrepareResult{
+				{
+					Status:  "failed",
+					Version: 5,
+				},
+			},
+			expectValidate:  true,
+			expectReconcile: false,
+		},
+		{
+			name:       "wrongBlockVer",
+			prepareSeq: "wrongBlockVer",
+			commitSeq:  "",
+			expectedPrepResponses: []protocol.PollerPrepareResult{
+				{
+					Status:  "failed",
+					Version: 5,
+				},
+			},
+			expectValidate:  true,
+			expectReconcile: false,
+		},
+		{
+			name:       "missingInManifest",
+			prepareSeq: "missingInManifest",
+			commitSeq:  "",
+			expectedPrepResponses: []protocol.PollerPrepareResult{
+				{
+					Status:  "failed",
+					Version: 5,
+				},
+			},
+			expectValidate:  true,
+			expectReconcile: false,
+		},
+		{
+			name:       "olderThanCommitted",
+			prepareSeq: "olderThanCommitted",
+			commitSeq:  "",
+			expectedPrepResponses: []protocol.PollerPrepareResult{
+				{
+					Status:  "ignored",
+					Version: -1,
+				},
+			},
+			expectValidate:  false,
+			expectReconcile: false,
+		},
+		{
+			name:       "badStartAction",
+			prepareSeq: "badStartAction",
+			commitSeq:  "",
+			expectedPrepResponses: []protocol.PollerPrepareResult{
+				{
+					Status:  "failed",
+					Version: 5,
+				},
+			},
+			expectValidate:  false,
+			expectReconcile: false,
+		},
+		{
+			name:       "reconcilerValidateError",
+			prepareSeq: "normal",
+			commitSeq:  "",
+			expectedPrepResponses: []protocol.PollerPrepareResult{
+				{
+					Status:  "failed",
+					Version: 5,
+				},
+			},
+			expectValidate:       true,
+			reconcileValidateErr: errors.New("Some kind of inconsistency"),
+			expectReconcile:      false,
+		},
+		{
+			name:       "endNoPrep",
+			prepareSeq: "endNoPrep",
+			commitSeq:  "",
+			expectedPrepResponses: []protocol.PollerPrepareResult{
+				{
+					Status:  "failed",
+					Version: 5,
+				},
+			},
+			expectValidate:  false,
+			expectReconcile: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			eleConn, reconciler, writesHere, readsHere := setupConnStreamExpectations(ctrl)
+			defer readsHere.Close()
+
+			origTimestamper := installDeterministicTimestamper(1000, 2000)
+			defer func() { utils.NowTimestampMillis = origTimestamper }()
+
+			es := poller.NewSession(context.Background(), eleConn, reconciler, &config.Config{})
+			defer es.Close()
+
+			decoder := handshake(t, writesHere, readsHere, 50000)
+			time.Sleep(5 * time.Millisecond)
+
+			if tt.expectValidate {
+				reconciler.EXPECT().ValidateChecks(gomock.Any()).Do(func(cp poller.ChecksPreparing) {
+					assert.Len(t, cp.GetActionableChecks(), 1)
+				}).Return(tt.reconcileValidateErr)
+			}
+
+			pollerPrepare, err := ioutil.ReadFile(fmt.Sprintf("testdata/poller_prepare_%s.seq", tt.prepareSeq))
+			require.NoError(t, err)
+			t.Log("Sending prepare sequence")
+			readsHere.Write(pollerPrepare)
+
+			utils.Timebox(t, 10*time.Millisecond, func(t *testing.T) {
+
+				for _, expected := range tt.expectedPrepResponses {
+					var resp protocol.PollerPrepareResponse
+					decoder.Decode(&resp)
+					t.Log("Received prepare response", resp)
+
+					assert.Equal(t, expected.Version, resp.Result.Version)
+					assert.Equal(t, expected.Status, resp.Result.Status)
+				}
+
+			})
+
+			if tt.expectReconcile {
+				reconciler.EXPECT().ReconcileChecks(gomock.Any()).Do(func(cp poller.ChecksPrepared) {
+					assert.Len(t, cp.GetActionableChecks(), 1)
+				})
+			}
+
+			if tt.commitSeq != "" {
+				pollerCommit, err := ioutil.ReadFile(fmt.Sprintf("testdata/poller_commit_%s.json", tt.commitSeq))
+				require.NoError(t, err)
+				t.Log("Sending commit", string(pollerCommit))
+				readsHere.Write(pollerCommit)
+				utils.Timebox(t, 10*time.Millisecond, func(t *testing.T) {
+
+					var resp protocol.PollerPrepareResponse
+					decoder.Decode(&resp)
+					t.Log("Received commit response", resp)
+
+					assert.Equal(t, tt.expectedCommitResponse.Version, resp.Result.Version)
+					assert.Equal(t, tt.expectedCommitResponse.Status, resp.Result.Status)
+
+				})
+			}
+
+		})
+	}
+
+}
+
+/*
+Scenarios
+* prepare after prepare
+* wrong directive in end
+*/

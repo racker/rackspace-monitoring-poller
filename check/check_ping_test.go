@@ -58,7 +58,8 @@ func TestPingCheck_ConfirmType(t *testing.T) {
 	const timeout = 15
 
 	checkData := fmt.Sprintf(checkDataTemplate, count, timeout)
-	c := check.NewCheck(context.Background(), []byte(checkData), func() {})
+	c, err := check.NewCheck(context.Background(), []byte(checkData))
+	require.NoError(t, err)
 
 	assert.IsType(t, &check.PingCheck{}, c)
 }
@@ -81,7 +82,8 @@ func TestPingCheck_PingerConfigured(t *testing.T) {
 	mock.EXPECT().Statistics().Return(statistics)
 
 	checkData := fmt.Sprintf(checkDataTemplate, count, timeout)
-	c := check.NewCheck(context.Background(), []byte(checkData), func() {})
+	c, err := check.NewCheck(context.Background(), []byte(checkData))
+	require.NoError(t, err)
 
 	// Run check since need to induce pinger usage
 	crs, err := c.Run()
@@ -113,7 +115,8 @@ func TestPingCheck_Success(t *testing.T) {
 	mock.EXPECT().Statistics().Return(statistics)
 
 	checkData := fmt.Sprintf(checkDataTemplate, count, timeout)
-	c := check.NewCheck(context.Background(), []byte(checkData), func() {})
+	c, err := check.NewCheck(context.Background(), []byte(checkData))
+	require.NoError(t, err)
 
 	// Run check
 	crs, err := c.Run()
@@ -154,7 +157,8 @@ func TestPingCheck_Drops(t *testing.T) {
 	mock.EXPECT().Statistics().Return(statistics)
 
 	checkData := fmt.Sprintf(checkDataTemplate, count, timeout)
-	c := check.NewCheck(context.Background(), []byte(checkData), func() {})
+	c, err := check.NewCheck(context.Background(), []byte(checkData))
+	require.NoError(t, err)
 
 	assert.IsType(t, &check.PingCheck{}, c)
 
@@ -196,7 +200,8 @@ func TestPingCheck_NoPermissionToPing(t *testing.T) {
 	mock.EXPECT().Statistics().Return(statistics)
 
 	checkData := fmt.Sprintf(checkDataTemplate, count, timeout)
-	c := check.NewCheck(context.Background(), []byte(checkData), func() {})
+	c, err := check.NewCheck(context.Background(), []byte(checkData))
+	require.NoError(t, err)
 
 	assert.IsType(t, &check.PingCheck{}, c)
 
