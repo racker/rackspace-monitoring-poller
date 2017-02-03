@@ -73,6 +73,14 @@ func (conn *EleConnection) GetSession() Session {
 	return conn.session
 }
 
+func (conn *EleConnection) GetClockOffset() int64 {
+	return conn.session.GetClockOffset()
+}
+
+func (conn *EleConnection) GetLatency() int64 {
+	return conn.session.GetLatency()
+}
+
 // SetReadDeadline sets up the read deadline for a socket.
 // read deadline - time spent reading response for future calls
 func (conn *EleConnection) SetReadDeadline(deadline time.Time) {

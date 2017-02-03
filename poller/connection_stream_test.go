@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/poller"
 	"github.com/stretchr/testify/assert"
@@ -96,4 +97,119 @@ func TestConnectionStream_Connect(t *testing.T) {
 			assert.NotEmpty(t, cs.StopNotify())
 		})
 	}
+}
+
+func TestConnectionsByHost_ChooseBest(t *testing.T) {
+
+	tests := []struct {
+		name      string
+		fill      func(poller.ConnectionsByHost, *gomock.Controller)
+		expectKey string
+	}{
+		{
+			name: "multi",
+			fill: func(conns poller.ConnectionsByHost, ctrl *gomock.Controller) {
+				c1 := poller.NewMockConnection(ctrl)
+				c1.EXPECT().GetLatency().Return(int64(50))
+
+				c2 := poller.NewMockConnection(ctrl)
+				c2.EXPECT().GetLatency().Return(int64(20))
+
+				conns["h1"] = c1
+				conns["h2"] = c2
+			},
+			expectKey: "h2",
+		},
+		{
+			name: "single",
+			fill: func(conns poller.ConnectionsByHost, ctrl *gomock.Controller) {
+				c1 := poller.NewMockConnection(ctrl)
+				c1.EXPECT().GetLatency().Return(int64(50))
+
+				conns["h1"] = c1
+			},
+			expectKey: "h1",
+		},
+		{
+			name: "empty",
+			fill: func(conns poller.ConnectionsByHost, ctrl *gomock.Controller) {
+			},
+			expectKey: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			var conns poller.ConnectionsByHost = make(poller.ConnectionsByHost)
+
+			tt.fill(conns, ctrl)
+
+			result := conns.ChooseBest()
+
+			if tt.expectKey != "" {
+				assert.Equal(t, conns[tt.expectKey], result)
+			} else {
+				assert.Nil(t, result)
+			}
+
+		})
+	}
+}
+
+func TestEleConnectionStream_SendMetrics_Normal(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	var cfg config.Config
+	connectionFactory := func(address string, guid string, checksReconciler poller.ChecksReconciler) poller.Connection {
+		return nil
+	}
+
+	cs := poller.NewCustomConnectionStream(&cfg, nil, connectionFactory)
+
+	c1 := poller.NewMockConnection(ctrl)
+	c1.EXPECT().GetLatency().AnyTimes().Return(int64(50))
+
+	mockSession := poller.NewMockSession(ctrl)
+	mockSession.EXPECT().Send(gomock.Any())
+
+	c2 := poller.NewMockConnection(ctrl)
+	c2.EXPECT().GetLatency().AnyTimes().Return(int64(10))
+	c2.EXPECT().GetSession().Return(mockSession)
+
+	c3 := poller.NewMockConnection(ctrl)
+	c3.EXPECT().GetLatency().AnyTimes().Return(int64(20))
+
+	cs.RegisterConnection("h1", c1)
+	cs.RegisterConnection("h2", c2)
+	cs.RegisterConnection("h3", c3)
+
+	crs := check.ResultSet{
+		Check: &check.TCPCheck{},
+	}
+	err := cs.SendMetrics(&crs)
+	assert.NoError(t, err)
+
+}
+
+func TestEleConnectionStream_SendMetrics_NoConnections(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	var cfg config.Config
+	connectionFactory := func(address string, guid string, checksReconciler poller.ChecksReconciler) poller.Connection {
+		return nil
+	}
+
+	cs := poller.NewCustomConnectionStream(&cfg, nil, connectionFactory)
+
+	crs := check.ResultSet{
+		Check: &check.TCPCheck{},
+	}
+	err := cs.SendMetrics(&crs)
+	assert.EqualError(t, err, poller.ErrNoConnections.Error())
+
 }

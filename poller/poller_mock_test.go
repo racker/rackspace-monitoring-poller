@@ -91,16 +91,6 @@ func (_mr *_MockConnectionStreamRecorder) WaitCh() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "WaitCh")
 }
 
-func (_m *MockConnectionStream) GetConnections() map[string]Connection {
-	ret := _m.ctrl.Call(_m, "GetConnections")
-	ret0, _ := ret[0].(map[string]Connection)
-	return ret0
-}
-
-func (_mr *_MockConnectionStreamRecorder) GetConnections() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetConnections")
-}
-
 // Mock of Connection interface
 type MockConnection struct {
 	ctrl     *gomock.Controller
@@ -120,6 +110,26 @@ func NewMockConnection(ctrl *gomock.Controller) *MockConnection {
 
 func (_m *MockConnection) EXPECT() *_MockConnectionRecorder {
 	return _m.recorder
+}
+
+func (_m *MockConnection) GetClockOffset() int64 {
+	ret := _m.ctrl.Call(_m, "GetClockOffset")
+	ret0, _ := ret[0].(int64)
+	return ret0
+}
+
+func (_mr *_MockConnectionRecorder) GetClockOffset() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetClockOffset")
+}
+
+func (_m *MockConnection) GetLatency() int64 {
+	ret := _m.ctrl.Call(_m, "GetLatency")
+	ret0, _ := ret[0].(int64)
+	return ret0
+}
+
+func (_mr *_MockConnectionRecorder) GetLatency() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetLatency")
 }
 
 func (_m *MockConnection) GetSession() Session {
@@ -204,6 +214,47 @@ func (_mr *_MockConnectionRecorder) GetGUID() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetGUID")
 }
 
+// Mock of ConnectionHealthProvider interface
+type MockConnectionHealthProvider struct {
+	ctrl     *gomock.Controller
+	recorder *_MockConnectionHealthProviderRecorder
+}
+
+// Recorder for MockConnectionHealthProvider (not exported)
+type _MockConnectionHealthProviderRecorder struct {
+	mock *MockConnectionHealthProvider
+}
+
+func NewMockConnectionHealthProvider(ctrl *gomock.Controller) *MockConnectionHealthProvider {
+	mock := &MockConnectionHealthProvider{ctrl: ctrl}
+	mock.recorder = &_MockConnectionHealthProviderRecorder{mock}
+	return mock
+}
+
+func (_m *MockConnectionHealthProvider) EXPECT() *_MockConnectionHealthProviderRecorder {
+	return _m.recorder
+}
+
+func (_m *MockConnectionHealthProvider) GetClockOffset() int64 {
+	ret := _m.ctrl.Call(_m, "GetClockOffset")
+	ret0, _ := ret[0].(int64)
+	return ret0
+}
+
+func (_mr *_MockConnectionHealthProviderRecorder) GetClockOffset() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetClockOffset")
+}
+
+func (_m *MockConnectionHealthProvider) GetLatency() int64 {
+	ret := _m.ctrl.Call(_m, "GetLatency")
+	ret0, _ := ret[0].(int64)
+	return ret0
+}
+
+func (_mr *_MockConnectionHealthProviderRecorder) GetLatency() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetLatency")
+}
+
 // Mock of Session interface
 type MockSession struct {
 	ctrl     *gomock.Controller
@@ -223,6 +274,26 @@ func NewMockSession(ctrl *gomock.Controller) *MockSession {
 
 func (_m *MockSession) EXPECT() *_MockSessionRecorder {
 	return _m.recorder
+}
+
+func (_m *MockSession) GetClockOffset() int64 {
+	ret := _m.ctrl.Call(_m, "GetClockOffset")
+	ret0, _ := ret[0].(int64)
+	return ret0
+}
+
+func (_mr *_MockSessionRecorder) GetClockOffset() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetClockOffset")
+}
+
+func (_m *MockSession) GetLatency() int64 {
+	ret := _m.ctrl.Call(_m, "GetLatency")
+	ret0, _ := ret[0].(int64)
+	return ret0
+}
+
+func (_mr *_MockSessionRecorder) GetLatency() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetLatency")
 }
 
 func (_m *MockSession) Auth() {
@@ -263,26 +334,6 @@ func (_m *MockSession) Wait() {
 
 func (_mr *_MockSessionRecorder) Wait() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Wait")
-}
-
-func (_m *MockSession) GetClockOffset() int64 {
-	ret := _m.ctrl.Call(_m, "GetClockOffset")
-	ret0, _ := ret[0].(int64)
-	return ret0
-}
-
-func (_mr *_MockSessionRecorder) GetClockOffset() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetClockOffset")
-}
-
-func (_m *MockSession) GetLatency() int64 {
-	ret := _m.ctrl.Call(_m, "GetLatency")
-	ret0, _ := ret[0].(int64)
-	return ret0
-}
-
-func (_mr *_MockSessionRecorder) GetLatency() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetLatency")
 }
 
 // Mock of CheckScheduler interface
