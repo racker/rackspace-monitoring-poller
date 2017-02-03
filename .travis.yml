@@ -17,6 +17,7 @@ script:
   - gox
     -osarch "linux/386 linux/amd64 darwin/amd64"
     -output="dist/{{.Dir}}_{{.OS}}_{{.Arch}}"
+    -ldflags="-X main.Version=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match)"
   # integration tests need the latest rackspace-monitoring-poller built
   - go test -v github.com/racker/rackspace-monitoring-poller/integrationcli
 after_script:
