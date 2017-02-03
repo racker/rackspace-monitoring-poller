@@ -49,7 +49,8 @@ var (
 		TimestampFormat: time.RFC1123,
 	}
 
-	Version = "1.0.0+git"
+	// Variable is overwritten by linker-flags on release
+	Version = "dev"
 )
 
 var versionCmd = &cobra.Command{
