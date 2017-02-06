@@ -1,10 +1,11 @@
 [![Build Status](https://travis-ci.org/racker/rackspace-monitoring-poller.svg?branch=master)](https://travis-ci.org/racker/rackspace-monitoring-poller)
 [![Go Documentation](https://godoc.org/github.com/racker/rackerspace-monitoring-poller?status.svg)](https://godoc.org/github.com/racker/rackspace-monitoring-poller)
 [![Coverage Status](https://coveralls.io/repos/github/racker/rackspace-monitoring-poller/badge.svg?branch=master)](https://coveralls.io/github/racker/rackspace-monitoring-poller?branch=master)
+[![GitHub release](https://img.shields.io/github/release/racker/rackspace-monitoring-poller.svg)]()
 
 ## Prepare your workspace
 
-In order to comply with Go packaging structure, be sure to clone this repo 
+In order to comply with Go packaging structure, be sure to clone this repo
 into the path `$GOPATH/src/github.com/racker/rackspace-monitoring-poller`
 
 Get external dependencies before building/running:
