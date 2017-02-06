@@ -24,8 +24,9 @@ import (
 )
 
 // NewMetricsPostRequest function sets up a request with provided
-// check results set data
-func NewMetricsPostRequest(crs *ResultSet) *protocol.MetricsPostRequest {
+// check results set data. The timestamp within the request will be adjusted for the far-end's clock
+// offset given as clockOffset, in milliseconds.
+func NewMetricsPostRequest(crs *ResultSet, clockOffset int64) *protocol.MetricsPostRequest {
 	req := &protocol.MetricsPostRequest{}
 	req.Version = "1"
 	req.Method = "check_metrics.post_multi"
@@ -35,7 +36,7 @@ func NewMetricsPostRequest(crs *ResultSet) *protocol.MetricsPostRequest {
 	req.Params.MinCheckPeriod = crs.Check.GetPeriod() * 1000
 	req.Params.State = crs.State
 	req.Params.Status = crs.Status
-	req.Params.Timestamp = utils.NowTimestampMillis()
+	req.Params.Timestamp = utils.NowTimestampMillis() + clockOffset
 	if crs.Length() == 0 {
 		req.Params.Metrics = nil
 	} else {

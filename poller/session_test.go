@@ -86,15 +86,13 @@ func (fm frameMatcher) String() string {
 }
 
 func installDeterministicTimestamper(startingTimestamp, timestampInc int64) utils.NowTimestampMillisFunc {
-	origTimestamper := utils.NowTimestampMillis
 	mockTimestamp := startingTimestamp
-	utils.NowTimestampMillis = func() int64 {
+
+	return utils.InstallAlternateTimestampFunc(func() int64 {
 		ts := mockTimestamp
 		mockTimestamp += timestampInc
 		return ts
-	}
-
-	return origTimestamper
+	})
 }
 
 func prepareHandshakeResponse(heartbeatInterval uint64, readsHere io.Writer) {
@@ -126,7 +124,7 @@ func TestEleSession_HeartbeatSending(t *testing.T) {
 	defer readsHere.Close()
 
 	origTimestamper := installDeterministicTimestamper(1000, 2000)
-	defer func() { utils.NowTimestampMillis = origTimestamper }()
+	defer utils.InstallAlternateTimestampFunc(origTimestamper)
 
 	const heartbeatInterval = 10 // ms
 
@@ -168,7 +166,7 @@ func TestEleSession_HeartbeatConsumption(t *testing.T) {
 	defer readsHere.Close()
 
 	origTimestamper := installDeterministicTimestamper(1000, 2000)
-	defer func() { utils.NowTimestampMillis = origTimestamper }()
+	defer utils.InstallAlternateTimestampFunc(origTimestamper)
 
 	const heartbeatInterval = 10 // ms
 
@@ -409,7 +407,7 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 			defer readsHere.Close()
 
 			origTimestamper := installDeterministicTimestamper(1000, 2000)
-			defer func() { utils.NowTimestampMillis = origTimestamper }()
+			defer utils.InstallAlternateTimestampFunc(origTimestamper)
 
 			es := poller.NewSession(context.Background(), eleConn, reconciler, &config.Config{})
 			defer es.Close()

@@ -31,7 +31,9 @@ func TestHostInfoMemory_PopulateResult(t *testing.T) {
 	hostInfoMemory := hostinfo.NewHostInfoMemory(hinfo)
 	result, err := hostInfoMemory.Run()
 	sourceFrame := &protocol.FrameMsg{}
-	utils.NowTimestampMillis = func() int64 { return 100 }
+
+	origTs := utils.InstallAlternateTimestampFunc(func() int64 { return 100 })
+	defer utils.InstallAlternateTimestampFunc(origTs)
 	response := hostinfo.NewHostInfoResponse(result, sourceFrame)
 	encoded, err := response.Encode()
 	assert.NoError(t, err)

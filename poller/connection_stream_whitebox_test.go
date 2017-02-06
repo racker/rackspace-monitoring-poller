@@ -117,6 +117,7 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 	defer mockCtrl.Finish()
 	mockSession := NewMockSession(mockCtrl)
 	mockSession.EXPECT().GetLatency().AnyTimes().Return(int64(0))
+	mockSession.EXPECT().GetClockOffset().AnyTimes().Return(int64(0))
 	ctx := context.Background()
 
 	basicCheck, err := check.NewCheck(ctx, []byte(`{
