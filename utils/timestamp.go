@@ -27,6 +27,14 @@ var NowTimestampMillis NowTimestampMillisFunc = func() int64 {
 	return time.Now().UnixNano() / int64(time.Millisecond)
 }
 
+// InstallAlternateTimestampFunc is intended for unit testing where a deterministic timestamp needs to be
+// temporarily enabled. Be sure to defer re-invoke this function to re-install the prior one.
+func InstallAlternateTimestampFunc(newFunc NowTimestampMillisFunc) (priorFunc NowTimestampMillisFunc) {
+	priorFunc = NowTimestampMillis
+	NowTimestampMillis = newFunc
+	return
+}
+
 // ScaleFractionalDuration is primarily useful when scaling durations that are "sub second", but more generally
 // it's when duration is smaller than targetUnits. In that case, a fractional value is much more meangingful than
 // a 0, which is what would happen with plain duration (i.e. integer) division. targetUnits should really be

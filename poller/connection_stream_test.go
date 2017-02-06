@@ -178,6 +178,7 @@ func TestEleConnectionStream_SendMetrics_Normal(t *testing.T) {
 
 	c2 := poller.NewMockConnection(ctrl)
 	c2.EXPECT().GetLatency().AnyTimes().Return(int64(10))
+	c2.EXPECT().GetClockOffset().AnyTimes().Return(int64(0))
 	c2.EXPECT().GetSession().Return(mockSession)
 
 	c3 := poller.NewMockConnection(ctrl)
