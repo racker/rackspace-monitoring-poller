@@ -217,11 +217,13 @@ type PollerPrepareManifest struct {
 
 // PollerPrepareRequest abstracts common info across the "poller.prepare.*" methods
 type PollerPrepareRequest interface {
+	GetPreparationZoneId() string
 	GetPreparationVersion() int
 }
 
 // PollerPrepareStartParams is the params of a message with method=MethodPollerPrepare
 type PollerPrepareStartParams struct {
+	ZoneId   string                  `json:"zone_id"`
 	Version  int                     `json:"version"`
 	Manifest []PollerPrepareManifest `json:"manifest"`
 }
@@ -233,6 +235,9 @@ type PollerPrepareStartRequest struct {
 
 func (req *PollerPrepareStartRequest) GetPreparationVersion() int {
 	return req.Params.Version
+}
+func (req *PollerPrepareStartRequest) GetPreparationZoneId() string {
+	return req.Params.ZoneId
 }
 
 func DecodePollerPrepareStartRequest(frame *FrameMsg) *PollerPrepareStartRequest {
@@ -246,6 +251,7 @@ func DecodePollerPrepareStartRequest(frame *FrameMsg) *PollerPrepareStartRequest
 
 // PollerPrepareBlockParams is the params of a message with method=MethodPollerPrepareBlock
 type PollerPrepareBlockParams struct {
+	ZoneId  string           `json:"zone_id"`
 	Version int              `json:"version"`
 	Block   []*check.CheckIn `json:"block"`
 }
@@ -257,6 +263,9 @@ type PollerPrepareBlockRequest struct {
 
 func (req *PollerPrepareBlockRequest) GetPreparationVersion() int {
 	return req.Params.Version
+}
+func (req *PollerPrepareBlockRequest) GetPreparationZoneId() string {
+	return req.Params.ZoneId
 }
 
 func DecodePollerPrepareBlockRequest(frame *FrameMsg) *PollerPrepareBlockRequest {
@@ -270,7 +279,8 @@ func DecodePollerPrepareBlockRequest(frame *FrameMsg) *PollerPrepareBlockRequest
 
 // PollerPrepareBlockParams is the params of a message with method=MethodPollerPrepareEnd
 type PollerPrepareEndParams struct {
-	Version int `json:"version"`
+	ZoneId  string `json:"zone_id"`
+	Version int    `json:"version"`
 	// Directive is one of PrepareDirective* constants
 	Directive string `json:"directive"`
 }
@@ -282,6 +292,9 @@ type PollerPrepareEndRequest struct {
 
 func (req *PollerPrepareEndRequest) GetPreparationVersion() int {
 	return req.Params.Version
+}
+func (req *PollerPrepareEndRequest) GetPreparationZoneId() string {
+	return req.Params.ZoneId
 }
 
 func DecodePollerPrepareEndRequest(frame *FrameMsg) *PollerPrepareEndRequest {
@@ -295,7 +308,8 @@ func DecodePollerPrepareEndRequest(frame *FrameMsg) *PollerPrepareEndRequest {
 
 // PollerCommitParams is the params of a message with method=MethodPollerCommit
 type PollerCommitParams struct {
-	Version int `json:"version"`
+	ZoneId  string `json:"zone_id"`
+	Version int    `json:"version"`
 }
 
 type PollerCommitRequest struct {
@@ -313,7 +327,8 @@ func DecodePollerCommitRequest(frame *FrameMsg) *PollerCommitRequest {
 }
 
 type PollerPrepareResult struct {
-	Version int `json:"version"`
+	ZoneId  string `json:"zone_id"`
+	Version int    `json:"version"`
 	// Status is one of PrepareResultStatus* constants
 	Status  string `json:"status"`
 	Details string `json:"details"`
@@ -339,7 +354,8 @@ func NewPollerPrepareResponse(source *FrameMsg, result PollerPrepareResult) Fram
 }
 
 type PollerCommitResult struct {
-	Version int `json:"version"`
+	ZoneId  string `json:"zone_id"`
+	Version int    `json:"version"`
 	// Status is one of PrepareResultStatus* constants
 	Status  string `json:"status"`
 	Details string `json:"details"`

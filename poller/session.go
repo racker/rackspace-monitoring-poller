@@ -258,7 +258,7 @@ func (s *EleSession) handlePollerPrepare(f *protocol.FrameMsg) {
 		// fall through
 	}
 
-	cp, err := NewChecksPreparation(reqVer, req.Params.Manifest)
+	cp, err := NewChecksPreparation(req.Params.ZoneId, reqVer, req.Params.Manifest)
 	if err != nil {
 		s.respondFailureToPollerPrepare(f, req, protocol.PrepareResultStatusFailed, err.Error())
 		return
@@ -320,6 +320,7 @@ func (s *EleSession) handlePollerPrepareEnd(f *protocol.FrameMsg) {
 
 	log.WithFields(log.Fields{"req": req, "details": s.prepDetails}).Debug("Responding to end of poller prepare")
 	result := protocol.PollerPrepareResult{
+		ZoneId:  s.prepDetails.activePrep.ZoneId,
 		Version: req.Params.Version,
 		Status:  protocol.PrepareResultStatusPrepared,
 	}
@@ -347,6 +348,7 @@ func (s *EleSession) handlePollerCommit(f *protocol.FrameMsg) {
 func (s *EleSession) respondCommitResult(f *protocol.FrameMsg, req *protocol.PollerCommitRequest,
 	status string, details string) {
 	result := protocol.PollerCommitResult{
+		ZoneId:  req.Params.ZoneId,
 		Version: req.Params.Version,
 		Status:  status,
 		Details: details,
@@ -364,6 +366,7 @@ func (s *EleSession) respondFailureToPollerPrepare(f *protocol.FrameMsg, req pro
 		}).Warn(details)
 	}
 	result := protocol.PollerPrepareResult{
+		ZoneId:  req.GetPreparationZoneId(),
 		Version: req.GetPreparationVersion(),
 		Status:  status,
 		Details: details,

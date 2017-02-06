@@ -28,7 +28,7 @@ import (
 )
 
 func TestNewCheckPreparation_VersionMatch(t *testing.T) {
-	cp, err := poller.NewChecksPreparation(1, []protocol.PollerPrepareManifest{})
+	cp, err := poller.NewChecksPreparation("zn1", 1, []protocol.PollerPrepareManifest{})
 
 	assert.NoError(t, err)
 	assert.NotNil(t, cp)
@@ -36,7 +36,7 @@ func TestNewCheckPreparation_VersionMatch(t *testing.T) {
 }
 
 func TestNewCheckPreparation_VersionMismatch(t *testing.T) {
-	cp, err := poller.NewChecksPreparation(1, []protocol.PollerPrepareManifest{})
+	cp, err := poller.NewChecksPreparation("zn1", 1, []protocol.PollerPrepareManifest{})
 
 	assert.NoError(t, err)
 	assert.NotNil(t, cp)
@@ -65,7 +65,7 @@ func TestCheckPreparation_AddDefinitions_Normal(t *testing.T) {
 		},
 	}
 
-	cp, err := poller.NewChecksPreparation(1, manifest)
+	cp, err := poller.NewChecksPreparation("zn1", 1, manifest)
 	require.NoError(t, err)
 
 	block1 := loadTestDataChecks(t,
@@ -152,7 +152,7 @@ func TestCheckPreparation_AddDefinitions_Fails(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cp, _ := poller.NewChecksPreparation(1, tt.manifest)
+			cp, _ := poller.NewChecksPreparation("zn1", 1, tt.manifest)
 
 			cp.AddDefinitions(tt.block)
 
@@ -174,7 +174,7 @@ func TestNewCheckPreparation_UnknownActionStr(t *testing.T) {
 		},
 	}
 
-	_, err := poller.NewChecksPreparation(1, manifest)
+	_, err := poller.NewChecksPreparation("zn1", 1, manifest)
 
 	assert.Error(t, err)
 }
@@ -215,7 +215,7 @@ func TestChecksPreparation_IsNewer_Value(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cp, err := poller.NewChecksPreparation(tt.preparing, []protocol.PollerPrepareManifest{})
+			cp, err := poller.NewChecksPreparation("zn1", tt.preparing, []protocol.PollerPrepareManifest{})
 			assert.NoError(t, err)
 
 			assert.Equal(t, tt.expect, cp.IsNewer(tt.checking))
@@ -267,7 +267,7 @@ func loadChecksPreparation(t *testing.T, info ...checkLoadInfo) *poller.ChecksPr
 		})
 	}
 
-	cp, err := poller.NewChecksPreparation(1, manifest)
+	cp, err := poller.NewChecksPreparation("zn1", 1, manifest)
 	require.NoError(t, err)
 
 	block := loadTestDataChecks(t, info...)

@@ -57,6 +57,7 @@ type ChecksPrepared interface {
 }
 
 type ChecksPreparation struct {
+	ZoneId  string
 	Version int
 
 	// Actions is a map of checkId->ActionableCheck
@@ -65,8 +66,9 @@ type ChecksPreparation struct {
 
 // NewChecksPreparation initiates a new checks preparation session.
 // Returns the new ChecksPreparation if successful or an error if an unsupported action type was encountered.
-func NewChecksPreparation(version int, manifest []protocol.PollerPrepareManifest) (*ChecksPreparation, error) {
+func NewChecksPreparation(zoneId string, version int, manifest []protocol.PollerPrepareManifest) (*ChecksPreparation, error) {
 	cp := &ChecksPreparation{
+		ZoneId:  zoneId,
 		Version: version,
 		Actions: make(map[string]ActionableCheck),
 	}
