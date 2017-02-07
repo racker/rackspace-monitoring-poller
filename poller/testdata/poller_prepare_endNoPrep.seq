@@ -1,1 +1,1 @@
-{ "v": "1", "id": 13, "target": "1-2-3", "source": "endpoint", "method": "poller.prepare.end", "error": {}, "params": { "version": 5, "directive": "prepare" } }
+{ "v": "1", "id": 13, "target": "1-2-3", "source": "endpoint", "method": "poller.prepare.end", "error": {}, "params": { "zone_id": "zn1", "version": 5, "directive": "prepare" } }

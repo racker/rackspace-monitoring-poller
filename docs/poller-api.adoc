@@ -252,6 +252,8 @@ __required__|string
 |Name|Schema
 |**version** +
 __optional__|<<_partitionversion,PartitionVersion>>
+|**zone_id** +
+__optional__|<<_zoneid,ZoneId>>
 |===
 
 
@@ -290,9 +292,11 @@ __required__|string
 |===
 |Name|Schema
 |**status** +
-__optional__|enum (committed, ignored)
+__required__|enum (committed, ignored)
 |**version** +
-__optional__|<<_partitionversion,PartitionVersion>>
+__required__|<<_partitionversion,PartitionVersion>>
+|**zone_id** +
+__required__|<<_zoneid,ZoneId>>
 |===
 
 
@@ -334,6 +338,8 @@ __required__|string
 __optional__|< <<_pollerpreparemanifest,PollerPrepareManifest>> > array
 |**version** +
 __optional__|<<_partitionversion,PartitionVersion>>
+|**zone_id** +
+__optional__|<<_zoneid,ZoneId>>
 |===
 
 
@@ -375,6 +381,8 @@ __required__|string
 __required__|< <<_check,Check>> > array
 |**version** +
 __required__|<<_partitionversion,PartitionVersion>>
+|**zone_id** +
+__required__|<<_zoneid,ZoneId>>
 |===
 
 
@@ -416,6 +424,8 @@ __required__|string
 __required__|enum (prepare, abort)
 |**version** +
 __required__|<<_partitionversion,PartitionVersion>>
+|**zone_id** +
+__required__|<<_zoneid,ZoneId>>
 |===
 
 
@@ -474,7 +484,14 @@ __optional__|string
 __required__|enum (prepared, aborted, failed, ignored)
 |**version** +
 __required__|<<_partitionversion,PartitionVersion>>
+|**zone_id** +
+__required__|<<_zoneid,ZoneId>>
 |===
+
+
+[[_zoneid]]
+=== ZoneId
+__Type__ : string
 
 
 

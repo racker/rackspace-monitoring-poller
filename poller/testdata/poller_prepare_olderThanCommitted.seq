@@ -1,1 +1,1 @@
-{ "v": "1", "id": 11, "target": "1-2-3", "source": "endpoint", "method": "poller.prepare", "error": {}, "params": { "version": -1, "manifest": [ { "action": "start", "id": "ch1", "type": "remote.ping", "entity_id": "en1" } ] } }
+{ "v": "1", "id": 11, "target": "1-2-3", "source": "endpoint", "method": "poller.prepare", "error": {}, "params": { "zone_id": "zn1", "version": -1, "manifest": [ { "action": "start", "id": "ch1", "type": "remote.ping", "entity_id": "en1" } ] } }

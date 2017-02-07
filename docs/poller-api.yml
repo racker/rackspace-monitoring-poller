@@ -121,6 +121,8 @@ definitions:
   PartitionVersion:
     type: integer
     format: int64
+  ZoneId:
+    type: string
   PollerPrepare:
     description: poller.prepare
     allOf:
@@ -130,6 +132,8 @@ definitions:
           params:
             type: object
             properties:
+              zone_id:
+                $ref: '#/definitions/ZoneId'
               version:
                 $ref: '#/definitions/PartitionVersion'
               manifest:
@@ -181,6 +185,8 @@ definitions:
           params:
             type: object
             properties:
+              zone_id:
+                $ref: '#/definitions/ZoneId'
               version:
                 $ref: '#/definitions/PartitionVersion'
               block:
@@ -188,6 +194,7 @@ definitions:
                 items:
                   $ref: '#/definitions/Check'
             required:
+              - zone_id
               - version
               - block
   PollerPrepareEnd:
@@ -199,6 +206,8 @@ definitions:
           params:
             type: object
             properties:
+              zone_id:
+                $ref: '#/definitions/ZoneId'
               version:
                 $ref: '#/definitions/PartitionVersion'
               directive:
@@ -207,6 +216,7 @@ definitions:
                   - prepare
                   - abort
             required:
+              - zone_id
               - version
               - directive
   PollerPrepareResponse:
@@ -217,6 +227,8 @@ definitions:
           result:
             type: object
             properties:
+              zone_id:
+                $ref: '#/definitions/ZoneId'
               version:
                 $ref: '#/definitions/PartitionVersion'
               status:
@@ -229,6 +241,7 @@ definitions:
               details:
                 type: string
             required:
+              - zone_id
               - version
               - status
   PollerCommit:
@@ -240,8 +253,13 @@ definitions:
           params:
             type: object
             properties:
+              zone_id:
+                $ref: '#/definitions/ZoneId'
               version:
                 $ref: '#/definitions/PartitionVersion'
+        required:
+          - zone_id
+          - version
   PollerCommitResponse:
     description: response to poller.commit
     allOf:
@@ -251,6 +269,8 @@ definitions:
           result:
             type: object
             properties:
+              zone_id:
+                $ref: '#/definitions/ZoneId'
               version:
                 $ref: '#/definitions/PartitionVersion'
               status:
@@ -258,3 +278,7 @@ definitions:
                 enum:
                   - committed
                   - ignored
+            required:
+              - zone_id
+              - version
+              - status

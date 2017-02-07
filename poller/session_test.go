@@ -435,6 +435,7 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 
 					assert.Equal(t, expected.Version, resp.Result.Version)
 					assert.Equal(t, expected.Status, resp.Result.Status)
+					assert.Equal(t, "zn1", resp.Result.ZoneId)
 				}
 
 			})
