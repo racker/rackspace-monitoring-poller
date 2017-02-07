@@ -3,6 +3,8 @@
 [![Coverage Status](https://coveralls.io/repos/github/racker/rackspace-monitoring-poller/badge.svg?branch=master)](https://coveralls.io/github/racker/rackspace-monitoring-poller?branch=master)
 [![GitHub release](https://img.shields.io/github/release/racker/rackspace-monitoring-poller.svg)]()
 
+# Development Notes
+
 ## Prepare your workspace
 
 In order to comply with Go packaging structure, be sure to clone this repo
@@ -16,8 +18,6 @@ go build
 ```
 
 ## Running Simple Endpoint Server for development
-
-#### NOTE: Due to endpoint protocol being in flux, This is currently not configured to listen to any checks.
 
 In the workspace, generate self-signed client/server certificates and keys. In the following examples, the files
 will be stored under sub-directories of `data`. Create that directory, if needed:
@@ -54,6 +54,7 @@ In window #1:
     
 In window #2:
 
+    export DEV_CA=data/ca/ca.pem
     ./rackspace-monitoring-poller serve --config contrib/local-endpoint.cfg  --debug
     
 ## Development-time Documentation
@@ -98,11 +99,3 @@ from incomplete interface implementations.
 
 Please note that due to https://github.com/golang/mock/issues/30 you may need to manually scrub the imports of 
 the generated file.
-
-### Generating callgraph diagrams
-
-From the directory containing this README, run
-
-```
-contrib/generate-callgraphs.sh
-```

@@ -1,0 +1,21 @@
+{
+  "id": "chHttpRackspaceMonApi",
+  "zone_id": "pzA",
+  "entity_id": "enAAAAIPV4",
+  "details": {
+    "url": "https://monitoring.api.rackspacecloud.com:443",
+    "include_body": false,
+    "headers": {},
+    "body": "Rackspace Cloud Monitoring"
+  },
+  "type": "remote.http",
+  "timeout": 15,
+  "period": 30,
+  "ip_addresses": {
+    "default": "74.205.66.16"
+  },
+  "target_alias": "default",
+  "target_hostname": "",
+  "target_resolver": "",
+  "disabled": false
+}

@@ -95,8 +95,10 @@ func (at *AgentTracker) UseMetricsRouter(mr *MetricsRouter) {
 func (at *AgentTracker) NewAgentFromHello(frame protocol.Frame, params *protocol.HandshakeParameters,
 	responder *utils.SmartConn) <-chan error {
 	newAgent, errors := newAgent(at.ctx, frame, params, responder, at.cfg.PrepareBlockSize)
-	at.agentsToGreet <- newAgent
-	at.agentsByAddr[responder.RemoteAddr()] = newAgent
+	if newAgent != nil {
+		at.agentsToGreet <- newAgent
+		at.agentsByAddr[responder.RemoteAddr()] = newAgent
+	}
 
 	return errors
 }

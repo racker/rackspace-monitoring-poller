@@ -19,7 +19,9 @@ package check
 import (
 	"time"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/sparrc/go-ping"
+	"os"
 )
 
 // Pinger is an interface required to be implemented by all pingers.
@@ -49,6 +51,15 @@ var PingerFactory PingerFactorySpec = func(addr string) (Pinger, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if os.Geteuid() == 0 {
+		log.Debug("Using privileged ICMP ping")
+		delegate.SetPrivileged(true)
+	} else {
+		log.Debug("Using unprivileged UDP ping")
+		delegate.SetPrivileged(false)
+	}
+
 	return &pingerImpl{delegate: delegate}, nil
 }
 

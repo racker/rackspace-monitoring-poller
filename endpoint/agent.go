@@ -19,6 +19,7 @@ package endpoint
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	set "github.com/deckarep/golang-set"
@@ -78,7 +79,12 @@ type agent struct {
 
 func newAgent(parentCtx context.Context, frame protocol.Frame, params *protocol.HandshakeParameters, responder *utils.SmartConn,
 	prepareBlockSize int) (*agent, <-chan error) {
-	errors := make(chan error, AgentErrorChanSize)
+	errCh := make(chan error, AgentErrorChanSize)
+
+	if len(params.ZoneIds) == 0 {
+		errCh <- errors.New("Handshake is missing one or more zone IDs")
+		return nil, errCh
+	}
 
 	ctx, cancel := context.WithCancel(parentCtx)
 
@@ -92,7 +98,7 @@ func newAgent(parentCtx context.Context, frame protocol.Frame, params *protocol.
 		features:         params.Features,
 		zones:            params.ZoneIds,
 		prepareBlockSize: prepareBlockSize,
-		errors:           errors,
+		errors:           errCh,
 		responder:        responder,
 		ctx:              ctx,
 		cancel:           cancel,
@@ -104,7 +110,7 @@ func newAgent(parentCtx context.Context, frame protocol.Frame, params *protocol.
 
 	go newAgent.runPrepareResponseCoordinator()
 
-	return newAgent, errors
+	return newAgent, errCh
 }
 
 func (a *agent) GetSourceId() string {
@@ -126,7 +132,6 @@ func (a *agent) handleResponse(frame protocol.Frame) {
 	}).Debug("Agent handling response frame")
 
 	pending, exists := a.pendingPrepares[frame.GetId()]
-	committing := pending.committing
 
 	if !exists {
 		log.WithFields(log.Fields{
@@ -136,7 +141,7 @@ func (a *agent) handleResponse(frame protocol.Frame) {
 		return
 	}
 
-	if committing {
+	if pending.committing {
 		result := &protocol.PollerCommitResult{}
 
 		err := json.Unmarshal(frame.GetRawResult(), result)
@@ -194,8 +199,8 @@ func (a *agent) loadChecks(pathToChecks string, zone string) ([]check.Check, err
 
 			if err != nil {
 				log.WithFields(log.Fields{
-					"checksDir": checksDir,
-					"file":      fileInfo,
+					"checksDir": pathToChecks,
+					"file":      fileInfo.Name(),
 				}).Warn("Unable to read checks file")
 				continue
 			}
