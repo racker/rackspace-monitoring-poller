@@ -240,7 +240,10 @@ func logUnmarshalError(c *utils.SmartConn, frame protocol.Frame) {
 func waitOnAgentError(ctx context.Context, agentErrors <-chan error, c *utils.SmartConn) {
 	select {
 	case err := <-agentErrors:
-		log.WithField("remoteAddr", c.RemoteAddr()).Warn("Agent registration problem. Closing channel.", err)
+		log.WithFields(log.Fields{
+			"remoteAddr": c.RemoteAddr(),
+			"err":        err,
+		}).Warn("Agent registration problem. Closing channel.")
 		c.Close()
 
 	case <-ctx.Done():
