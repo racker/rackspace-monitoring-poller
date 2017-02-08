@@ -23,13 +23,15 @@ CONFIG_FILES := ${PKGDIR_ETC}/${APP_NAME}.cfg
 WGET := wget
 FPM := fpm
 
-.PHONY: package package-deb prep clean
+.PHONY: all package package-deb prep clean
+
+all: clean package
 
 package: prep package-deb
 
 package-deb: ${PKG_DEB}
 
-${PKG_DEB} : $(addprefix ${DEB_BUILD_DIR}/,${CONFIG_FILES})
+${PKG_DEB} : ${DEB_BUILD_DIR}/${PKGDIR_BIN}/${EXE} $(addprefix ${DEB_BUILD_DIR}/,${CONFIG_FILES})
 	${FPM} -p $@ -s dir -t deb -C ${DEB_BUILD_DIR} \
 	  -n ${APP_NAME} \
 	  -v ${GIT_TAG} --iteration ${TAG_DISTANCE} \
