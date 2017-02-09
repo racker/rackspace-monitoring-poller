@@ -19,6 +19,7 @@ package poller
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"sync"
 	"time"
@@ -147,14 +148,17 @@ func (s *EleSession) getCompletionRequest(resp protocol.Frame) *CompletionFrame 
 	return req
 }
 
-func (s *EleSession) handleResponse(resp *protocol.FrameMsg) {
+func (s *EleSession) handleResponse(resp *protocol.FrameMsg) error {
 	if req := s.getCompletionRequest(resp); req != nil {
 		switch req.Method {
 		case protocol.MethodHandshakeHello:
 			resp := protocol.DecodeHandshakeResponse(resp)
-			s.heartbeatInterval = time.Duration(resp.Result.HeartbeatInterval) * time.Millisecond
-
+			if resp.Error != nil {
+				log.Error("Handshake Error", resp.Error)
+				return errors.New(resp.Error.Message)
+			}
 			// just to be sure guard against multiple handshake starting multiple heartbeat routines
+			s.heartbeatInterval = time.Duration(resp.Result.HeartbeatInterval) * time.Millisecond
 			s.heartbeatsStarter.Do(s.goRunHeartbeats)
 		case protocol.MethodHeartbeatPost:
 			resp := protocol.DecodeHeartbeatResponse(resp)
@@ -163,6 +167,7 @@ func (s *EleSession) handleResponse(resp *protocol.FrameMsg) {
 			log.Errorf("Unexpected method: %s", req.Method)
 		}
 	}
+	return nil
 }
 
 // GetReadDeadline adds sessions's heartbeat interval to configured read deadline
@@ -193,20 +198,24 @@ func (s *EleSession) runFrameReading() {
 				s.exitError(err)
 				return
 			}
-			s.handleFrame(f)
+			if err := s.handleFrame(f); err != nil {
+				s.exitError(err)
+				return
+			}
 		}
 	}
 }
 
-func (s *EleSession) handleFrame(f *protocol.FrameMsg) {
+func (s *EleSession) handleFrame(f *protocol.FrameMsg) error {
 	if log.GetLevel() >= log.DebugLevel {
 		js, _ := f.Encode()
 		log.Debugf("RECV: %s", js)
 	}
 
+	var err error
 	switch f.GetMethod() {
 	case protocol.MethodEmpty: // Responses do not have a method name
-		s.handleResponse(f)
+		err = s.handleResponse(f)
 	case protocol.MethodHostInfoGet:
 		go s.handleHostInfo(f)
 
@@ -222,6 +231,7 @@ func (s *EleSession) handleFrame(f *protocol.FrameMsg) {
 	default:
 		log.Errorf("  Need to handle method: %v", f.GetMethod())
 	}
+	return err
 }
 
 func (s *EleSession) handleHostInfo(f *protocol.FrameMsg) {
