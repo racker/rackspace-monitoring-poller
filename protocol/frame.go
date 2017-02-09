@@ -55,8 +55,7 @@ type FrameMsgCommon struct {
 	Target  string `json:"target"`
 	Source  string `json:"source"`
 	Method  string `json:"method,omitempty"`
-
-	Error *Error `json:"error,omitempty"`
+	Error   *Error `json:"error,omitempty"`
 }
 
 // FrameMsg implements Frame and conveys the raw params and result of a frame.
@@ -84,6 +83,7 @@ func (f *FrameMsgCommon) SetResponseFrameMsg(source *FrameMsg) {
 	f.Source = source.Source
 	f.Target = source.Target
 	f.Version = source.Version
+	f.Error = source.Error
 }
 
 func (f *FrameMsgCommon) SetFromFrameMsg(source *FrameMsg) {
@@ -92,6 +92,7 @@ func (f *FrameMsgCommon) SetFromFrameMsg(source *FrameMsg) {
 	f.Source = source.Source
 	f.Target = source.Target
 	f.Version = source.Version
+	f.Error = source.Error
 }
 
 func (f *FrameMsg) SetFromFrameMsg(source *FrameMsg) {
@@ -100,6 +101,7 @@ func (f *FrameMsg) SetFromFrameMsg(source *FrameMsg) {
 	f.Source = source.Source
 	f.Target = source.Target
 	f.Version = source.Version
+	f.Error = source.Error
 	f.RawResult = source.RawResult
 	f.RawParams = source.RawParams
 }

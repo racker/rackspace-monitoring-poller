@@ -25,7 +25,7 @@ will be stored under sub-directories of `data`. Create that directory, if needed
 ```
 mkdir -p data
 ```
- 
+
 First, be your own certificate authority by filling out the prompts when running:
 
 ```
@@ -51,25 +51,31 @@ start the Endpoint server and Poller server.
 In window #1:
 
     ./rackspace-monitoring-poller endpoint --config contrib/endpoint-config.json  --debug
-    
+
 In window #2:
 
     export DEV_CA=data/ca/ca.pem
     ./rackspace-monitoring-poller serve --config contrib/local-endpoint.cfg  --debug
-    
+
 ## Development-time Documentation
 
-If you are adding or modifying documentation comments, viewing the godoc's locally will be very helpful. 
+If you are adding or modifying documentation comments, viewing the godoc's locally will be very helpful.
 The [godoc tool documentation](https://godoc.org/golang.org/x/tools/cmd/godoc) shows several ways to
 run it, but the easiest is to run
 
     godoc -http=:6060
-    
+
 With that running, open your browser to [http://localhost:6060/pkg/github.com/racker/rackspace-monitoring-poller/]().
 
 As you save file changes, just refresh the browser page to pick up the documentation changes.
 
 ### Generating mocks
+
+To regenerate mocks automatically, run:
+
+```
+make generate-mocks
+```
 
 [GoMock](https://github.com/golang/mock) is currently in use for unit testing where an interface needs to be mocked out to minimize scope of testing,
 system impact, etc. To generate a mock of an interface located in this repository first install mockgen
@@ -78,13 +84,13 @@ system impact, etc. To generate a mock of an interface located in this repositor
 go get github.com/golang/mock/mockgen
 ```
 
-With `$GOPATH/bin` in your `PATH`, run 
+With `$GOPATH/bin` in your `PATH`, run
 
 ```
 mockgen -source={Pkg}/{InterfaceFile}.go -package={Pkg} -destination={Pkg}/{InterfaceFile}_mock_test.go
 ```
 
-where `Pkg` is the sub-package that contains one or more interfaces in `{InterfaceFile}.go` to mock. 
+where `Pkg` is the sub-package that contains one or more interfaces in `{InterfaceFile}.go` to mock.
 It will write mocks of those interfaces to an adjacent file `{InterfaceFile}_mock_test.go` where those
 mocks will also reside in the package `Pkg`.
 
@@ -97,5 +103,5 @@ mockgen -source=poller/poller.go -package=poller -destination=poller/poller_mock
 Don't forget to re-run `mockgen` when a mocked interface is altered since test-time compilation errors will result
 from incomplete interface implementations.
 
-Please note that due to https://github.com/golang/mock/issues/30 you may need to manually scrub the imports of 
+Please note that due to https://github.com/golang/mock/issues/30 you may need to manually scrub the imports of
 the generated file.

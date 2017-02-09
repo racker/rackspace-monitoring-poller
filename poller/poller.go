@@ -90,6 +90,7 @@ type Session interface {
 	Respond(msg protocol.Frame)
 	Close()
 	Wait()
+	GetError() error
 }
 
 // CheckScheduler arranges the periodic invocation of the given Check

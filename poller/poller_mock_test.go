@@ -4,14 +4,14 @@
 package poller
 
 import (
-	"context"
-	"crypto/tls"
-	"github.com/golang/mock/gomock"
-	"github.com/racker/rackspace-monitoring-poller/check"
-	"github.com/racker/rackspace-monitoring-poller/config"
-	"github.com/racker/rackspace-monitoring-poller/protocol"
-	"io"
-	"time"
+	context "context"
+	tls "crypto/tls"
+	gomock "github.com/golang/mock/gomock"
+	check "github.com/racker/rackspace-monitoring-poller/check"
+	config "github.com/racker/rackspace-monitoring-poller/config"
+	protocol "github.com/racker/rackspace-monitoring-poller/protocol"
+	io "io"
+	time "time"
 )
 
 // Mock of ConnectionStream interface
@@ -334,6 +334,16 @@ func (_m *MockSession) Wait() {
 
 func (_mr *_MockSessionRecorder) Wait() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Wait")
+}
+
+func (_m *MockSession) GetError() error {
+	ret := _m.ctrl.Call(_m, "GetError")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+func (_mr *_MockSessionRecorder) GetError() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetError")
 }
 
 // Mock of CheckScheduler interface
