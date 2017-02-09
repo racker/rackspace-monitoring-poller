@@ -157,24 +157,12 @@ func TestTCPRunSuccess(t *testing.T) {
 }
 
 func TestTCPRunFailureClosedPort(t *testing.T) {
-	// Generate an unused port
-	laddr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Error(err)
-	}
-	listener, err := net.ListenTCP("tcp", laddr)
-	if err != nil {
-		t.Error(err)
-	}
-	listenPort := listener.Addr().(*net.TCPAddr).Port
-	listener.Close()
-
 	// Create Check
 	checkData := fmt.Sprintf(`{
 	  "id":"chPzATCP",
 	  "zone_id":"pzA",
 	  "entity_id":"enAAAAIPV4",
-	  "details":{"port":%d,"ssl":false},
+	  "details":{"port":1,"ssl":false},
 	  "type":"remote.tcp",
 	  "timeout":1,
 	  "period":30,
@@ -183,7 +171,7 @@ func TestTCPRunFailureClosedPort(t *testing.T) {
 	  "target_hostname":"",
 	  "target_resolver":"",
 	  "disabled":false
-	  }`, listenPort)
+	  }`)
 	check, err := check.NewCheck(context.Background(), []byte(checkData))
 	require.NoError(t, err)
 
