@@ -136,6 +136,10 @@ func (s *EleSession) Respond(msg protocol.Frame) {
 	s.sendCh <- msg
 }
 
+func (s *EleSession) GetError() error {
+	return s.error
+}
+
 func (s *EleSession) getCompletionRequest(resp protocol.Frame) *CompletionFrame {
 	s.completionsMu.Lock()
 	req, ok := s.completions[resp.GetId()]
@@ -154,7 +158,7 @@ func (s *EleSession) handleResponse(resp *protocol.FrameMsg) error {
 		case protocol.MethodHandshakeHello:
 			resp := protocol.DecodeHandshakeResponse(resp)
 			if resp.Error != nil {
-				log.Error("Handshake Error", resp.Error)
+				log.Errorf("Handshake Error: %s", resp.Error.Message)
 				return errors.New(resp.Error.Message)
 			}
 			// just to be sure guard against multiple handshake starting multiple heartbeat routines
@@ -499,7 +503,7 @@ func (s *EleSession) runFrameSending() {
 }
 
 func (s *EleSession) exitError(err error) {
-	log.Warn("Session exiting with error", err)
+	log.Warnf("Session exiting with error: %v", err)
 	s.shutdownLock.Lock()
 	if s.error == nil {
 		s.error = err

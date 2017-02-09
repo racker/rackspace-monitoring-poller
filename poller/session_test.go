@@ -102,17 +102,35 @@ func prepareHandshakeResponse(heartbeatInterval uint64, readsHere io.Writer) {
 	json.NewEncoder(readsHere).Encode(handshakeResp)
 }
 
+func prepareHandshakeResponseError(code uint64, message string, readsHere io.Writer) {
+	var handshakeResp protocol.HandshakeResponse
+	handshakeResp.Id = 1 // since that's what poller will send as first message
+	handshakeResp.Error = &protocol.Error{
+		Code:    code,
+		Message: message,
+	}
+	json.NewEncoder(readsHere).Encode(handshakeResp)
+}
+
 func handshake(t *testing.T, writesHere, readsHere *utils.BlockingReadBuffer, heartbeatInterval uint64) *json.Decoder {
 	// decoder is used to consume frames sent out by the poller under test
 	decoder := json.NewDecoder(writesHere)
-
 	// We should see a handshake, but can ignore it
 	handshakeReq := new(protocol.HandshakeRequest)
 	err := decoder.Decode(handshakeReq)
 	require.NoError(t, err)
-
 	prepareHandshakeResponse(heartbeatInterval, readsHere)
+	return decoder
+}
 
+func handshakeError(t *testing.T, writesHere, readsHere *utils.BlockingReadBuffer, code uint64, message string) *json.Decoder {
+	// decoder is used to consume frames sent out by the poller under test
+	decoder := json.NewDecoder(writesHere)
+	// We should see a handshake, but can ignore it
+	handshakeReq := &protocol.HandshakeRequest{}
+	err := decoder.Decode(handshakeReq)
+	require.NoError(t, err)
+	prepareHandshakeResponseError(code, message, readsHere)
 	return decoder
 }
 
@@ -198,13 +216,30 @@ func TestEleSession_HeartbeatConsumption(t *testing.T) {
 	assert.Equal(t, int64(2000), latency, "wrong latency")
 }
 
+func TestEleSession_HandshakeError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	eleConn, reconciler, writesHere, readsHere := setupConnStreamExpectations(ctrl)
+	defer readsHere.Close()
+
+	es := poller.NewSession(context.Background(), eleConn, reconciler, &config.Config{})
+	defer es.Close()
+
+	handshakeError(t, writesHere, readsHere, 400, "some error")
+
+	time.Sleep(10 * time.Millisecond)
+	require.Error(t, es.GetError())
+}
+
 func TestEleSession_PollerPrepare(t *testing.T) {
 
 	tests := []struct {
-		name                   string
-		prepareSeq             string
-		commitSeq              string
-		expectedPrepResponses  []protocol.PollerPrepareResult
+		name                  string
+		prepareSeq            string
+		commitSeq             string
+		expectedPrepResponses []protocol.PollerPrepareResult
+
 		expectedCommitResponse protocol.PollerCommitResult
 		expectValidate         bool
 		expectReconcile        bool
