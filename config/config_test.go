@@ -265,7 +265,7 @@ func TestConfig_ParseFields(t *testing.T) {
 			fields: getConfigFields(),
 			args: []string{
 				"monitoring_endpoints",
-				"127.dev,0.0.0.0",
+				"127.0.0.1,0.0.0.0",
 			},
 			expected: &config.Config{
 				UseSrv: false,
@@ -282,7 +282,7 @@ func TestConfig_ParseFields(t *testing.T) {
 				TimeoutWrite:   time.Duration(10 * time.Second),
 				Token:          "",
 				Addresses: []string{
-					"127.dev",
+					"127.0.0.1",
 					"0.0.0.0",
 				},
 				Features: make([]map[string]string, 0),
