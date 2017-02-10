@@ -25,6 +25,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/racker/rackspace-monitoring-poller/version"
+
 	log "github.com/Sirupsen/logrus"
 )
 
@@ -68,8 +70,8 @@ func NewConfig(guid string, useStaging bool) *Config {
 	cfg.Token = os.Getenv("AGENT_TOKEN")
 	cfg.AgentId = os.Getenv("AGENT_ID")
 	cfg.AgentName = "remote_poller"
-	cfg.ProcessVersion = "0.0.1" //TODO
-	cfg.BundleVersion = "0.0.1"  //TODO
+	cfg.ProcessVersion = version.Version
+	cfg.BundleVersion = version.Version
 	cfg.TimeoutRead = DefaultTimeoutRead
 	cfg.TimeoutWrite = DefaultTimeoutWrite
 	if useStaging {
