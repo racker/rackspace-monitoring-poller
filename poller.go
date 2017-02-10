@@ -29,6 +29,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/commands"
+	"github.com/racker/rackspace-monitoring-poller/version"
 	"github.com/spf13/cobra"
 )
 
@@ -48,16 +49,13 @@ var (
 	Formatter log.Formatter = &log.JSONFormatter{
 		TimestampFormat: time.RFC1123,
 	}
-
-	// Variable is overwritten by linker-flags on release
-	Version = "dev"
 )
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Prints version information",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(Version)
+		fmt.Println(version.Version)
 	},
 }
 
