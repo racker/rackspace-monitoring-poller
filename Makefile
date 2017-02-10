@@ -14,49 +14,62 @@ PKGDIR_ETC := etc
 OS := linux
 ARCH := amd64
 BIN_URL := https://github.com/racker/rackspace-monitoring-poller/releases/download/$(GIT_TAG)/$(EXE)_$(OS)_$(ARCH)
+VENDOR := Rackspace US, Inc.
+LICENSE := Apache v2
 
 PKG_DEB := ${BUILD_DIR}/${APP_NAME}_${GIT_TAG}-${TAG_DISTANCE}_${ARCH}.deb
 
+# TODO: should poller get its own specific file?
+APP_CFG := ${PKGDIR_ETC}/rackspace-monitoring-agent.cfg
+UPSTART_CONF := ${PKGDIR_ETC}/init/${APP_NAME}.conf
+UPSTART_DEFAULT := ${PKGDIR_ETC}/default/${APP_NAME}
+
 OWNED_DIRS :=
-CONFIG_FILES := ${PKGDIR_ETC}/${APP_NAME}.cfg
+DEB_CONFIG_FILES := ${APP_CFG}
+DEB_ALL_FILES := ${DEB_CONFIG_FILES} ${UPSTART_CONF} ${UPSTART_DEFAULT}
 
 WGET := wget
 FPM := fpm
 
-.PHONY: all package package-deb prep clean generate-mocks
+.PHONY: default repackage package package-deb clean generate-mocks
 
-all: clean package
+default: clean package
 
 generate-mocks:
 	mockgen -source=poller/poller.go -package=poller -destination=poller/poller_mock_test.go
 	mockgen -destination mock_golang/mock_conn.go -package mock_golang net Conn
 
-package: prep package-deb
+package: package-deb
 
 package-deb: ${PKG_DEB}
 
-${PKG_DEB} : ${DEB_BUILD_DIR}/${PKGDIR_BIN}/${EXE} $(addprefix ${DEB_BUILD_DIR}/,${CONFIG_FILES})
-	${FPM} -p $@ -s dir -t deb -C ${DEB_BUILD_DIR} \
-	  -n ${APP_NAME} \
+${PKG_DEB} : ${DEB_BUILD_DIR}/${PKGDIR_BIN}/${EXE} $(addprefix ${DEB_BUILD_DIR}/,${DEB_ALL_FILES}) ${DEB_BUILD_DIR}
+	rm -f $@
+	${FPM} -p $@ -s dir -t deb \
+	  -n ${APP_NAME} --license "${LICENSE}" --vendor "${VENDOR}" \
 	  -v ${GIT_TAG} --iteration ${TAG_DISTANCE} \
 	  $(foreach d,${OWNED_DIRS},--directories ${d}) \
-	  $(foreach c,${CONFIG_FILES},--config-files ${c}) \
-	  ${PKGDIR_BIN}/${EXE} ${CONFIG_FILES}
-
-prep: ${BUILD_DIR}
+	  $(foreach c,${DEB_CONFIG_FILES},--config-files ${c}) \
+	  --deb-default ${DEB_BUILD_DIR}/${UPSTART_DEFAULT} \
+	  --deb-upstart ${DEB_BUILD_DIR}/${UPSTART_CONF} \
+	  -C ${DEB_BUILD_DIR} ${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES}
 
 clean:
 	rm -rf $(BUILD_DIR)
 
 ${DEB_BUILD_DIR}/${PKGDIR_BIN}/${EXE} : ${DEB_BUILD_DIR}/${PKGDIR_BIN}
-	$(WGET) -q -O $@ $(BIN_URL)
+	$(WGET) -q --no-use-server-timestamps -O $@ $(BIN_URL)
 	chmod +x $@
 
-${DEB_BUILD_DIR}/${PKGDIR_ETC}/${APP_NAME}.cfg : ${DEB_BUILD_DIR}/${PKGDIR_ETC}
-	touch $@
+${DEB_BUILD_DIR}/${APP_CFG} : ${SRC_DIR}/generic/sample.cfg ${DEB_BUILD_DIR}/${PKGDIR_ETC}
+	cp $< $@
 
-${DEB_BUILD_DIR}/${PKGDIR_BIN} ${DEB_BUILD_DIR}/${PKGDIR_ETC} :
-	mkdir -p $@
+${DEB_BUILD_DIR}/${UPSTART_CONF} : ${DEB_SRC_DIR}/service.upstart ${DEB_BUILD_DIR}/${PKGDIR_ETC}/init
+	cp $< $@
+	chmod +x $@
 
-${BUILD_DIR}:
+${DEB_BUILD_DIR}/${UPSTART_DEFAULT} : ${DEB_SRC_DIR}/upstart_default.cfg ${DEB_BUILD_DIR}/${PKGDIR_ETC}/default
+	cp $< $@
+
+${BUILD_DIR} ${DEB_BUILD_DIR}/${PKGDIR_BIN} ${DEB_BUILD_DIR}/${PKGDIR_ETC} ${DEB_BUILD_DIR}/${PKGDIR_ETC}/init ${DEB_BUILD_DIR}/${PKGDIR_ETC}/default :
 	mkdir -p $@
