@@ -145,8 +145,8 @@ func TestTCPRunSuccess(t *testing.T) {
 	}
 
 	// Shutdown server
-	listener.Close()
 	server.Stop()
+	listener.Close()
 
 	// Validate Metrics
 	if crs.Status != "success" {
