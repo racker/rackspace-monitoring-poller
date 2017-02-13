@@ -3,10 +3,13 @@ GIT_TAG := $(shell git describe --abbrev=0)
 TAG_DISTANCE := $(shell git describe --long | awk -F- '{print $$2}')
 SRC_DIR := pkg
 DEB_SRC_DIR := ${SRC_DIR}/debian
+DEB_REPO_DIR := ${DEB_SRC_DIR}/repo
+CLOUDFILES_REPO_NAME := poller-$(GIT_TAG)
 BUILD_DIR := build
 DEB_BUILD_DIR := ${BUILD_DIR}/debian
 EXE := rackspace-monitoring-poller
 APP_NAME := rackspace-monitoring-poller
+REPREPRO := reprepro
 
 PKGDIR_BIN := usr/bin
 PKGDIR_ETC := etc
@@ -31,7 +34,7 @@ DEB_ALL_FILES := ${DEB_CONFIG_FILES} ${UPSTART_CONF} ${UPSTART_DEFAULT}
 WGET := wget
 FPM := fpm
 
-.PHONY: default repackage package package-deb package-deb-local clean generate-mocks stage-deb-exe-local
+.PHONY: default repackage package package-deb package-repo-upload package-upload-deb package-deb-local clean generate-mocks stage-deb-exe-local
 
 default: clean package
 
@@ -40,6 +43,15 @@ generate-mocks:
 	mockgen -destination mock_golang/mock_conn.go -package mock_golang net Conn
 
 package: package-deb
+
+package-repo-upload: package-deb package-upload-deb
+
+package-upload-deb:
+	rclone mkdir rackspace:${CLOUDFILES_REPO_NAME}/debian
+	rclone copy ${DEB_REPO_DIR}/ rackspace:${CLOUDFILES_REPO_NAME}/debian
+
+reprepro-deb:
+	${REPREPRO} -b ${DEB_REPO_DIR} includedeb cloudmonitoring build/*.deb
 
 package-deb: ${PKG_DEB}
 
