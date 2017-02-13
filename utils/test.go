@@ -251,7 +251,7 @@ func (s *BannerServer) Serve(listener net.Listener) {
 		}
 		log.WithField("err", err).Fatal("Unexpected error")
 	}
-	//log.Debug(conn.RemoteAddr(), "connected")
+	log.WithField("remoteAddr", conn.RemoteAddr()).Debug("accepted")
 	s.waitGroup.Add(1)
 	go s.serve(conn)
 }
