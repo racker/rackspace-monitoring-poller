@@ -25,10 +25,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const BuildDir = "build"
+
 // PollerCommand is the program name for the poller.
 // Used for integration tests
-var PollerCommand = fmt.Sprintf("%s/src/github.com/racker/rackspace-monitoring-poller/dist/rackspace-monitoring-poller_%s_%s",
+var PollerCommand = fmt.Sprintf("%s/src/github.com/racker/rackspace-monitoring-poller/%s/rackspace-monitoring-poller_%s_%s",
 	os.Getenv("GOPATH"),
+	BuildDir,
 	runtime.GOOS,
 	runtime.GOARCH,
 )
