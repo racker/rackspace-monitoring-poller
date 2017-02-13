@@ -31,7 +31,7 @@ DEB_ALL_FILES := ${DEB_CONFIG_FILES} ${UPSTART_CONF} ${UPSTART_DEFAULT}
 WGET := wget
 FPM := fpm
 
-.PHONY: default repackage package package-deb clean generate-mocks
+.PHONY: default repackage package package-deb package-deb-local clean generate-mocks stage-deb-exe-local
 
 default: clean package
 
@@ -42,6 +42,8 @@ generate-mocks:
 package: package-deb
 
 package-deb: ${PKG_DEB}
+
+package-deb-local: stage-deb-exe-local package-deb
 
 ${PKG_DEB} : ${DEB_BUILD_DIR}/${PKGDIR_BIN}/${EXE} $(addprefix ${DEB_BUILD_DIR}/,${DEB_ALL_FILES}) ${DEB_BUILD_DIR}
 	rm -f $@
@@ -57,19 +59,22 @@ ${PKG_DEB} : ${DEB_BUILD_DIR}/${PKGDIR_BIN}/${EXE} $(addprefix ${DEB_BUILD_DIR}/
 clean:
 	rm -rf $(BUILD_DIR)
 
-${DEB_BUILD_DIR}/${PKGDIR_BIN}/${EXE} : ${DEB_BUILD_DIR}/${PKGDIR_BIN}
+stage-deb-exe-local: | ${DEB_BUILD_DIR}/${PKGDIR_BIN}
+	cp -p ${BUILD_DIR}/${APP_NAME}_${OS}_${ARCH} ${DEB_BUILD_DIR}/${PKGDIR_BIN}/${EXE}
+
+${DEB_BUILD_DIR}/${PKGDIR_BIN}/${EXE} : | ${DEB_BUILD_DIR}/${PKGDIR_BIN}
 	$(WGET) -q --no-use-server-timestamps -O $@ $(BIN_URL)
 	chmod +x $@
 
-${DEB_BUILD_DIR}/${APP_CFG} : ${SRC_DIR}/generic/sample.cfg ${DEB_BUILD_DIR}/${PKGDIR_ETC}
+${DEB_BUILD_DIR}/${APP_CFG} : ${SRC_DIR}/generic/sample.cfg | ${DEB_BUILD_DIR}/${PKGDIR_ETC}
 	cp $< $@
 
 ${DEB_BUILD_DIR}/${UPSTART_CONF} : ${DEB_SRC_DIR}/service.upstart ${DEB_BUILD_DIR}/${PKGDIR_ETC}/init
 	cp $< $@
 	chmod +x $@
 
-${DEB_BUILD_DIR}/${UPSTART_DEFAULT} : ${DEB_SRC_DIR}/upstart_default.cfg ${DEB_BUILD_DIR}/${PKGDIR_ETC}/default
+${DEB_BUILD_DIR}/${UPSTART_DEFAULT} : ${DEB_SRC_DIR}/upstart_default.cfg | ${DEB_BUILD_DIR}/${PKGDIR_ETC}/default
 	cp $< $@
 
-${BUILD_DIR} ${DEB_BUILD_DIR}/${PKGDIR_BIN} ${DEB_BUILD_DIR}/${PKGDIR_ETC} ${DEB_BUILD_DIR}/${PKGDIR_ETC}/init ${DEB_BUILD_DIR}/${PKGDIR_ETC}/default :
+${BUILD_DIR} ${DEB_BUILD_DIR}/${PKGDIR_BIN} ${DEB_BUILD_DIR}/${PKGDIR_ETC} ${DEB_BUILD_DIR}/${PKGDIR_ETC}/init | ${DEB_BUILD_DIR}/${PKGDIR_ETC}/default :
 	mkdir -p $@

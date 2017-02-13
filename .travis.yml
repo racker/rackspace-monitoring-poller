@@ -11,15 +11,17 @@ install:
   - go get -v github.com/mitchellh/gox
   - cd $GOPATH/src/github.com/mitchellh/gox && git checkout v0.3.0 && go install && cd -
   - glide install
+  - gem install --no-ri --no-rdoc fpm
 
 script:
   - go test -short -v $(glide novendor)
   - gox
     -osarch "linux/386 linux/amd64 darwin/amd64"
-    -output="dist/{{.Dir}}_{{.OS}}_{{.Arch}}"
+    -output="build/{{.Dir}}_{{.OS}}_{{.Arch}}"
     -ldflags="-X github.com/racker/rackspace-monitoring-poller/version.Version=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match)"
   # integration tests need the latest rackspace-monitoring-poller built
   - go test -v github.com/racker/rackspace-monitoring-poller/integrationcli
+  - make package-deb-local
 after_script:
   - go get github.com/mattn/goveralls
   - bash contrib/combine-coverage.sh --coveralls
@@ -28,10 +30,9 @@ deploy:
   # Generate OAuth token at https://github.com/settings/tokens and configure in
   # project settings https://travis-ci.org/racker/rackspace-monitoring-poller/settings
   api_key: "$GITHUB_OAUTH_TOKEN"
+  file_glob: true
   file:
-    - "dist/rackspace-monitoring-poller_linux_386"
-    - "dist/rackspace-monitoring-poller_linux_amd64"
-    - "dist/rackspace-monitoring-poller_darwin_amd64"
+    - "build/rackspace-monitoring-poller_*"
   skip_cleanup: true
   on:
     tags: true
