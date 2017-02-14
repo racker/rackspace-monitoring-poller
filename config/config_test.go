@@ -10,19 +10,20 @@ import (
 )
 
 type configFields struct {
-	UseSrv         bool
-	SrvQueries     []string
-	Addresses      []string
-	AgentId        string
-	AgentName      string
-	Features       []map[string]string
-	Guid           string
-	BundleVersion  string
-	ProcessVersion string
-	Token          string
-	ZoneIds        []string
-	TimeoutRead    time.Duration
-	TimeoutWrite   time.Duration
+	UseSrv            bool
+	SrvQueries        []string
+	Addresses         []string
+	AgentId           string
+	AgentName         string
+	Features          []map[string]string
+	Guid              string
+	BundleVersion     string
+	ProcessVersion    string
+	Token             string
+	ZoneIds           []string
+	TimeoutRead       time.Duration
+	TimeoutWrite      time.Duration
+	TimeoutPrepareEnd time.Duration
 }
 
 func getConfigFields() configFields {
@@ -33,14 +34,15 @@ func getConfigFields() configFields {
 			"_monitoringagent._tcp.ord1.prod.monitoring.api.rackspacecloud.com",
 			"_monitoringagent._tcp.lon3.prod.monitoring.api.rackspacecloud.com",
 		},
-		AgentName:      "remote_poller",
-		ProcessVersion: "dev",
-		BundleVersion:  "dev",
-		Guid:           "some-guid",
-		TimeoutRead:    time.Duration(10 * time.Second),
-		TimeoutWrite:   time.Duration(10 * time.Second),
-		Token:          "",
-		Features:       make([]map[string]string, 0),
+		AgentName:         "remote_poller",
+		ProcessVersion:    "dev",
+		BundleVersion:     "dev",
+		Guid:              "some-guid",
+		TimeoutRead:       time.Duration(10 * time.Second),
+		TimeoutWrite:      time.Duration(10 * time.Second),
+		TimeoutPrepareEnd: config.DefaultTimeoutPrepareEnd,
+		Token:             "",
+		Features:          make([]map[string]string, 0),
 	}
 }
 
@@ -62,18 +64,19 @@ func TestNewConfig(t *testing.T) {
 					"_monitoringagent._tcp.ord1.prod.monitoring.api.rackspacecloud.com",
 					"_monitoringagent._tcp.lon3.prod.monitoring.api.rackspacecloud.com",
 				},
-				AgentName:      "remote_poller",
-				ProcessVersion: "dev",
-				BundleVersion:  "dev",
-				Guid:           "some-guid",
-				TimeoutRead:    time.Duration(10 * time.Second),
-				TimeoutWrite:   time.Duration(10 * time.Second),
-				Token:          "",
-				Features:       make([]map[string]string, 0),
+				AgentName:         "remote_poller",
+				ProcessVersion:    "dev",
+				BundleVersion:     "dev",
+				Guid:              "some-guid",
+				TimeoutRead:       time.Duration(10 * time.Second),
+				TimeoutWrite:      time.Duration(10 * time.Second),
+				TimeoutPrepareEnd: config.DefaultTimeoutPrepareEnd,
+				Token:             "",
+				Features:          make([]map[string]string, 0),
 			},
 		},
 		{
-			name:       "UseStating",
+			name:       "UseStaging",
 			guid:       "some-guid-via-staging",
 			useStaging: true,
 			expected: &config.Config{
@@ -83,14 +86,15 @@ func TestNewConfig(t *testing.T) {
 					"_monitoringagent._tcp.ord1.stage.monitoring.api.rackspacecloud.com",
 					"_monitoringagent._tcp.lon3.stage.monitoring.api.rackspacecloud.com",
 				},
-				AgentName:      "remote_poller",
-				ProcessVersion: "dev",
-				BundleVersion:  "dev",
-				Guid:           "some-guid-via-staging",
-				TimeoutRead:    time.Duration(10 * time.Second),
-				TimeoutWrite:   time.Duration(10 * time.Second),
-				Token:          "",
-				Features:       make([]map[string]string, 0),
+				AgentName:         "remote_poller",
+				ProcessVersion:    "dev",
+				BundleVersion:     "dev",
+				Guid:              "some-guid-via-staging",
+				TimeoutRead:       time.Duration(10 * time.Second),
+				TimeoutWrite:      time.Duration(10 * time.Second),
+				TimeoutPrepareEnd: config.DefaultTimeoutPrepareEnd,
+				Token:             "",
+				Features:          make([]map[string]string, 0),
 			},
 		},
 	}

@@ -171,3 +171,11 @@ func (cp *ChecksPreparation) Validate(version int) error {
 
 	return nil
 }
+
+func (cp *ChecksPreparation) GetPreparationZoneId() string {
+	return cp.ZoneId
+}
+
+func (cp *ChecksPreparation) GetPreparationVersion() int {
+	return cp.Version
+}

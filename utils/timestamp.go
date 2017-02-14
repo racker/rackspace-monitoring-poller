@@ -74,3 +74,20 @@ func (tt *TimeLatencyTracking) ComputeSkew() (offset int64, latency int64, _ err
 
 	return
 }
+
+// ChannelOfTimer is a nil-safe channel getter which becomes useful when needing to "select on a timer" that
+// may not always be activated. For example,
+//
+//    select {
+//    	case t := <- utils.ChannelOfTimer(timer) :
+//    		... do something with timeout
+//  	case f := <- frames:
+//    		timer = time.NewTimer(d)
+//    }
+func ChannelOfTimer(timer *time.Timer) <-chan time.Time {
+	if timer == nil {
+		return nil
+	} else {
+		return timer.C
+	}
+}
