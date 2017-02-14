@@ -223,7 +223,8 @@ func TestEleSession_HandshakeError(t *testing.T) {
 	eleConn, reconciler, writesHere, readsHere := setupConnStreamExpectations(ctrl)
 	defer readsHere.Close()
 
-	es := poller.NewSession(context.Background(), eleConn, reconciler, &config.Config{})
+	cfg := config.NewConfig("1-2-3", false)
+	es := poller.NewSession(context.Background(), eleConn, reconciler, cfg)
 	defer es.Close()
 
 	handshakeError(t, writesHere, readsHere, 400, "some error")
@@ -444,7 +445,8 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 			origTimestamper := installDeterministicTimestamper(1000, 2000)
 			defer utils.InstallAlternateTimestampFunc(origTimestamper)
 
-			es := poller.NewSession(context.Background(), eleConn, reconciler, &config.Config{})
+			cfg := config.NewConfig("1-2-3", false)
+			es := poller.NewSession(context.Background(), eleConn, reconciler, cfg)
 			defer es.Close()
 
 			decoder := handshake(t, writesHere, readsHere, 50000)
@@ -503,8 +505,63 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 
 }
 
-/*
-Scenarios
-* prepare after prepare
-* wrong directive in end
-*/
+func TestEleSession_PollerPrepareTimeout(t *testing.T) {
+
+	tests := []struct {
+		name string
+		seq  string
+	}{
+		{
+			name: "hangingPrepare",
+			seq:  "hangingPrepare",
+		},
+		{
+			name: "hangingEnd",
+			seq:  "hangingEnd",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			eleConn, reconciler, writesHere, readsHere := setupConnStreamExpectations(ctrl)
+			defer readsHere.Close()
+
+			origTimestamper := installDeterministicTimestamper(1000, 2000)
+			defer utils.InstallAlternateTimestampFunc(origTimestamper)
+
+			cfg := &config.Config{
+				TimeoutPrepareEnd: 10 * time.Millisecond,
+			}
+			es := poller.NewSession(context.Background(), eleConn, reconciler, cfg)
+			defer es.Close()
+
+			decoder := handshake(t, writesHere, readsHere, 50000)
+			time.Sleep(5 * time.Millisecond)
+
+			reconciler.EXPECT().ValidateChecks(gomock.Any()).Do(func(cp poller.ChecksPreparing) {
+				assert.Len(t, cp.GetActionableChecks(), 1)
+			})
+
+			pollerPrepare, err := ioutil.ReadFile(fmt.Sprintf("testdata/poller_prepare_%s.seq", tt.seq))
+			require.NoError(t, err)
+			t.Log("Sending prepare sequence")
+			readsHere.Write(pollerPrepare)
+
+			utils.Timebox(t, 30*time.Millisecond, func(t *testing.T) {
+
+				var resp protocol.PollerPrepareResponse
+				decoder.Decode(&resp)
+				t.Log("Received prepare response", resp)
+
+				assert.Equal(t, protocol.PrepareResultStatusFailed, resp.Result.Status)
+
+			})
+
+		})
+	}
+
+}

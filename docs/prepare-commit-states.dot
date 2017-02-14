@@ -1,0 +1,24 @@
+digraph G {
+  start [label="" shape=circle style=filled fillcolor=black]
+  PP [label="poller.prepare"]
+  PPB [label="poller.prepare.block"]
+  PPE [label="poller.prepare.end"]
+  PC [label="poller.commit"]
+
+  failed [shape=octagon]
+  committed [label="" shape=doublecircle style=filled fillcolor=black]
+
+  start -> PP
+  PP -> PPB
+  PPB -> PPE
+  PPE -> PC
+  PC -> committed
+
+  edge [fontsize=10]
+  PP -> failed [label="prepareToEnd TO"]
+  PP -> failed [label="older(req.version)"]
+  PP -> failed [label="superceded(req.version)"]
+  PPB -> failed [label="prepareToEnd TO"]
+  PPE -> failed [label="req.directive=abort"]
+  PPE -> failed [label="req.directive=?"]
+}

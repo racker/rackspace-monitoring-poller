@@ -41,6 +41,7 @@ type CompletionFrame struct {
 
 const (
 	sendChannelSize = 128
+	readChannelSize = 256
 )
 
 type prepDetails struct {
@@ -49,6 +50,7 @@ type prepDetails struct {
 	newestCommittedVersion int
 	srcPrepMsg             *protocol.FrameMsg
 	prepared               bool
+	prepareToEndTimer      *time.Timer
 }
 
 // EleSession implements Session interface
@@ -80,6 +82,7 @@ type EleSession struct {
 	completions   map[uint64]*CompletionFrame
 
 	sendCh chan protocol.Frame
+	readCh chan *protocol.FrameMsg
 
 	heartbeatsStarter    sync.Once
 	heartbeatInterval    time.Duration
@@ -102,11 +105,13 @@ func NewSession(ctx context.Context, connection Connection, checksReconciler Che
 		dec:                json.NewDecoder(connection.GetFarendReader()),
 		seq:                0, // so that handshake req gets ID 1 after incrementing
 		sendCh:             make(chan protocol.Frame, sendChannelSize),
+		readCh:             make(chan *protocol.FrameMsg, readChannelSize),
 		heartbeatResponses: make(chan *protocol.HeartbeatResponse, 1),
 		completions:        make(map[uint64]*CompletionFrame),
 	}
 	session.ctx, session.cancel = context.WithCancel(ctx)
 	go session.runFrameReading()
+	go session.runFrameHandlingAndTimeout()
 	go session.runFrameSending()
 	session.Auth()
 	return session
@@ -202,10 +207,33 @@ func (s *EleSession) runFrameReading() {
 				s.exitError(err)
 				return
 			}
+			s.readCh <- f
+		}
+	}
+}
+
+func (s *EleSession) runFrameHandlingAndTimeout() {
+	log.Debug("frame handling starting")
+	defer log.Debug("frame handling exiting")
+
+	for {
+		select {
+		case <-s.ctx.Done():
+			return
+
+		case f := <-s.readCh:
 			if err := s.handleFrame(f); err != nil {
-				s.exitError(err)
-				return
+				s.error = err
+				log.WithField("err", err).Error("Error during handleFrame")
+
+				// but loop back around since frame-level errors are not catastrophic
 			}
+
+		case <-utils.ChannelOfTimer(s.prepDetails.prepareToEndTimer):
+			s.prepDetails.prepareToEndTimer = nil
+			s.respondFailureToPollerPrepare(s.prepDetails.srcPrepMsg, s.activePrep,
+				protocol.PrepareResultStatusFailed, "prepare-to-end timer expired")
+			s.prepDetails.clear()
 		}
 	}
 }
@@ -269,6 +297,8 @@ func (s *EleSession) handlePollerPrepare(f *protocol.FrameMsg) {
 		s.respondFailureToPollerPrepare(s.prepDetails.srcPrepMsg, req, protocol.PrepareResultStatusIgnored,
 			"Request supercedes a previous preparation")
 
+		s.prepDetails.prepareToEndTimer.Stop()
+
 		// fall through
 	}
 
@@ -284,6 +314,8 @@ func (s *EleSession) handlePollerPrepare(f *protocol.FrameMsg) {
 		return
 	}
 
+	s.prepDetails.prepareToEndTimer = time.NewTimer(s.config.TimeoutPrepareEnd)
+
 	// It's all good, so note it and proceed
 	s.prepDetails.srcPrepMsg = f
 	s.prepDetails.activePrep = cp
@@ -298,6 +330,12 @@ func (s *EleSession) handlePollerPrepareBlock(f *protocol.FrameMsg) {
 	}
 
 	s.prepDetails.activePrep.AddDefinitions(req.Params.Block)
+
+	t := s.prepDetails.prepareToEndTimer
+	if !t.Stop() {
+		<-t.C
+	}
+	t.Reset(s.config.TimeoutPrepareEnd)
 }
 
 func (s *EleSession) handlePollerPrepareEnd(f *protocol.FrameMsg) {
@@ -331,6 +369,8 @@ func (s *EleSession) handlePollerPrepareEnd(f *protocol.FrameMsg) {
 	}
 
 	s.prepDetails.prepared = true
+	s.prepDetails.prepareToEndTimer.Stop()
+	s.prepDetails.prepareToEndTimer = nil
 
 	log.WithFields(log.Fields{"req": req, "details": s.prepDetails}).Debug("Responding to end of poller prepare")
 	result := protocol.PollerPrepareResult{

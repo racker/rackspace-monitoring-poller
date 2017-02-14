@@ -36,8 +36,9 @@ var (
 )
 
 const (
-	DefaultTimeoutRead  = 10 * time.Second
-	DefaultTimeoutWrite = 10 * time.Second
+	DefaultTimeoutRead       = 10 * time.Second
+	DefaultTimeoutWrite      = 10 * time.Second
+	DefaultTimeoutPrepareEnd = 60 * time.Second
 )
 
 type Config struct {
@@ -61,6 +62,9 @@ type Config struct {
 	// Timeouts
 	TimeoutRead  time.Duration
 	TimeoutWrite time.Duration
+	// TimeoutPrepareEnd declares the max time to elapse between poller.prepare and poller.prepare.end, but
+	// is reset upon receipt of each poller.prepare.block.
+	TimeoutPrepareEnd time.Duration
 }
 
 func NewConfig(guid string, useStaging bool) *Config {
@@ -74,6 +78,7 @@ func NewConfig(guid string, useStaging bool) *Config {
 	cfg.BundleVersion = version.Version
 	cfg.TimeoutRead = DefaultTimeoutRead
 	cfg.TimeoutWrite = DefaultTimeoutWrite
+	cfg.TimeoutPrepareEnd = DefaultTimeoutPrepareEnd
 	if useStaging {
 		cfg.SrvQueries = DefaultStagingSrvEndpoints
 		log.Warn("Using staging endpoints")
