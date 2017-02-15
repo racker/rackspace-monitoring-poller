@@ -95,8 +95,6 @@ func initEnv() {
 		signal.Notify(hupChan, os.Interrupt, syscall.SIGHUP)
 		go func() {
 			for {
-				//TODO select on a cancelling context channel, etc in order to exit
-
 				<-hupChan
 				setLogOutput()
 			}
