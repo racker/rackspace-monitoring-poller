@@ -294,7 +294,7 @@ func (s *EleSession) handlePollerPrepare(f *protocol.FrameMsg) {
 	}
 
 	if s.activePrep != nil && s.activePrep.IsNewer(reqVer) {
-		s.respondFailureToPollerPrepare(s.prepDetails.srcPrepMsg, req, protocol.PrepareResultStatusIgnored,
+		s.respondFailureToPollerPrepare(s.prepDetails.srcPrepMsg, s.prepDetails.activePrep, protocol.PrepareResultStatusIgnored,
 			"Request supercedes a previous preparation")
 
 		s.prepDetails.prepareToEndTimer.Stop()

@@ -432,6 +432,23 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 			expectValidate:  false,
 			expectReconcile: false,
 		},
+		{
+			name:       "newSupercedesInProgress",
+			prepareSeq: "newSupercedesInProgress",
+			commitSeq:  "",
+			expectedPrepResponses: []protocol.PollerPrepareResult{
+				{
+					Status:  "ignored",
+					Version: 5,
+				},
+				{
+					Status:  "prepared",
+					Version: 6,
+				},
+			},
+			expectValidate:  true,
+			expectReconcile: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -455,7 +472,7 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 			if tt.expectValidate {
 				reconciler.EXPECT().ValidateChecks(gomock.Any()).Do(func(cp poller.ChecksPreparing) {
 					assert.Len(t, cp.GetActionableChecks(), 1)
-				}).Return(tt.reconcileValidateErr)
+				}).Return(tt.reconcileValidateErr).AnyTimes()
 			}
 
 			pollerPrepare, err := ioutil.ReadFile(fmt.Sprintf("testdata/poller_prepare_%s.seq", tt.prepareSeq))
@@ -463,7 +480,7 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 			t.Log("Sending prepare sequence")
 			readsHere.Write(pollerPrepare)
 
-			utils.Timebox(t, 10*time.Millisecond, func(t *testing.T) {
+			utils.TimeboxNamed(t, tt.name, 10*time.Millisecond, func(t *testing.T) {
 
 				for _, expected := range tt.expectedPrepResponses {
 					var resp protocol.PollerPrepareResponse
