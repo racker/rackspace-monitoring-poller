@@ -17,5 +17,5 @@ respawn
 
 script
     . /etc/default/rackspace-monitoring-poller
-    /usr/bin/rackspace-monitoring-poller serve --config $CONFIG_FILE $POLLER_SERVE_OPTS
+    start-stop-daemon --start --make-pidfile --pidfile /var/run/rackspace-monitoring-poller.pid --exec /usr/bin/rackspace-monitoring-poller serve --config $CONFIG_FILE $POLLER_SERVE_OPTS
 end script

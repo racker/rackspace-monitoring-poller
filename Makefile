@@ -26,9 +26,10 @@ PKG_DEB := ${BUILD_DIR}/${APP_NAME}_${GIT_TAG}-${TAG_DISTANCE}_${ARCH}.deb
 APP_CFG := ${PKGDIR_ETC}/rackspace-monitoring-agent.cfg
 UPSTART_CONF := ${PKGDIR_ETC}/init/${APP_NAME}.conf
 UPSTART_DEFAULT := ${PKGDIR_ETC}/default/${APP_NAME}
+LOGROTATE_CFG := ${PKGDIR_ETC}/logrotate.d/${APP_NAME}
 
 OWNED_DIRS :=
-DEB_CONFIG_FILES := ${APP_CFG}
+DEB_CONFIG_FILES := ${APP_CFG} ${LOGROTATE_CFG}
 DEB_ALL_FILES := ${DEB_CONFIG_FILES} ${UPSTART_CONF} ${UPSTART_DEFAULT}
 
 WGET := wget
@@ -78,15 +79,18 @@ ${DEB_BUILD_DIR}/${PKGDIR_BIN}/${EXE} : | ${DEB_BUILD_DIR}/${PKGDIR_BIN}
 	$(WGET) -q --no-use-server-timestamps -O $@ $(BIN_URL)
 	chmod +x $@
 
-${DEB_BUILD_DIR}/${APP_CFG} : ${SRC_DIR}/generic/sample.cfg | ${DEB_BUILD_DIR}/${PKGDIR_ETC}
+${DEB_BUILD_DIR}/${APP_CFG} : ${SRC_DIR}/generic/sample.cfg ${DEB_BUILD_DIR}/${PKGDIR_ETC}
+	cp $< $@
+
+${DEB_BUILD_DIR}/${LOGROTATE_CFG} : ${SRC_DIR}/generic/logrotate.cfg ${DEB_BUILD_DIR}/${PKGDIR_ETC}/logrotate.d
 	cp $< $@
 
 ${DEB_BUILD_DIR}/${UPSTART_CONF} : ${DEB_SRC_DIR}/service.upstart ${DEB_BUILD_DIR}/${PKGDIR_ETC}/init
 	cp $< $@
 	chmod +x $@
 
-${DEB_BUILD_DIR}/${UPSTART_DEFAULT} : ${DEB_SRC_DIR}/upstart_default.cfg | ${DEB_BUILD_DIR}/${PKGDIR_ETC}/default
+${DEB_BUILD_DIR}/${UPSTART_DEFAULT} : ${DEB_SRC_DIR}/upstart_default.cfg ${DEB_BUILD_DIR}/${PKGDIR_ETC}/default
 	cp $< $@
 
-${BUILD_DIR} ${DEB_BUILD_DIR}/${PKGDIR_BIN} ${DEB_BUILD_DIR}/${PKGDIR_ETC} ${DEB_BUILD_DIR}/${PKGDIR_ETC}/init | ${DEB_BUILD_DIR}/${PKGDIR_ETC}/default :
+${BUILD_DIR} $(addprefix ${DEB_BUILD_DIR}/,${PKGDIR_BIN} ${PKGDIR_ETC} ${PKGDIR_ETC}/logrotate.d ${PKGDIR_ETC}/init ${PKGDIR_ETC}/default) :
 	mkdir -p $@
