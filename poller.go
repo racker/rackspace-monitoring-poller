@@ -49,6 +49,7 @@ var (
 	globalFlags struct {
 		Debug       bool
 		LogfileName string
+		NoLogfile   bool
 	}
 
 	// Formatter is a log formatter utilized for poller.  Defaulted to JSONFormatter
@@ -70,6 +71,7 @@ func init() {
 	rand.Seed(time.Now().UTC().UnixNano())
 	log.SetOutput(os.Stderr)
 	pollerCmd.PersistentFlags().BoolVar(&globalFlags.Debug, "debug", false, "Enable debug")
+	pollerCmd.PersistentFlags().BoolVar(&globalFlags.NoLogfile, "no-logfile", false, "Logs to stdout instead of a logfile")
 	pollerCmd.PersistentFlags().StringVarP(&globalFlags.LogfileName, "logfile", "l",
 		DefaultLogfileName, "Location of the log file")
 }
@@ -85,7 +87,7 @@ func initEnv() {
 		log.SetFormatter(Formatter)
 	}
 
-	if globalFlags.LogfileName != "" {
+	if !globalFlags.NoLogfile && globalFlags.LogfileName != "" {
 		log.WithField("location", globalFlags.LogfileName).Info("Redirecting log output")
 		setLogOutput()
 
