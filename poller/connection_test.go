@@ -57,7 +57,7 @@ func TestConnection_Connect(t *testing.T) {
 			}, nil),
 			ctx:                context.Background(),
 			expectedErr:        true,
-			expectedErrMessage: "dial tcp: missing port in address invalid-url",
+			expectedErrMessage: "dial tcp: address invalid-url: missing port in address",
 		},
 		{
 			name: "Empty context",
