@@ -31,6 +31,12 @@ import (
 	"github.com/racker/rackspace-monitoring-poller/commands"
 	"github.com/racker/rackspace-monitoring-poller/version"
 	"github.com/spf13/cobra"
+	"os/signal"
+	"syscall"
+)
+
+const (
+	DefaultLogfileName = "/var/log/rackspace-monitoring-poller.log"
 )
 
 var (
@@ -41,7 +47,9 @@ var (
 		},
 	}
 	globalFlags struct {
-		Debug bool
+		Debug       bool
+		LogfileName string
+		NoLogfile   bool
 	}
 
 	// Formatter is a log formatter utilized for poller.  Defaulted to JSONFormatter
@@ -61,19 +69,46 @@ var versionCmd = &cobra.Command{
 
 func init() {
 	rand.Seed(time.Now().UTC().UnixNano())
-	if os.Getenv("LOG_TEXT_FORMAT") == "true" {
-		log.SetFormatter(&log.TextFormatter{ForceColors: true})
-	} else {
-		log.SetFormatter(Formatter)
-	}
 	log.SetOutput(os.Stderr)
 	pollerCmd.PersistentFlags().BoolVar(&globalFlags.Debug, "debug", false, "Enable debug")
+	pollerCmd.PersistentFlags().BoolVar(&globalFlags.NoLogfile, "no-logfile", false, "Logs to stdout instead of a logfile")
+	pollerCmd.PersistentFlags().StringVarP(&globalFlags.LogfileName, "logfile", "l",
+		DefaultLogfileName, "Location of the log file")
 }
 
 func initEnv() {
 	if globalFlags.Debug {
 		log.SetLevel(log.DebugLevel)
 	}
+
+	if os.Getenv("LOG_TEXT_FORMAT") == "true" {
+		log.SetFormatter(&log.TextFormatter{ForceColors: true})
+	} else {
+		log.SetFormatter(Formatter)
+	}
+
+	if !globalFlags.NoLogfile && globalFlags.LogfileName != "" {
+		log.WithField("location", globalFlags.LogfileName).Info("Redirecting log output")
+		setLogOutput()
+
+		hupChan := make(chan os.Signal, 1)
+		signal.Notify(hupChan, os.Interrupt, syscall.SIGHUP)
+		go func() {
+			for {
+				<-hupChan
+				setLogOutput()
+			}
+		}()
+	}
+}
+
+func setLogOutput() {
+	file, err := os.OpenFile(globalFlags.LogfileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Fatalf("Unable to open initial log file %v : %v", globalFlags.LogfileName, err)
+	}
+	log.SetOutput(file)
+
 }
 
 func main() {

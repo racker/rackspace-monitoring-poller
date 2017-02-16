@@ -187,6 +187,15 @@ func BufferToStringSlice(buf *bytes.Buffer) []*OutputMessage {
 // This function can be used outside of a unit test context by passing nil for t
 // Returns true if boxed finished before duration d elapsed.
 func Timebox(t *testing.T, d time.Duration, boxed func(t *testing.T)) bool {
+	return TimeboxNamed(t, "", d, boxed)
+}
+
+// Timebox is used for putting a time bounds around a chunk of code, given as the function boxed.
+// NOTE that if the duration d elapses, then boxed will be left to run off in its go-routine...it can't be
+// forcefully terminated.
+// This function can be used outside of a unit test context by passing nil for t
+// Returns true if boxed finished before duration d elapsed.
+func TimeboxNamed(t *testing.T, name string, d time.Duration, boxed func(t *testing.T)) bool {
 	timer := time.NewTimer(d)
 	completed := make(chan struct{})
 
@@ -198,7 +207,7 @@ func Timebox(t *testing.T, d time.Duration, boxed func(t *testing.T)) bool {
 	select {
 	case <-timer.C:
 		if t != nil {
-			t.Fatal("Timebox expired")
+			t.Fatal("Timebox expired", name)
 		}
 		return false
 	case <-completed:
