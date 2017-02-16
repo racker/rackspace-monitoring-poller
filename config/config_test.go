@@ -74,7 +74,8 @@ func TestNewConfig(t *testing.T) {
 			guid:       "some-guid-via-staging",
 			useStaging: true,
 			expected: &config.Config{
-				UseSrv: true,
+				UseSrv:     true,
+				UseStaging: true,
 				SrvQueries: []string{
 					"_monitoringagent._tcp.dfw1.stage.monitoring.api.rackspacecloud.com",
 					"_monitoringagent._tcp.ord1.stage.monitoring.api.rackspacecloud.com",
