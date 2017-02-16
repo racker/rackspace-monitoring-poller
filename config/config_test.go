@@ -1,7 +1,6 @@
 package config_test
 
 import (
-	"reflect"
 	"testing"
 	"time"
 
@@ -28,12 +27,7 @@ type configFields struct {
 
 func getConfigFields() configFields {
 	return configFields{
-		UseSrv: true,
-		SrvQueries: []string{
-			"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
-			"_monitoringagent._tcp.ord1.prod.monitoring.api.rackspacecloud.com",
-			"_monitoringagent._tcp.lon3.prod.monitoring.api.rackspacecloud.com",
-		},
+		UseSrv:            true,
 		AgentName:         "remote_poller",
 		ProcessVersion:    "dev",
 		BundleVersion:     "dev",
@@ -80,7 +74,8 @@ func TestNewConfig(t *testing.T) {
 			guid:       "some-guid-via-staging",
 			useStaging: true,
 			expected: &config.Config{
-				UseSrv: true,
+				UseSrv:     true,
+				UseStaging: true,
 				SrvQueries: []string{
 					"_monitoringagent._tcp.dfw1.stage.monitoring.api.rackspacecloud.com",
 					"_monitoringagent._tcp.ord1.stage.monitoring.api.rackspacecloud.com",
@@ -109,52 +104,59 @@ func TestNewConfig(t *testing.T) {
 func TestConfig_LoadFromFile(t *testing.T) {
 	tests := []struct {
 		name        string
-		fields      configFields
 		filepath    string
 		expectedErr bool
+		expected    *config.Config
 	}{
 		{
 			name:        "Error on file open",
-			fields:      configFields{},
 			filepath:    "noexiste",
 			expectedErr: true,
 		},
 		{
 			name:        "No comments config file",
-			fields:      configFields{},
 			filepath:    "testdata/no-comments-config-file.txt",
+			expected:    config.NewConfig("1-2-3", false),
 			expectedErr: false,
 		},
 		{
 			name:        "With comments in config file",
-			fields:      configFields{},
 			filepath:    "testdata/with-comments-config-file.txt",
+			expected:    config.NewConfig("1-2-3", false),
+			expectedErr: false,
+		},
+		{
+			name: "With snet region",
+			expected: expectedConfigWithSrvQueries("1-2-3", false, "dfw", []string{
+				"_monitoringagent._tcp.snet-dfw-region0.prod.monitoring.api.rackspacecloud.com",
+				"_monitoringagent._tcp.snet-dfw-region1.prod.monitoring.api.rackspacecloud.com",
+				"_monitoringagent._tcp.snet-dfw-region2.prod.monitoring.api.rackspacecloud.com",
+			}),
+			filepath:    "testdata/with-snet-config-file.txt",
 			expectedErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			cfg := &config.Config{
-				UseSrv:         tt.fields.UseSrv,
-				SrvQueries:     tt.fields.SrvQueries,
-				Addresses:      tt.fields.Addresses,
-				AgentId:        tt.fields.AgentId,
-				AgentName:      tt.fields.AgentName,
-				Features:       tt.fields.Features,
-				Guid:           tt.fields.Guid,
-				BundleVersion:  tt.fields.BundleVersion,
-				ProcessVersion: tt.fields.ProcessVersion,
-				Token:          tt.fields.Token,
-				ZoneIds:        tt.fields.ZoneIds,
-				TimeoutRead:    tt.fields.TimeoutRead,
-				TimeoutWrite:   tt.fields.TimeoutWrite,
+			cfg := config.NewConfig("1-2-3", false)
+			err := cfg.LoadFromFile(tt.filepath)
+			if tt.expectedErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expected, cfg)
 			}
-			if err := cfg.LoadFromFile(tt.filepath); (err != nil) != tt.expectedErr {
-				t.Errorf("Config.LoadFromFile() error = %v, expectedErr %v", err, tt.expectedErr)
-			}
+
 		})
 	}
+}
+
+func expectedConfigWithSrvQueries(guid string, useStaging bool, snetRegion string, srvQueries []string) *config.Config {
+	cfg := config.NewConfig(guid, useStaging)
+	cfg.SnetRegion = snetRegion
+	cfg.SrvQueries = srvQueries
+	return cfg
 }
 
 func TestConfig_ParseFields(t *testing.T) {
@@ -173,12 +175,7 @@ func TestConfig_ParseFields(t *testing.T) {
 				"agentname",
 			},
 			expected: &config.Config{
-				UseSrv: true,
-				SrvQueries: []string{
-					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
-					"_monitoringagent._tcp.ord1.prod.monitoring.api.rackspacecloud.com",
-					"_monitoringagent._tcp.lon3.prod.monitoring.api.rackspacecloud.com",
-				},
+				UseSrv:         true,
 				AgentName:      "remote_poller",
 				AgentId:        "agentname",
 				ProcessVersion: "dev",
@@ -198,12 +195,7 @@ func TestConfig_ParseFields(t *testing.T) {
 				"monitoring_id",
 			},
 			expected: &config.Config{
-				UseSrv: true,
-				SrvQueries: []string{
-					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
-					"_monitoringagent._tcp.ord1.prod.monitoring.api.rackspacecloud.com",
-					"_monitoringagent._tcp.lon3.prod.monitoring.api.rackspacecloud.com",
-				},
+				UseSrv:         true,
 				AgentName:      "remote_poller",
 				ProcessVersion: "dev",
 				BundleVersion:  "dev",
@@ -223,12 +215,7 @@ func TestConfig_ParseFields(t *testing.T) {
 				"myawesometoken",
 			},
 			expected: &config.Config{
-				UseSrv: true,
-				SrvQueries: []string{
-					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
-					"_monitoringagent._tcp.ord1.prod.monitoring.api.rackspacecloud.com",
-					"_monitoringagent._tcp.lon3.prod.monitoring.api.rackspacecloud.com",
-				},
+				UseSrv:         true,
 				AgentName:      "remote_poller",
 				ProcessVersion: "dev",
 				BundleVersion:  "dev",
@@ -247,12 +234,7 @@ func TestConfig_ParseFields(t *testing.T) {
 				"monitoring_token",
 			},
 			expected: &config.Config{
-				UseSrv: true,
-				SrvQueries: []string{
-					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
-					"_monitoringagent._tcp.ord1.prod.monitoring.api.rackspacecloud.com",
-					"_monitoringagent._tcp.lon3.prod.monitoring.api.rackspacecloud.com",
-				},
+				UseSrv:         true,
 				AgentName:      "remote_poller",
 				ProcessVersion: "dev",
 				BundleVersion:  "dev",
@@ -272,12 +254,7 @@ func TestConfig_ParseFields(t *testing.T) {
 				"127.0.0.1,0.0.0.0",
 			},
 			expected: &config.Config{
-				UseSrv: false,
-				SrvQueries: []string{
-					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
-					"_monitoringagent._tcp.ord1.prod.monitoring.api.rackspacecloud.com",
-					"_monitoringagent._tcp.lon3.prod.monitoring.api.rackspacecloud.com",
-				},
+				UseSrv:         false,
 				AgentName:      "remote_poller",
 				ProcessVersion: "dev",
 				BundleVersion:  "dev",
@@ -300,12 +277,7 @@ func TestConfig_ParseFields(t *testing.T) {
 				"monitoring_endpoints",
 			},
 			expected: &config.Config{
-				UseSrv: true,
-				SrvQueries: []string{
-					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
-					"_monitoringagent._tcp.ord1.prod.monitoring.api.rackspacecloud.com",
-					"_monitoringagent._tcp.lon3.prod.monitoring.api.rackspacecloud.com",
-				},
+				UseSrv:         true,
 				AgentName:      "remote_poller",
 				ProcessVersion: "dev",
 				BundleVersion:  "dev",
@@ -325,12 +297,7 @@ func TestConfig_ParseFields(t *testing.T) {
 				"thething",
 			},
 			expected: &config.Config{
-				UseSrv: true,
-				SrvQueries: []string{
-					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
-					"_monitoringagent._tcp.ord1.prod.monitoring.api.rackspacecloud.com",
-					"_monitoringagent._tcp.lon3.prod.monitoring.api.rackspacecloud.com",
-				},
+				UseSrv:         true,
 				AgentName:      "remote_poller",
 				ProcessVersion: "dev",
 				BundleVersion:  "dev",
@@ -341,6 +308,46 @@ func TestConfig_ParseFields(t *testing.T) {
 				Features:       make([]map[string]string, 0),
 			},
 			expectedErr: false,
+		},
+		{
+			name:   "ValidSnet",
+			fields: getConfigFields(),
+			args: []string{
+				"monitoring_snet_region", "iad",
+			},
+			expected: &config.Config{
+				UseSrv:         true,
+				AgentName:      "remote_poller",
+				ProcessVersion: "dev",
+				BundleVersion:  "dev",
+				Guid:           "some-guid",
+				TimeoutRead:    time.Duration(10 * time.Second),
+				TimeoutWrite:   time.Duration(10 * time.Second),
+				Token:          "",
+				Features:       make([]map[string]string, 0),
+				SnetRegion:     "iad",
+			},
+			expectedErr: false,
+		},
+		{
+			name:   "InvalidSnet",
+			fields: getConfigFields(),
+			args: []string{
+				"monitoring_snet_region", "neverneverland",
+			},
+			expected: &config.Config{
+				UseSrv:         true,
+				AgentName:      "remote_poller",
+				ProcessVersion: "dev",
+				BundleVersion:  "dev",
+				Guid:           "some-guid",
+				TimeoutRead:    time.Duration(10 * time.Second),
+				TimeoutWrite:   time.Duration(10 * time.Second),
+				Token:          "",
+				Features:       make([]map[string]string, 0),
+				SnetRegion:     "",
+			},
+			expectedErr: true,
 		},
 	}
 	for _, tt := range tests {
@@ -360,18 +367,12 @@ func TestConfig_ParseFields(t *testing.T) {
 				TimeoutRead:    tt.fields.TimeoutRead,
 				TimeoutWrite:   tt.fields.TimeoutWrite,
 			}
-			err := cfg.ParseFields(tt.args)
-			if !reflect.DeepEqual(cfg, tt.expected) {
-				t.Errorf("TestConfig_ParseFields() = %v, expected %v", cfg, tt.expected)
-			}
+			err := cfg.ParseFields(cfg.DefineConfigEntries(), tt.args)
+			assert.Equal(t, tt.expected, cfg)
 			if tt.expectedErr {
-				if err == nil {
-					t.Error("TestConfig_ParseFields() expected error")
-				}
+				assert.Error(t, err)
 			} else {
-				if err != nil {
-					t.Errorf("TestConfig_ParseFields() error = %v, expectedErr %v", err, tt.expectedErr)
-				}
+				assert.NoError(t, err)
 			}
 		})
 	}
@@ -393,12 +394,7 @@ func TestConfig_SetPrivateZones(t *testing.T) {
 				"zone2",
 			},
 			expected: &config.Config{
-				UseSrv: true,
-				SrvQueries: []string{
-					"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
-					"_monitoringagent._tcp.ord1.prod.monitoring.api.rackspacecloud.com",
-					"_monitoringagent._tcp.lon3.prod.monitoring.api.rackspacecloud.com",
-				},
+				UseSrv:         true,
 				AgentName:      "remote_poller",
 				ProcessVersion: "dev",
 				BundleVersion:  "dev",
@@ -432,9 +428,55 @@ func TestConfig_SetPrivateZones(t *testing.T) {
 				TimeoutWrite:   tt.fields.TimeoutWrite,
 			}
 			cfg.SetPrivateZones(tt.zones)
-			if !reflect.DeepEqual(cfg, tt.expected) {
-				t.Errorf("TestConfig_SetPrivateZones() = %v, expected %v", cfg, tt.expected)
-			}
+			assert.Equal(t, tt.expected, cfg)
+		})
+	}
+}
+
+func TestConfig_PostProcess(t *testing.T) {
+	tests := []struct {
+		Name               string
+		Given              config.Config
+		ExpectedSrvQueries []string
+	}{
+		{
+			Name: "SnetProduction",
+			Given: config.Config{
+				UseStaging: false,
+				SnetRegion: "iad",
+			},
+			ExpectedSrvQueries: []string{
+				"_monitoringagent._tcp.snet-iad-region0.prod.monitoring.api.rackspacecloud.com",
+				"_monitoringagent._tcp.snet-iad-region1.prod.monitoring.api.rackspacecloud.com",
+				"_monitoringagent._tcp.snet-iad-region2.prod.monitoring.api.rackspacecloud.com",
+			},
+		},
+		{
+			Name: "SnetStaging",
+			Given: config.Config{
+				UseStaging: true,
+				SnetRegion: "ord",
+			},
+			ExpectedSrvQueries: []string{
+				"_monitoringagent._tcp.snet-ord-region0.stage.monitoring.api.rackspacecloud.com",
+				"_monitoringagent._tcp.snet-ord-region1.stage.monitoring.api.rackspacecloud.com",
+				"_monitoringagent._tcp.snet-ord-region2.stage.monitoring.api.rackspacecloud.com",
+			},
+		},
+		{
+			Name: "NoSnet",
+			Given: config.Config{
+				SnetRegion: "",
+			},
+			ExpectedSrvQueries: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			var processed config.Config = tt.Given
+			processed.PostProcess()
+			assert.Equal(t, tt.ExpectedSrvQueries, processed.SrvQueries)
 		})
 	}
 }

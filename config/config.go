@@ -27,7 +27,10 @@ import (
 
 	"github.com/racker/rackspace-monitoring-poller/version"
 
+	"bytes"
+	"fmt"
 	log "github.com/Sirupsen/logrus"
+	"text/template"
 )
 
 var (
@@ -44,6 +47,7 @@ const (
 type Config struct {
 	// Addresses
 	UseSrv     bool
+	UseStaging bool
 	SrvQueries []string
 	Addresses  []string
 
@@ -55,6 +59,7 @@ type Config struct {
 	BundleVersion  string
 	ProcessVersion string
 	Token          string
+	SnetRegion     string
 
 	// Zones
 	ZoneIds []string
@@ -65,6 +70,13 @@ type Config struct {
 	// TimeoutPrepareEnd declares the max time to elapse between poller.prepare and poller.prepare.end, but
 	// is reset upon receipt of each poller.prepare.block.
 	TimeoutPrepareEnd time.Duration
+}
+
+type configEntry struct {
+	Name     string
+	ValuePtr interface{}
+	Tweak    func()
+	Allowed  []string
 }
 
 func NewConfig(guid string, useStaging bool) *Config {
@@ -79,6 +91,7 @@ func NewConfig(guid string, useStaging bool) *Config {
 	cfg.TimeoutRead = DefaultTimeoutRead
 	cfg.TimeoutWrite = DefaultTimeoutWrite
 	cfg.TimeoutPrepareEnd = DefaultTimeoutPrepareEnd
+	cfg.UseStaging = useStaging
 	if useStaging {
 		cfg.SrvQueries = DefaultStagingSrvEndpoints
 		log.Warn("Using staging endpoints")
@@ -93,12 +106,16 @@ func (cfg *Config) init() {
 	cfg.Features = make([]map[string]string, 0)
 }
 
+// LoadFromFile populates this Config with the values defined in that file and then calls PostProcess.
 func (cfg *Config) LoadFromFile(filepath string) error {
 	f, err := os.Open(filepath)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
+
+	configEntries := cfg.DefineConfigEntries()
+
 	regexComment, _ := regexp.Compile("^#")
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
@@ -108,39 +125,132 @@ func (cfg *Config) LoadFromFile(filepath string) error {
 			continue
 		}
 		fields := strings.Fields(line)
-		err := cfg.ParseFields(fields)
-		if err != nil {
-			continue
+		if err := cfg.ParseFields(configEntries, fields); err != nil {
+			return err
 		}
 	}
+
+	if err := cfg.PostProcess(); err != nil {
+		return err
+	}
+
 	log.WithField("file", filepath).Info("Loaded configuration")
 	return nil
 }
 
-func (cfg *Config) ParseFields(fields []string) error {
-	if len(fields) < 2 {
-		return errors.New("Invalid fields length")
-	}
-	switch fields[0] {
-	case "monitoring_id":
-		cfg.AgentId = fields[1]
-		log.Printf("cfg: Setting Monitoring Id: %s", cfg.AgentId)
-	case "monitoring_token":
-		cfg.Token = fields[1]
-		log.Printf("cfg: Setting Token")
-	case "monitoring_private_zones":
-		cfg.ZoneIds = strings.Split(fields[1], ",")
-		for i := range cfg.ZoneIds {
-			cfg.ZoneIds[i] = strings.TrimSpace(cfg.ZoneIds[i])
+func (cfg *Config) PostProcess() error {
+	if cfg.SnetRegion != "" {
+		if !cfg.UseStaging {
+			if err := cfg.processSnetSrvTemplates(SnetMonitoringTemplateSrvQueries); err != nil {
+				return err
+			}
+		} else {
+			if err := cfg.processSnetSrvTemplates(SnetMonitoringTemplateSrvQueriesStaging); err != nil {
+				return err
+			}
 		}
-		log.Printf("cfg: Setting Zones: %s", strings.Join(cfg.ZoneIds, ", "))
-	case "monitoring_endpoints":
-		cfg.Addresses = strings.Split(fields[1], ",")
-		cfg.UseSrv = false
-		log.Printf("cfg: Setting Endpoints: %s", fields[1])
 	}
 
 	return nil
+}
+
+func (cfg *Config) processSnetSrvTemplates(templates []*template.Template) error {
+	cfg.SrvQueries = make([]string, len(templates))
+	for i, t := range templates {
+		buf := new(bytes.Buffer)
+		if err := t.Execute(buf, cfg); err != nil {
+			return err
+		}
+		cfg.SrvQueries[i] = buf.String()
+	}
+
+	return nil
+}
+
+func (cfg *Config) DefineConfigEntries() []configEntry {
+	return []configEntry{
+		{
+			Name:     "monitoring_id",
+			ValuePtr: &cfg.AgentId,
+		},
+		{
+			Name:     "monitoring_token",
+			ValuePtr: &cfg.Token,
+		},
+		{
+			Name:     "monitoring_private_zones",
+			ValuePtr: &cfg.ZoneIds,
+		},
+		{
+			Name:     "monitoring_endpoints",
+			ValuePtr: &cfg.Addresses,
+			Tweak: func() {
+				cfg.UseSrv = false
+			},
+		},
+		{
+			Name:     "monitoring_snet_region",
+			ValuePtr: &cfg.SnetRegion,
+			Allowed:  ValidSnetRegions,
+		},
+	}
+}
+
+func (cfg *Config) ParseFields(configEntries []configEntry, fields []string) error {
+	if len(fields) < 2 {
+		return fmt.Errorf("Invalid fields length: %v", fields)
+	}
+
+	for _, entry := range configEntries {
+		if entry.Name == fields[0] {
+			switch valuePtr := entry.ValuePtr.(type) {
+			case *string:
+				if err := entry.IsAllowed(fields[1]); err != nil {
+					return fmt.Errorf("Disallowed value in %s : %v", entry.Name, err)
+				}
+
+				*valuePtr = fields[1]
+				log.WithFields(log.Fields{"name": entry.Name, "value": *valuePtr}).Debug("Setting configuration field")
+
+			case *[]string:
+				rawParts := strings.Split(fields[1], ",")
+				parts := make([]string, len(rawParts))
+				for i, p := range rawParts {
+					v := strings.TrimSpace(p)
+					if err := entry.IsAllowed(v); err != nil {
+						return fmt.Errorf("Disallowed value in %s : %v", entry.Name, err)
+					}
+					parts[i] = v
+				}
+				*valuePtr = parts
+				log.WithFields(log.Fields{"name": entry.Name, "value": *valuePtr}).Debug("Setting configuration field")
+
+			default:
+				return fmt.Errorf("Unsupported config entry type for %s", entry.Name)
+			}
+
+			if entry.Tweak != nil {
+				entry.Tweak()
+			}
+
+		}
+	}
+
+	return nil
+}
+
+func (e *configEntry) IsAllowed(actualValue string) error {
+	if len(e.Allowed) == 0 {
+		return nil
+	}
+
+	for _, a := range e.Allowed {
+		if a == actualValue {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("The value '%s' is not allowed. Exepcted %v", actualValue, e.Allowed)
 }
 
 func (cfg *Config) Validate() error {

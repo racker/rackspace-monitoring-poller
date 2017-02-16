@@ -69,18 +69,6 @@ monitoring_private_zones pzA`, listenHost, listenPort))
 			expectedStdErr: []*utils.OutputMessage{
 				&utils.OutputMessage{
 					Level: "info",
-					Msg:   "cfg: Setting Token",
-				},
-				&utils.OutputMessage{
-					Level: "info",
-					Msg:   "cfg: Setting Monitoring Id: agentA",
-				},
-				&utils.OutputMessage{
-					Level: "info",
-					Msg:   "cfg: Setting Zones: pzA",
-				},
-				&utils.OutputMessage{
-					Level: "info",
 					Msg:   "Loaded configuration",
 				},
 				&utils.OutputMessage{
@@ -108,18 +96,6 @@ monitoring_private_zones pzA`, listenHost, listenPort))
 			expectedStdErr: []*utils.OutputMessage{
 				&utils.OutputMessage{
 					Level: "info",
-					Msg:   "cfg: Setting Monitoring Id: agentA",
-				},
-				&utils.OutputMessage{
-					Level: "info",
-					Msg:   "cfg: Setting Endpoints: somethingsomething:55000",
-				},
-				&utils.OutputMessage{
-					Level: "info",
-					Msg:   "cfg: Setting Zones: pzA",
-				},
-				&utils.OutputMessage{
-					Level: "info",
 					Msg:   "Loaded configuration",
 				},
 				&utils.OutputMessage{
@@ -139,18 +115,6 @@ monitoring_private_zones pzA`, listenHost, listenPort))
 				"testdata/local-endpoint.noagent.cfg", "--no-logfile"},
 			expectedStdOut: []*utils.OutputMessage{},
 			expectedStdErr: []*utils.OutputMessage{
-				&utils.OutputMessage{
-					Level: "info",
-					Msg:   "cfg: Setting Token",
-				},
-				&utils.OutputMessage{
-					Level: "info",
-					Msg:   fmt.Sprintf("cfg: Setting Endpoints: %s:%d", listenHost, listenPort),
-				},
-				&utils.OutputMessage{
-					Level: "info",
-					Msg:   "cfg: Setting Zones: pzA",
-				},
 				&utils.OutputMessage{
 					Level: "info",
 					Msg:   "Loaded configuration",
@@ -173,18 +137,6 @@ monitoring_private_zones pzA`, listenHost, listenPort))
 				"testdata/local-endpoint.noendpoints.cfg", "--no-logfile"},
 			expectedStdOut: []*utils.OutputMessage{},
 			expectedStdErr: []*utils.OutputMessage{
-				&utils.OutputMessage{
-					Level: "info",
-					Msg:   "cfg: Setting Token",
-				},
-				&utils.OutputMessage{
-					Level: "info",
-					Msg:   "cfg: Setting Monitoring Id: agentA",
-				},
-				&utils.OutputMessage{
-					Level: "info",
-					Msg:   "cfg: Setting Zones: pzA",
-				},
 				&utils.OutputMessage{
 					Level: "info",
 					Msg:   "Loaded configuration",
@@ -221,18 +173,6 @@ monitoring_private_zones pzA`, listenHost, listenPort))
 				"testdata/local-endpoint.nozones.cfg", "--no-logfile"},
 			expectedStdOut: []*utils.OutputMessage{},
 			expectedStdErr: []*utils.OutputMessage{
-				&utils.OutputMessage{
-					Level: "info",
-					Msg:   "cfg: Setting Token",
-				},
-				&utils.OutputMessage{
-					Level: "info",
-					Msg:   "cfg: Setting Monitoring Id: agentA",
-				},
-				&utils.OutputMessage{
-					Level: "info",
-					Msg:   "cfg: Setting Endpoints: somethingsomething:55000",
-				},
 				&utils.OutputMessage{
 					Level: "info",
 					Msg:   "Loaded configuration",

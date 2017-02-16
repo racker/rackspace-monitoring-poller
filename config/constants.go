@@ -17,6 +17,10 @@
 // Constants
 package config
 
+import (
+	"text/template"
+)
+
 var (
 	DefaultProdSrvEndpoints = []string{
 		"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com",
@@ -27,6 +31,24 @@ var (
 		"_monitoringagent._tcp.dfw1.stage.monitoring.api.rackspacecloud.com",
 		"_monitoringagent._tcp.ord1.stage.monitoring.api.rackspacecloud.com",
 		"_monitoringagent._tcp.lon3.stage.monitoring.api.rackspacecloud.com",
+	}
+	ValidSnetRegions = []string{
+		"dfw",
+		"ord",
+		"lon",
+		"syd",
+		"hkg",
+		"iad",
+	}
+	SnetMonitoringTemplateSrvQueries = []*template.Template{
+		template.Must(template.New("0").Parse("_monitoringagent._tcp.snet-{{.SnetRegion}}-region0.prod.monitoring.api.rackspacecloud.com")),
+		template.Must(template.New("1").Parse("_monitoringagent._tcp.snet-{{.SnetRegion}}-region1.prod.monitoring.api.rackspacecloud.com")),
+		template.Must(template.New("2").Parse("_monitoringagent._tcp.snet-{{.SnetRegion}}-region2.prod.monitoring.api.rackspacecloud.com")),
+	}
+	SnetMonitoringTemplateSrvQueriesStaging = []*template.Template{
+		template.Must(template.New("0").Parse("_monitoringagent._tcp.snet-{{.SnetRegion}}-region0.stage.monitoring.api.rackspacecloud.com")),
+		template.Must(template.New("1").Parse("_monitoringagent._tcp.snet-{{.SnetRegion}}-region1.stage.monitoring.api.rackspacecloud.com")),
+		template.Must(template.New("2").Parse("_monitoringagent._tcp.snet-{{.SnetRegion}}-region2.stage.monitoring.api.rackspacecloud.com")),
 	}
 )
 
