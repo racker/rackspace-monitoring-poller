@@ -210,6 +210,8 @@ func (cfg *Config) ParseFields(configEntries []configEntry, fields []string) err
 				}
 
 				*valuePtr = fields[1]
+				log.WithFields(log.Fields{"name": entry.Name, "value": *valuePtr}).Debug("Setting configuration field")
+
 			case *[]string:
 				rawParts := strings.Split(fields[1], ",")
 				parts := make([]string, len(rawParts))
@@ -221,6 +223,7 @@ func (cfg *Config) ParseFields(configEntries []configEntry, fields []string) err
 					parts[i] = v
 				}
 				*valuePtr = parts
+				log.WithFields(log.Fields{"name": entry.Name, "value": *valuePtr}).Debug("Setting configuration field")
 
 			default:
 				return fmt.Errorf("Unsupported config entry type for %s", entry.Name)
@@ -229,6 +232,7 @@ func (cfg *Config) ParseFields(configEntries []configEntry, fields []string) err
 			if entry.Tweak != nil {
 				entry.Tweak()
 			}
+
 		}
 	}
 
