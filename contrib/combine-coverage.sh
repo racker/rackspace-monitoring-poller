@@ -14,7 +14,7 @@ set -ex
 
 workdir=.cover
 profile="$workdir/cover.out"
-mode=count
+mode=atomic
 
 generate_cover_data() {
     rm -rf "$workdir"
