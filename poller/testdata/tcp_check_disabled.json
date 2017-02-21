@@ -15,5 +15,5 @@
   "target_alias": "default",
   "target_hostname": "",
   "target_resolver": "",
-  "disabled": false
+  "disabled": true
 }

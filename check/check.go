@@ -89,6 +89,7 @@ type Check interface {
 	GetTimeout() uint64
 	GetTimeoutDuration() time.Duration
 	SetTimeout(timeout uint64)
+	IsDisabled() bool
 	Cancel()
 	Done() <-chan struct{}
 	Run() (*ResultSet, error)
@@ -182,6 +183,10 @@ func (ch *Base) GetTimeoutDuration() time.Duration {
 // provided time measurements.  Defaulted to seconds
 func (ch *Base) GetWaitPeriod() time.Duration {
 	return time.Duration(ch.Period) * WaitPeriodTimeMeasurement
+}
+
+func (ch *Base) IsDisabled() bool {
+	return ch.Disabled
 }
 
 // Cancel method closes the channel's context
