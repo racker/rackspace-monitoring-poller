@@ -86,6 +86,7 @@ type Session interface {
 	ConnectionHealthProvider
 
 	Auth()
+	AssignFrameId(msg protocol.Frame)
 	Send(msg protocol.Frame)
 	Respond(msg protocol.Frame)
 	Close()

@@ -139,7 +139,9 @@ func (cs *EleConnectionStream) SendMetrics(crs *check.ResultSet) error {
 	}
 
 	if conn := cs.conns.ChooseBest(); conn != nil {
-		conn.GetSession().Send(check.NewMetricsPostRequest(crs, conn.GetClockOffset()))
+		request := check.NewMetricsPostRequest(crs, conn.GetClockOffset())
+		conn.GetSession().AssignFrameId(request)
+		conn.GetSession().Send(request)
 	}
 
 	return nil

@@ -121,12 +121,17 @@ func NewSession(ctx context.Context, connection Connection, checksReconciler Che
 // and process version
 func (s *EleSession) Auth() {
 	request := protocol.NewHandshakeRequest(s.config)
-	request.SetId(&s.seq)
+	s.AssignFrameId(request)
 	s.Send(request)
 }
 
+func (s *EleSession) AssignFrameId(msg protocol.Frame) {
+	msg.SetId(&s.seq)
+}
+
 // Send stages a frame for sending after setting the target and source.
-// NOTE: The protocol.Frame.SetId MUST be called prior to this method.
+// NOTE: AssignFrameId MUST be called prior to this method and it is a separate operation so that
+// the outgoing ID can be latched before the message is placed on the wire.
 func (s *EleSession) Send(msg protocol.Frame) {
 	msg.SetTarget("endpoint")
 	msg.SetSource(s.connection.GetGUID())
@@ -442,7 +447,7 @@ func (s *EleSession) runHeartbeats() {
 			return
 		case <-time.After(s.heartbeatInterval):
 			req := protocol.NewHeartbeatRequest()
-			req.SetId(&s.seq)
+			s.AssignFrameId(req)
 
 			s.prepareHeartbeatMeasurement(req)
 			log.WithField("req", req).Debug("Initiating heartbeat")

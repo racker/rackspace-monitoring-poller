@@ -13,6 +13,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/config"
+	"github.com/racker/rackspace-monitoring-poller/protocol"
 	"github.com/racker/rackspace-monitoring-poller/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -118,6 +119,10 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 	mockSession := NewMockSession(mockCtrl)
 	mockSession.EXPECT().GetLatency().AnyTimes().Return(int64(0))
 	mockSession.EXPECT().GetClockOffset().AnyTimes().Return(int64(0))
+	var msgId uint64 = 20
+	mockSession.EXPECT().AssignFrameId(gomock.Any()).AnyTimes().Do(func(msg protocol.Frame) {
+		msg.SetId(&msgId)
+	})
 	ctx := context.Background()
 
 	basicCheck, err := check.NewCheck(ctx, []byte(`{
@@ -206,11 +211,14 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 				schedulers: tt.schedulers,
 			}
 			if tt.expectedErr {
-				//mockSession.EXPECT().Send(gomock.Any()).Times(0)
+				mockSession.EXPECT().Send(gomock.Any()).Times(0)
 				assert.Error(t, cs.SendMetrics(tt.crs))
 			} else {
 				// at most send 1 request
-				mockSession.EXPECT().Send(gomock.Any()).Times(int(math.Min(float64(len(tt.conns)), 1)))
+				mockSession.EXPECT().Send(gomock.Any()).Times(int(math.Min(float64(len(tt.conns)), 1))).
+					Do(func(msg protocol.Frame) {
+						assert.True(t, msg.GetId() >= 20)
+					})
 				assert.NoError(t, cs.SendMetrics(tt.crs))
 			}
 		})
