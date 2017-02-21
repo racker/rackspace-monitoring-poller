@@ -304,14 +304,6 @@ func (_mr *_MockSessionRecorder) Auth() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Auth")
 }
 
-func (_m *MockSession) AssignFrameId(msg protocol.Frame) {
-	_m.ctrl.Call(_m, "AssignFrameId", msg)
-}
-
-func (_mr *_MockSessionRecorder) AssignFrameId(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "AssignFrameId", arg0)
-}
-
 func (_m *MockSession) Send(msg protocol.Frame) {
 	_m.ctrl.Call(_m, "Send", msg)
 }

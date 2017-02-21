@@ -7,7 +7,6 @@ import (
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/poller"
-	"github.com/racker/rackspace-monitoring-poller/protocol"
 	"github.com/stretchr/testify/assert"
 	"sync"
 )
@@ -176,15 +175,11 @@ func TestEleConnectionStream_SendMetrics_Normal(t *testing.T) {
 
 	mockSession := poller.NewMockSession(ctrl)
 	mockSession.EXPECT().Send(gomock.Any())
-	var msgId uint64 = 20
-	mockSession.EXPECT().AssignFrameId(gomock.Any()).AnyTimes().Do(func(msg protocol.Frame) {
-		msg.SetId(&msgId)
-	})
 
 	c2 := poller.NewMockConnection(ctrl)
 	c2.EXPECT().GetLatency().AnyTimes().Return(int64(10))
 	c2.EXPECT().GetClockOffset().AnyTimes().Return(int64(0))
-	c2.EXPECT().GetSession().AnyTimes().Return(mockSession)
+	c2.EXPECT().GetSession().Return(mockSession)
 
 	c3 := poller.NewMockConnection(ctrl)
 	c3.EXPECT().GetLatency().AnyTimes().Return(int64(20))
