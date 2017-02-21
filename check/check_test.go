@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"fmt"
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	"github.com/racker/rackspace-monitoring-poller/utils"
@@ -95,6 +96,49 @@ func TestBase_Cancel(t *testing.T) {
 	})
 
 	assert.True(t, completed, "cancellation channel never notified")
+}
+
+func TestBase_IsDisabled(t *testing.T) {
+	content := `{
+	  "id":"chPzATCP",
+	  "zone_id":"pzA",
+	  "entity_id":"enAAAAIPV4",
+	  "details":{"port":0,"ssl":false},
+	  "type":"remote.tcp",
+	  "timeout":1,
+	  "period":30,
+	  "ip_addresses":{"default":"127.0.0.1"},
+	  "target_alias":"default",
+	  "target_hostname":"",
+	  "target_resolver":"",
+	  "disabled":%s
+	  }`
+
+	tests := []struct {
+		name     string
+		disabled string
+		expected bool
+	}{
+		{
+			name:     "enabled",
+			disabled: "false",
+			expected: false,
+		},
+		{
+			name:     "disabled",
+			disabled: "true",
+			expected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ch, err := check.NewCheck(context.Background(), json.RawMessage(fmt.Sprintf(content, tt.disabled)))
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.expected, ch.IsDisabled())
+		})
+	}
 }
 
 type ExpectedMetric struct {

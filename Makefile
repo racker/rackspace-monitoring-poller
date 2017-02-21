@@ -9,7 +9,7 @@ BUILD_DIR := build
 DEB_BUILD_DIR := ${BUILD_DIR}/debian
 EXE := rackspace-monitoring-poller
 APP_NAME := rackspace-monitoring-poller
-REPREPRO := reprepro
+PROJECT_VENDOR := github.com/racker/rackspace-monitoring-poller/vendor
 
 PKGDIR_BIN := usr/bin
 PKGDIR_ETC := etc
@@ -34,6 +34,7 @@ DEB_ALL_FILES := ${DEB_CONFIG_FILES} ${UPSTART_CONF} ${UPSTART_DEFAULT}
 
 WGET := wget
 FPM := fpm
+REPREPRO := reprepro
 
 .PHONY: default repackage package package-deb package-repo-upload package-upload-deb package-deb-local clean generate-mocks stage-deb-exe-local
 
@@ -41,6 +42,8 @@ default: clean package
 
 generate-mocks:
 	mockgen -source=poller/poller.go -package=poller -destination=poller/poller_mock_test.go
+	mockgen -destination check/pinger_mock_test.go -package=check github.com/racker/rackspace-monitoring-poller/check Pinger
+	sed -i '' s,$(PROJECT_VENDOR)/,, check/pinger_mock_test.go
 	mockgen -destination mock_golang/mock_conn.go -package mock_golang net Conn
 
 package: package-deb

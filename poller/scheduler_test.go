@@ -366,3 +366,43 @@ func TestEleScheduler_ValidateChecks_Fails(t *testing.T) {
 	}
 
 }
+
+func TestEleScheduler_Schedule_DisabledChecks(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	mockStream := poller.NewMockConnectionStream(mockCtrl)
+	checkExecutor := poller.NewMockCheckExecutor(mockCtrl)
+
+	scheduler := poller.NewCustomScheduler("znA", mockStream,
+		nil, // use default scheduler, since that's what we're testing
+		checkExecutor)
+	defer scheduler.Close()
+
+	var wg sync.WaitGroup
+	done := func(ch check.Check) { wg.Done() }
+	checkExecutor.EXPECT().Execute(checkIdMatcher{id: "ch2"}).Do(done)
+	wg.Add(1)
+
+	cp := loadChecksPreparation(t,
+		checkLoadInfo{action: protocol.PrepareActionStart, name: "tcp_check_disabled", checkType: "remote.tcp", id: "ch1", entityId: "en1", zonedId: "znA"},
+		checkLoadInfo{action: protocol.PrepareActionStart, name: "tcp_check", checkType: "remote.tcp", id: "ch2", entityId: "en2", zonedId: "znA"},
+	)
+
+	origSpread := poller.CheckSpreadInMilliseconds
+	defer func() { poller.CheckSpreadInMilliseconds = origSpread }()
+	poller.CheckSpreadInMilliseconds = 10
+
+	scheduler.ReconcileChecks(cp)
+
+	utils.Timebox(t, 2*time.Second, func(t *testing.T) {
+		wg.Wait()
+	})
+
+	// We'll get report of 2 "scheduled" checks, but via mock expectations above confirmed that only one executed
+
+	scheduled := scheduler.GetScheduledChecks()
+	assert.Len(t, scheduled, 2)
+
+	// ...verifies expected function calls, above
+}

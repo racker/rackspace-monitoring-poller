@@ -217,7 +217,9 @@ func (s *EleScheduler) initiateCheck(ac ActionableCheck) error {
 
 // Schedule is the default implementation of CheckScheduler that kicks off a go routine to run a check's timer.
 func (s *EleScheduler) Schedule(ch check.Check) {
-	go s.runCheckTimerLoop(ch)
+	if !ch.IsDisabled() {
+		go s.runCheckTimerLoop(ch)
+	}
 }
 
 func (s *EleScheduler) runCheckTimerLoop(ch check.Check) {
