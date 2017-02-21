@@ -237,6 +237,7 @@ type BannerServer struct {
 	waitGroup *sync.WaitGroup
 	ctx       context.Context
 	cancel    context.CancelFunc
+	closing   bool
 }
 
 func NewBannerServer() *BannerServer {
@@ -248,6 +249,7 @@ func NewBannerServer() *BannerServer {
 }
 
 func (s *BannerServer) Stop() {
+	s.closing = true
 	s.cancel()
 	s.waitGroup.Wait()
 }
@@ -255,10 +257,14 @@ func (s *BannerServer) Stop() {
 func (s *BannerServer) Serve(listener net.Listener) {
 	conn, err := listener.Accept()
 	if nil != err {
+		if s.closing {
+			return
+		}
 		if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
 			return
 		}
 		log.WithField("err", err).Fatal("Unexpected error")
+		return
 	}
 	log.WithField("remoteAddr", conn.RemoteAddr()).Debug("accepted")
 	s.waitGroup.Add(1)
