@@ -206,7 +206,7 @@ func TestConnectionStream_SendMetrics(t *testing.T) {
 				schedulers: tt.schedulers,
 			}
 			if tt.expectedErr {
-				//mockSession.EXPECT().Send(gomock.Any()).Times(0)
+				mockSession.EXPECT().Send(gomock.Any()).Times(0)
 				assert.Error(t, cs.SendMetrics(tt.crs))
 			} else {
 				// at most send 1 request

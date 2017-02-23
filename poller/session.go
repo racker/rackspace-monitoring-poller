@@ -121,13 +121,15 @@ func NewSession(ctx context.Context, connection Connection, checksReconciler Che
 // and process version
 func (s *EleSession) Auth() {
 	request := protocol.NewHandshakeRequest(s.config)
-	request.SetId(&s.seq)
 	s.Send(request)
 }
 
 // Send stages a frame for sending after setting the target and source.
-// NOTE: The protocol.Frame.SetId MUST be called prior to this method.
+// NOTE: If the message's ID is not initialized an ID will be allocated.
 func (s *EleSession) Send(msg protocol.Frame) {
+	if msg.GetId() == 0 {
+		msg.SetId(&s.seq)
+	}
 	msg.SetTarget("endpoint")
 	msg.SetSource(s.connection.GetGUID())
 	s.sendCh <- msg
