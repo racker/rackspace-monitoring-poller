@@ -64,7 +64,7 @@ monitoring_private_zones pzA`, listenHost, listenPort))
 			name: "Happy path",
 			args: []string{
 				"serve", "--config",
-				"testdata/local-endpoint.cfg", "--no-logfile"},
+				"testdata/local-endpoint.cfg"},
 			expectedStdOut: []*utils.OutputMessage{},
 			expectedStdErr: []*utils.OutputMessage{
 				&utils.OutputMessage{
@@ -91,7 +91,7 @@ monitoring_private_zones pzA`, listenHost, listenPort))
 			name: "No token",
 			args: []string{
 				"serve", "--config",
-				"testdata/local-endpoint.notoken.cfg", "--no-logfile"},
+				"testdata/local-endpoint.notoken.cfg"},
 			expectedStdOut: []*utils.OutputMessage{},
 			expectedStdErr: []*utils.OutputMessage{
 				&utils.OutputMessage{
@@ -112,7 +112,7 @@ monitoring_private_zones pzA`, listenHost, listenPort))
 			name: "No agent",
 			args: []string{
 				"serve", "--config",
-				"testdata/local-endpoint.noagent.cfg", "--no-logfile"},
+				"testdata/local-endpoint.noagent.cfg"},
 			expectedStdOut: []*utils.OutputMessage{},
 			expectedStdErr: []*utils.OutputMessage{
 				&utils.OutputMessage{
@@ -134,7 +134,7 @@ monitoring_private_zones pzA`, listenHost, listenPort))
 			name: "No endpoints",
 			args: []string{
 				"serve", "--config",
-				"testdata/local-endpoint.noendpoints.cfg", "--no-logfile"},
+				"testdata/local-endpoint.noendpoints.cfg"},
 			expectedStdOut: []*utils.OutputMessage{},
 			expectedStdErr: []*utils.OutputMessage{
 				&utils.OutputMessage{
@@ -170,7 +170,7 @@ monitoring_private_zones pzA`, listenHost, listenPort))
 			name: "No zones",
 			args: []string{
 				"serve", "--config",
-				"testdata/local-endpoint.nozones.cfg", "--no-logfile"},
+				"testdata/local-endpoint.nozones.cfg"},
 			expectedStdOut: []*utils.OutputMessage{},
 			expectedStdErr: []*utils.OutputMessage{
 				&utils.OutputMessage{
