@@ -20,6 +20,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -87,19 +88,22 @@ func (ch *HTTPCheck) Run() (*ResultSet, error) {
 		return nil, err
 	}
 
-	host, port, err := net.SplitHostPort(parsed.Host)
-	if err != nil {
-		return nil, err
+	host, port, _ := net.SplitHostPort(parsed.Host)
+	if host == "" {
+		return nil, errors.New("Invalid Url")
 	}
 	ip, err := ch.GetTargetIP()
 	if err != nil {
 		return nil, err
 	}
-	if len(port) > 0 {
-		parsed.Host = net.JoinHostPort(ip, port)
-	} else {
-		parsed.Host = ip
+	if len(port) == 0 {
+		if parsed.Scheme == "http" {
+			port = "80"
+		} else {
+			port = "443"
+		}
 	}
+	parsed.Host = net.JoinHostPort(ip, port)
 	url := parsed.String()
 
 	// Setup HTTP or HTTPS Client
