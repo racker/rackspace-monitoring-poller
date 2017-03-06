@@ -203,6 +203,7 @@ func (cs *EleConnectionStream) connectByHost(addr string) {
 		if err != nil {
 			goto conn_error
 		}
+		log.Debugf("Connected to " + addr)
 		conn.Wait()
 		goto new_connection
 	conn_error:
@@ -215,7 +216,8 @@ func (cs *EleConnectionStream) connectByHost(addr string) {
 				log.Infof("connection close")
 				return
 			case <-time.After(ReconnectTimeout):
-				break
+				log.Debug("Reconnecting to " + addr)
+				continue
 			}
 		}
 	}
