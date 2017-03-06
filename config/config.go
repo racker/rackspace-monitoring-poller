@@ -42,6 +42,7 @@ const (
 	DefaultTimeoutRead       = 10 * time.Second
 	DefaultTimeoutWrite      = 10 * time.Second
 	DefaultTimeoutPrepareEnd = 60 * time.Second
+	DefaultAgentId           = "-poller-"
 )
 
 type Config struct {
@@ -97,6 +98,9 @@ func NewConfig(guid string, useStaging bool) *Config {
 		log.Warn("Using staging endpoints")
 	} else {
 		cfg.SrvQueries = DefaultProdSrvEndpoints
+	}
+	if cfg.AgentId == "" {
+		cfg.AgentId = DefaultAgentId
 	}
 	cfg.UseSrv = true
 	return cfg
