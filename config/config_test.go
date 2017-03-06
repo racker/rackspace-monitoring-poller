@@ -29,6 +29,7 @@ func getConfigFields() configFields {
 	return configFields{
 		UseSrv:            true,
 		AgentName:         "remote_poller",
+		AgentId:           "-poller-",
 		ProcessVersion:    "dev",
 		BundleVersion:     "dev",
 		Guid:              "some-guid",
@@ -59,6 +60,7 @@ func TestNewConfig(t *testing.T) {
 					"_monitoringagent._tcp.lon3.prod.monitoring.api.rackspacecloud.com",
 				},
 				AgentName:         "remote_poller",
+				AgentId:           "-poller-",
 				ProcessVersion:    "dev",
 				BundleVersion:     "dev",
 				Guid:              "some-guid",
@@ -82,6 +84,7 @@ func TestNewConfig(t *testing.T) {
 					"_monitoringagent._tcp.lon3.stage.monitoring.api.rackspacecloud.com",
 				},
 				AgentName:         "remote_poller",
+				AgentId:           "-poller-",
 				ProcessVersion:    "dev",
 				BundleVersion:     "dev",
 				Guid:              "some-guid-via-staging",
@@ -197,6 +200,7 @@ func TestConfig_ParseFields(t *testing.T) {
 			expected: &config.Config{
 				UseSrv:         true,
 				AgentName:      "remote_poller",
+				AgentId:        "-poller-",
 				ProcessVersion: "dev",
 				BundleVersion:  "dev",
 				Guid:           "some-guid",
@@ -217,6 +221,7 @@ func TestConfig_ParseFields(t *testing.T) {
 			expected: &config.Config{
 				UseSrv:         true,
 				AgentName:      "remote_poller",
+				AgentId:        "-poller-",
 				ProcessVersion: "dev",
 				BundleVersion:  "dev",
 				Guid:           "some-guid",
@@ -236,6 +241,7 @@ func TestConfig_ParseFields(t *testing.T) {
 			expected: &config.Config{
 				UseSrv:         true,
 				AgentName:      "remote_poller",
+				AgentId:        "-poller-",
 				ProcessVersion: "dev",
 				BundleVersion:  "dev",
 				Guid:           "some-guid",
@@ -256,6 +262,7 @@ func TestConfig_ParseFields(t *testing.T) {
 			expected: &config.Config{
 				UseSrv:         false,
 				AgentName:      "remote_poller",
+				AgentId:        "-poller-",
 				ProcessVersion: "dev",
 				BundleVersion:  "dev",
 				Guid:           "some-guid",
@@ -279,6 +286,7 @@ func TestConfig_ParseFields(t *testing.T) {
 			expected: &config.Config{
 				UseSrv:         true,
 				AgentName:      "remote_poller",
+				AgentId:        "-poller-",
 				ProcessVersion: "dev",
 				BundleVersion:  "dev",
 				Guid:           "some-guid",
@@ -299,6 +307,7 @@ func TestConfig_ParseFields(t *testing.T) {
 			expected: &config.Config{
 				UseSrv:         true,
 				AgentName:      "remote_poller",
+				AgentId:        "-poller-",
 				ProcessVersion: "dev",
 				BundleVersion:  "dev",
 				Guid:           "some-guid",
@@ -318,6 +327,7 @@ func TestConfig_ParseFields(t *testing.T) {
 			expected: &config.Config{
 				UseSrv:         true,
 				AgentName:      "remote_poller",
+				AgentId:        "-poller-",
 				ProcessVersion: "dev",
 				BundleVersion:  "dev",
 				Guid:           "some-guid",
@@ -338,6 +348,7 @@ func TestConfig_ParseFields(t *testing.T) {
 			expected: &config.Config{
 				UseSrv:         true,
 				AgentName:      "remote_poller",
+				AgentId:        "-poller-",
 				ProcessVersion: "dev",
 				BundleVersion:  "dev",
 				Guid:           "some-guid",
@@ -396,6 +407,7 @@ func TestConfig_SetPrivateZones(t *testing.T) {
 			expected: &config.Config{
 				UseSrv:         true,
 				AgentName:      "remote_poller",
+				AgentId:        "-poller-",
 				ProcessVersion: "dev",
 				BundleVersion:  "dev",
 				Guid:           "some-guid",
