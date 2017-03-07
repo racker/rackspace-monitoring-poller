@@ -244,11 +244,6 @@ func (ch *Base) AddTLSMetrics(cr *Result, state tls.ConnectionState) *TLSMetrics
 	} else {
 		tlsMetrics.Verified = true
 	}
-	// SERIAL
-	cr.AddMetric(metric.NewMetric("cert_serial", "", metric.MetricNumber, cert.SerialNumber, ""))
-	if len(cert.OCSPServer) > 0 {
-		cr.AddMetric(metric.NewMetric("cert_ocsp", "", metric.MetricNumber, cert.OCSPServer[0], ""))
-	}
 	switch cert.PublicKeyAlgorithm {
 	case x509.RSA:
 		publicKey := cert.PublicKey.(*rsa.PublicKey)
@@ -267,7 +262,7 @@ func (ch *Base) AddTLSMetrics(cr *Result, state tls.ConnectionState) *TLSMetrics
 		cr.AddMetric(metric.NewMetric("cert_type", "", metric.MetricNumber, "-", ""))
 	}
 	// CERT SIG ALGO
-	cr.AddMetric(metric.NewMetric("cert_sig_algo", "", metric.MetricNumber, strings.ToLower(cert.SignatureAlgorithm.String()), ""))
+	cr.AddMetric(metric.NewMetric("cert_sig_algo", "", metric.MetricString, strings.ToLower(cert.SignatureAlgorithm.String()), ""))
 	var sslVersion string
 	switch state.Version {
 	case tls.VersionSSL30:

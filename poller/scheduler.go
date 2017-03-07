@@ -227,7 +227,7 @@ func (s *EleScheduler) runCheckTimerLoop(ch check.Check) {
 	jitter := rand.Intn(CheckSpreadInMilliseconds) + 1
 
 	log.WithFields(log.Fields{
-		"check":      ch.GetID(),
+		"checkId":    ch.GetID(),
 		"jitterMs":   jitter,
 		"waitPeriod": ch.GetWaitPeriod(),
 	}).Info("Starting check")
