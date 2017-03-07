@@ -40,6 +40,10 @@ var (
 	MaxHTTPResponseBodyLength = int64(512 * 1024)
 	// UserAgent the header value to send for the user agent
 	UserAgent = "Rackspace Monitoring Poller/1.0 (https://monitoring.api.rackspacecloud.com/)"
+	// DefaultPort the default http port is 80
+	DefaultPort = "80"
+	// DefaultSecurePort the default TLS port is 443
+	DefaultSecurePort = "443"
 )
 
 // HTTPCheck conveys HTTP checks
@@ -92,9 +96,9 @@ func (ch *HTTPCheck) Run() (*ResultSet, error) {
 		if strings.Contains(err.Error(), "missing port in address") {
 			if len(port) == 0 {
 				if parsed.Scheme == "http" {
-					port = "80"
+					port = DefaultPort
 				} else {
-					port = "443"
+					port = DefaultSecurePort
 				}
 				host = parsed.Host
 			}
