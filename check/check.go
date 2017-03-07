@@ -248,18 +248,18 @@ func (ch *Base) AddTLSMetrics(cr *Result, state tls.ConnectionState) *TLSMetrics
 	case x509.RSA:
 		publicKey := cert.PublicKey.(*rsa.PublicKey)
 		cr.AddMetric(metric.NewMetric("cert_bits", "", metric.MetricNumber, publicKey.N.BitLen(), ""))
-		cr.AddMetric(metric.NewMetric("cert_type", "", metric.MetricNumber, "rsa", ""))
+		cr.AddMetric(metric.NewMetric("cert_type", "", metric.MetricString, "rsa", ""))
 	case x509.DSA:
 		publicKey := cert.PublicKey.(*dsa.PublicKey)
 		cr.AddMetric(metric.NewMetric("cert_bits", "", metric.MetricNumber, publicKey.Q.BitLen(), ""))
-		cr.AddMetric(metric.NewMetric("cert_type", "", metric.MetricNumber, "dsa", ""))
+		cr.AddMetric(metric.NewMetric("cert_type", "", metric.MetricString, "dsa", ""))
 	case x509.ECDSA:
 		publicKey := cert.PublicKey.(*ecdsa.PublicKey)
 		cr.AddMetric(metric.NewMetric("cert_bits", "", metric.MetricNumber, publicKey.Params().BitSize, ""))
-		cr.AddMetric(metric.NewMetric("cert_type", "", metric.MetricNumber, "ecdsa", ""))
+		cr.AddMetric(metric.NewMetric("cert_type", "", metric.MetricString, "ecdsa", ""))
 	default:
 		cr.AddMetric(metric.NewMetric("cert_bits", "", metric.MetricNumber, "0", ""))
-		cr.AddMetric(metric.NewMetric("cert_type", "", metric.MetricNumber, "-", ""))
+		cr.AddMetric(metric.NewMetric("cert_type", "", metric.MetricString, "-", ""))
 	}
 	// CERT SIG ALGO
 	cr.AddMetric(metric.NewMetric("cert_sig_algo", "", metric.MetricString, strings.ToLower(cert.SignatureAlgorithm.String()), ""))
@@ -277,7 +277,7 @@ func (ch *Base) AddTLSMetrics(cr *Result, state tls.ConnectionState) *TLSMetrics
 		sslVersion = "-"
 	}
 	// SESSION VERSION
-	cr.AddMetric(metric.NewMetric("ssl_session_version", "", metric.MetricNumber, sslVersion, ""))
+	cr.AddMetric(metric.NewMetric("ssl_session_version", "", metric.MetricString, sslVersion, ""))
 	var cipherSuite string
 	switch state.CipherSuite {
 	case tls.TLS_RSA_WITH_RC4_128_SHA:
@@ -319,7 +319,7 @@ func (ch *Base) AddTLSMetrics(cr *Result, state tls.ConnectionState) *TLSMetrics
 		cipherSuite = "-"
 	}
 	// SESSION CIPHER
-	cr.AddMetric(metric.NewMetric("ssl_session_cipher", "", metric.MetricNumber, cipherSuite, ""))
+	cr.AddMetric(metric.NewMetric("ssl_session_cipher", "", metric.MetricString, cipherSuite, ""))
 	// ISSUER
 	if issuer, err := utils.GetDNFromCert(cert.Issuer, "/"); err == nil {
 		cr.AddMetric(metric.NewMetric("cert_issuer", "", metric.MetricString, issuer, ""))
