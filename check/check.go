@@ -114,9 +114,13 @@ type Base struct {
 // GetTargetIP obtains the specific IP address selected for this check.
 // It returns the resolved IP address as dotted string.
 func (ch *Base) GetTargetIP() (string, error) {
-	ip, ok := ch.IpAddresses[*ch.TargetAlias]
-	if ok {
-		return ip, nil
+	if ch.TargetAlias != nil {
+		ip, ok := ch.IpAddresses[*ch.TargetAlias]
+		if ok {
+			return ip, nil
+		}
+	} else if ch.TargetHostname != nil && *ch.TargetHostname != "" {
+		return *ch.TargetHostname, nil
 	}
 	return "", errors.New("Invalid Target IP")
 
