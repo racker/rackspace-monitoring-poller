@@ -174,6 +174,8 @@ func (s *EleSession) handleResponse(resp *protocol.FrameMsg) error {
 		case protocol.MethodHeartbeatPost:
 			resp := protocol.DecodeHeartbeatResponse(resp)
 			s.heartbeatResponses <- resp
+		case protocol.MethodCheckMetricsPost:
+			//resp := protocol.DecodeMetricsPostResponse(resp)
 		default:
 			log.Errorf("Unexpected method: %s", req.Method)
 		}
