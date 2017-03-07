@@ -22,7 +22,7 @@ import (
 )
 
 type CheckHeader struct {
-	Id             string            `json:"id"`
+	Id             string            `json:"check_id"`
 	CheckType      string            `json:"type"`
 	Period         uint64            `json:"period"`
 	Timeout        uint64            `json:"timeout"`

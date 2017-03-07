@@ -209,7 +209,7 @@ const (
 type PollerPrepareManifest struct {
 	// Action is one of PrepareAction* constants
 	Action    string `json:"action"`
-	Id        string `json:"id"`
+	Id        string `json:"check_id"`
 	CheckType string `json:"type"`
 	EntityId  string `json:"entity_id"`
 	ZoneId    string `json:"zone_id"`
