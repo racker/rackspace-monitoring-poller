@@ -9,8 +9,9 @@ const (
 	MethodCheckScheduleGet = "check_schedule.get"
 	MethodPollerRegister   = "poller.register"
 	// MethodHeartbeatPost is SENT TO ---> endpoint server
-	MethodHeartbeatPost    = "heartbeat.post"
-	MethodCheckMetricsPost = "check_metrics.post_multi"
+	MethodHeartbeatPost = "heartbeat.post"
+	// MethodCheckMetricsPostMulti is RECV FROM <--- endpoint server
+	MethodCheckMetricsPostMulti = "check_metrics.post_multi"
 	// MethodHostInfoGet is RECV FROM <--- endpoint server
 	MethodHostInfoGet = "host_info.get"
 	// MethodPollerPrepare is RECV FROM <--- endpoint server
