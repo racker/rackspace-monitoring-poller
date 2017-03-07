@@ -262,7 +262,7 @@ func (ch *Base) AddTLSMetrics(cr *Result, state tls.ConnectionState) *TLSMetrics
 		cr.AddMetric(metric.NewMetric("cert_type", "", metric.MetricNumber, "-", ""))
 	}
 	// CERT SIG ALGO
-	cr.AddMetric(metric.NewMetric("cert_sig_algo", "", metric.MetricNumber, strings.ToLower(cert.SignatureAlgorithm.String()), ""))
+	cr.AddMetric(metric.NewMetric("cert_sig_algo", "", metric.MetricString, strings.ToLower(cert.SignatureAlgorithm.String()), ""))
 	var sslVersion string
 	switch state.Version {
 	case tls.VersionSSL30:
