@@ -107,12 +107,13 @@ func (ch *HTTPCheck) Run() (*ResultSet, error) {
 		}
 	}
 	ip, err := ch.GetTargetIP()
-	if err != nil {
-		if err != InvalidTargetIPError {
-			return crs, err
-		}
+	if err != nil && err != InvalidTargetIPError {
+		return crs, err
 	}
 	if ip == "" {
+		log.WithFields(log.Fields{
+			"id": ch.Id,
+		}).Debug("Setting host to IP. IP was an empty string")
 		ip = host
 	}
 	parsed.Host = net.JoinHostPort(ip, port)
@@ -135,6 +136,13 @@ func (ch *HTTPCheck) Run() (*ResultSet, error) {
 
 	// Setup Method
 	method := strings.ToUpper(ch.Details.Method)
+
+	log.WithFields(log.Fields{
+		"id":     ch.Id,
+		"method": method,
+		"type":   ch.CheckType,
+		"url":    url,
+	}).Debug("Debug Request")
 
 	// Setup Request
 	req, err := http.NewRequest(method, url, nil)
