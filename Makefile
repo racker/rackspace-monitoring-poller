@@ -36,7 +36,7 @@ WGET := wget
 FPM := fpm
 REPREPRO := reprepro
 
-.PHONY: default repackage package package-deb package-repo-upload package-upload-deb package-deb-local clean generate-mocks stage-deb-exe-local
+.PHONY: default repackage package package-deb package-repo-upload package-upload-deb package-deb-local clean generate-mocks stage-deb-exe-local prep
 
 default: clean package
 
@@ -45,6 +45,10 @@ generate-mocks:
 	mockgen -destination check/pinger_mock_test.go -package=check github.com/racker/rackspace-monitoring-poller/check Pinger
 	sed -i '' s,$(PROJECT_VENDOR)/,, check/pinger_mock_test.go
 	mockgen -destination mock_golang/mock_conn.go -package mock_golang net Conn
+
+prep:
+	curl https://glide.sh/get | sh
+	${GOPATH}/bin/glide install
 
 package: package-deb
 
