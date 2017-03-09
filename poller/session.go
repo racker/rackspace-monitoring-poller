@@ -300,7 +300,9 @@ func (s *EleSession) handlePollerPrepare(f *protocol.FrameMsg) {
 		s.respondFailureToPollerPrepare(s.prepDetails.srcPrepMsg, s.prepDetails.activePrep, protocol.PrepareResultStatusIgnored,
 			"Request supercedes a previous preparation")
 
-		s.prepDetails.prepareToEndTimer.Stop()
+		if s.prepDetails.prepareToEndTimer != nil {
+			s.prepDetails.prepareToEndTimer.Stop()
+		}
 
 		// fall through
 	}
