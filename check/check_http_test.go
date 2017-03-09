@@ -130,6 +130,49 @@ func TestHTTPSuccessHostname(t *testing.T) {
 	ValidateMetrics(t, metrics, crs.Get(0))
 }
 
+func TestHTTPTargetIPNilSuccess(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(staticResponse))
+	defer ts.Close()
+
+	// Create Check
+	checkData := fmt.Sprintf(`{
+	  "id":"chPzAHTTP",
+	  "zone_id":"pzA",
+	  "entity_id":"enAAAAIPV4",
+	  "details":{"url":"%s"},
+	  "type":"remote.http",
+	  "timeout":15,
+	  "period":30,
+	  "ip_addresses":null,
+	  "target_alias":null,
+	  "target_hostname":null,
+	  "target_resolver":"",
+	  "disabled":false
+	  }`, ts.URL)
+	check, err := check.NewCheck(context.Background(), []byte(checkData))
+	require.NoError(t, err)
+
+	// Run check
+	crs, err := check.Run()
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Validate Metrics
+	if !crs.Available {
+		t.Fatal("availability should be true")
+	}
+
+	metrics := []string{
+		"bytes",
+		"code",
+		"truncated",
+		"tt_connect",
+		"tt_firstbyte",
+	}
+	ValidateMetrics(t, metrics, crs.Get(0))
+}
+
 func TestHTTPSuccessDefaultPort(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(staticResponse))
 	defer ts.Close()
