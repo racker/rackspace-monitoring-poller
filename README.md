@@ -7,13 +7,35 @@
 
 ## Prepare your workspace
 
-In order to comply with Go packaging structure, be sure to clone this repo
-into the path `$GOPATH/src/github.com/racker/rackspace-monitoring-poller`
+If you haven't already, setup your `$GOPATH` in the typical way [described here](https://golang.org/doc/code.html#GOPATH).
 
-Get external dependencies before building/running:
+Similarly, if you haven't already installed [Glide, package management for Go](https://glide.sh/), then visit their
+page and follow the "Get Glide" step.
+
+In order to comply with Go's packaging structure, be sure to clone this repo
+into the path `$GOPATH/src/github.com/racker/rackspace-monitoring-poller`, such as:
+
+```
+mkdir -p $GOPATH/src/github.com/racker
+cd $GOPATH/src/github.com/racker
+git clone https://github.com/racker/rackspace-monitoring-poller.git
+```
+
+With this repository cloned into your `$GOPATH`, populate the external dependencies before building/running:
 
 ```
 glide install
+```
+
+or setup/upgrade Glide and install dependencies with make:
+
+```
+make prep
+```
+
+Finally, you can build an instance of the `rackspace-monitoring-poller` executable using:
+
+```
 go build
 ```
 
