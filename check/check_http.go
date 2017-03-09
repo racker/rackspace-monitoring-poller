@@ -108,7 +108,12 @@ func (ch *HTTPCheck) Run() (*ResultSet, error) {
 	}
 	ip, err := ch.GetTargetIP()
 	if err != nil {
-		return nil, err
+		if err != InvalidTargetIPError {
+			return crs, err
+		}
+	}
+	if ip == "" {
+		ip = host
 	}
 	parsed.Host = net.JoinHostPort(ip, port)
 	url := parsed.String()

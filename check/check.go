@@ -75,6 +75,7 @@ import (
 // Implementations of this interface should extend CheckBase,
 // which leaves only the Run method to be implemented.
 // Run method needs to set up the check,
+
 // send the request, and parse the response
 type Check interface {
 	GetID() string
@@ -82,6 +83,7 @@ type Check interface {
 	GetEntityID() string
 	GetZoneID() string
 	GetCheckType() string
+	GetTargetIP() (string, error)
 	SetCheckType(checkType string)
 	GetPeriod() uint64
 	GetWaitPeriod() time.Duration
@@ -100,6 +102,7 @@ type Check interface {
 // for how long the check should wait before retrying.
 // By default, it'll wait for check's "period" seconds
 var WaitPeriodTimeMeasurement = time.Second
+var InvalidTargetIPError = errors.New("Invalid Target IP")
 
 // Base provides an abstract implementation of the Check
 // interface leaving Run to be implemented.
@@ -122,8 +125,7 @@ func (ch *Base) GetTargetIP() (string, error) {
 	} else if ch.TargetHostname != nil && *ch.TargetHostname != "" {
 		return *ch.TargetHostname, nil
 	}
-	return "", errors.New("Invalid Target IP")
-
+	return "", InvalidTargetIPError
 }
 
 // GetID  returns check's id
