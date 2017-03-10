@@ -32,3 +32,5 @@ RUN openssl req \
 EXPOSE 55000
 
 ENTRYPOINT ./rackspace-monitoring-poller
+
+CMD serve --config contrib/local-docker-endpoint.cfg --insecure  --debug
