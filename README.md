@@ -70,6 +70,15 @@ to the location `data/ca/ca.pem`.
 Before starting the endpoint, place any additional zones->agents->checks under `contrib/endpoint-agents` (if using the example config), then
 start the Endpoint server and Poller server.
 
+#### For docker, you can simply:
+
+```
+docker build -t racker-poller .
+docker run -ti --rm -v $(pwd)/config:/config racker-poller
+```
+
+#### If running locally, then
+
 In window #1:
 
     ./rackspace-monitoring-poller endpoint --config contrib/endpoint-config.json  --debug
