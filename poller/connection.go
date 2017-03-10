@@ -19,7 +19,6 @@ package poller
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
 	"io"
 	"net"
 	"time"
@@ -101,7 +100,7 @@ func (conn *EleConnection) SetWriteDeadline(deadline time.Time) {
 }
 
 func (conn *EleConnection) GetLogPrefix() string {
-	return fmt.Sprintf("%v", conn.address)
+	return conn.address
 }
 
 // Connect sets up a tcp connection with connection defined address

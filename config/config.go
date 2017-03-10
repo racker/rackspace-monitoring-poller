@@ -75,10 +75,11 @@ type Config struct {
 }
 
 type configEntry struct {
-	Name     string
-	ValuePtr interface{}
-	Tweak    func()
-	Allowed  []string
+	Name      string
+	ValuePtr  interface{}
+	Tweak     func()
+	Allowed   []string
+	Sensitive bool
 }
 
 func NewConfig(guid string, useStaging bool) *Config {
@@ -182,8 +183,9 @@ func (cfg *Config) DefineConfigEntries() []configEntry {
 			ValuePtr: &cfg.AgentId,
 		},
 		{
-			Name:     "monitoring_token",
-			ValuePtr: &cfg.Token,
+			Name:      "monitoring_token",
+			ValuePtr:  &cfg.Token,
+			Sensitive: true,
 		},
 		{
 			Name:     "monitoring_private_zones",
@@ -204,11 +206,22 @@ func (cfg *Config) DefineConfigEntries() []configEntry {
 	}
 }
 
+func ApplyMask(entry *configEntry, data interface{}) interface{} {
+	if entry.Sensitive {
+		switch data.(type) {
+		case []string:
+			return strings.Repeat("*", 10)
+		case string:
+			return strings.Repeat("*", len(data.(string)))
+		}
+	}
+	return data
+}
+
 func (cfg *Config) ParseFields(configEntries []configEntry, fields []string) error {
 	if len(fields) < 2 {
 		return fmt.Errorf("Invalid fields length: %v", fields)
 	}
-
 	for _, entry := range configEntries {
 		if entry.Name == fields[0] {
 			switch valuePtr := entry.ValuePtr.(type) {
@@ -221,9 +234,8 @@ func (cfg *Config) ParseFields(configEntries []configEntry, fields []string) err
 				log.WithFields(log.Fields{
 					"prefix": prefix,
 					"name":   entry.Name,
-					"value":  *valuePtr,
+					"value":  ApplyMask(&entry, *valuePtr),
 				}).Debug("Setting configuration field")
-
 			case *[]string:
 				rawParts := strings.Split(fields[1], ",")
 				parts := make([]string, len(rawParts))
@@ -238,20 +250,16 @@ func (cfg *Config) ParseFields(configEntries []configEntry, fields []string) err
 				log.WithFields(log.Fields{
 					"prefix": prefix,
 					"name":   entry.Name,
-					"value":  *valuePtr,
+					"value":  ApplyMask(&entry, *valuePtr),
 				}).Debug("Setting configuration field")
-
 			default:
 				return fmt.Errorf("Unsupported config entry type for %s", entry.Name)
 			}
-
 			if entry.Tweak != nil {
 				entry.Tweak()
 			}
-
 		}
 	}
-
 	return nil
 }
 

@@ -49,6 +49,11 @@ type ActionableCheck struct {
 	Populated bool
 }
 
+func (ac ActionableCheck) String() string {
+	json, _ := json.Marshal(ac)
+	return string(json)
+}
+
 // ChecksPreparing conveys ActionableCheck instances are are ready to be validated.
 type ChecksPreparing interface {
 	GetActionableChecks() (actionableChecks []ActionableCheck)

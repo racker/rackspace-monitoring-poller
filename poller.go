@@ -75,17 +75,17 @@ func initEnv() {
 	if globalFlags.Debug {
 		log.SetLevel(log.DebugLevel)
 	}
-
 	if globalFlags.JsonLogger {
-		log.SetFormatter(&log.JSONFormatter{TimestampFormat: time.RFC3339})
+		log.SetFormatter(&log.JSONFormatter{
+			TimestampFormat: time.RFC3339,
+		})
 	} else {
-		log.SetFormatter(&prefixed.TextFormatter{TimestampFormat: time.RFC1123})
+		log.SetFormatter(&prefixed.TextFormatter{
+			TimestampFormat: time.RFC1123,
+		})
 	}
-
 	if globalFlags.LogfileName != "" {
-		log.WithField("location", globalFlags.LogfileName).Info("Redirecting log output")
 		setLogOutput()
-
 		hupChan := make(chan os.Signal, 1)
 		signal.Notify(hupChan, os.Interrupt, syscall.SIGHUP)
 		go func() {

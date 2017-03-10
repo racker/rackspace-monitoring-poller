@@ -76,6 +76,7 @@ func setupConnStreamExpectations(ctrl *gomock.Controller) (eleConn *poller.MockC
 	eleConn.EXPECT().GetLogPrefix().AnyTimes().Return("1-2-3")
 	eleConn.EXPECT().SetReadDeadline(gomock.Any()).AnyTimes()
 	eleConn.EXPECT().SetWriteDeadline(gomock.Any()).AnyTimes()
+	eleConn.EXPECT().GetLogPrefix().AnyTimes().Return("1-2-3")
 
 	reconciler = poller.NewMockChecksReconciler(ctrl)
 

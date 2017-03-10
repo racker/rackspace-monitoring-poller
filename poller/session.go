@@ -258,7 +258,7 @@ func (s *EleSession) handleFrame(f *protocol.FrameMsg) error {
 		log.WithFields(log.Fields{
 			"prefix":  s.logPrefix,
 			"payload": string(js),
-		}).Debug("RECV")
+		}).Debug("socket receive")
 	}
 	var err error
 	switch f.GetMethod() {
@@ -348,8 +348,8 @@ func (s *EleSession) handlePollerPrepareBlock(f *protocol.FrameMsg) {
 	if !s.prepDetails.activePrep.VersionApplies(req.Params.Version) {
 		log.WithFields(log.Fields{
 			"prefix":  s.logPrefix,
-			"req":     req,
-			"details": s.prepDetails,
+			"req":     req.String(),
+			"details": s.prepDetails.String(),
 		}).Warn("Ignoring prepare block with wrong version")
 		return
 	}
@@ -403,12 +403,10 @@ func (s *EleSession) handlePollerPrepareEnd(f *protocol.FrameMsg) {
 	}
 	resp := protocol.NewPollerPrepareResponse(s.prepDetails.srcPrepMsg, result)
 	if log.GetLevel() >= log.DebugLevel {
-		reqEncoded, _ := json.Marshal(req)
-		detailsEncoded, _ := json.Marshal(s.prepDetails)
 		log.WithFields(log.Fields{
 			"prefix":  s.logPrefix,
-			"req":     string(reqEncoded),
-			"details": string(detailsEncoded),
+			"req":     req.String(),
+			"details": s.prepDetails.String(),
 		}).Debug("Responding to end of poller prepare")
 	}
 	s.Respond(resp)
@@ -440,11 +438,11 @@ func (s *EleSession) respondCommitResult(f *protocol.FrameMsg, req *protocol.Pol
 }
 
 func (s *EleSession) respondFailureToPollerPrepare(f *protocol.FrameMsg, req protocol.PollerPrepareRequest, status string, details string) {
-	if details != "" {
+	if log.GetLevel() >= log.DebugLevel {
 		log.WithFields(log.Fields{
 			"prefix": s.logPrefix,
 			"req":    req,
-			"prep":   s.prepDetails,
+			"prep":   s.prepDetails.String(),
 		}).Warn(details)
 	}
 	result := protocol.PollerPrepareResult{
@@ -557,7 +555,7 @@ func (s *EleSession) runFrameSending() {
 				log.WithFields(log.Fields{
 					"prefix": s.logPrefix,
 					"data":   string(data),
-				}).Debug("SEND")
+				}).Debug("socket send")
 			}
 			_, err = s.connection.GetFarendWriter().Write(data)
 			if err != nil {
@@ -604,8 +602,8 @@ func (s *EleSession) Wait() {
 }
 
 func (cp *prepDetails) String() string {
-	return fmt.Sprintf("active=%v, newestCommittedVersion=%v, srcPrepMsg=%v",
-		cp.activePrep, cp.newestCommittedVersion, cp.srcPrepMsg)
+	json, _ := json.Marshal(cp)
+	return string(json)
 }
 
 func (cp *prepDetails) clear() {

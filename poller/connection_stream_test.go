@@ -77,6 +77,7 @@ func TestConnectionStream_Connect(t *testing.T) {
 				conn.EXPECT().Wait().After(connectCall).Do(func() {
 					mockConnWaiting.Done()
 				})
+				conn.EXPECT().GetLogPrefix().Return("1234")
 				conn.EXPECT().Close()
 			}
 
@@ -111,9 +112,11 @@ func TestConnectionsByHost_ChooseBest(t *testing.T) {
 			fill: func(conns poller.ConnectionsByHost, ctrl *gomock.Controller) {
 				c1 := poller.NewMockConnection(ctrl)
 				c1.EXPECT().GetLatency().Return(int64(50))
+				c1.EXPECT().GetLogPrefix().AnyTimes().Return("1-2-3")
 
 				c2 := poller.NewMockConnection(ctrl)
 				c2.EXPECT().GetLatency().Return(int64(20))
+				c2.EXPECT().GetLogPrefix().AnyTimes().Return("1-2-3")
 
 				conns["h1"] = c1
 				conns["h2"] = c2
@@ -172,6 +175,7 @@ func TestEleConnectionStream_SendMetrics_Normal(t *testing.T) {
 
 	c1 := poller.NewMockConnection(ctrl)
 	c1.EXPECT().GetLatency().AnyTimes().Return(int64(50))
+	c1.EXPECT().GetLogPrefix().AnyTimes().Return("1-2-3")
 
 	mockSession := poller.NewMockSession(ctrl)
 	mockSession.EXPECT().Send(gomock.Any())
@@ -180,9 +184,11 @@ func TestEleConnectionStream_SendMetrics_Normal(t *testing.T) {
 	c2.EXPECT().GetLatency().AnyTimes().Return(int64(10))
 	c2.EXPECT().GetClockOffset().AnyTimes().Return(int64(0))
 	c2.EXPECT().GetSession().Return(mockSession)
+	c2.EXPECT().GetLogPrefix().AnyTimes().Return("1-2-3")
 
 	c3 := poller.NewMockConnection(ctrl)
 	c3.EXPECT().GetLatency().AnyTimes().Return(int64(20))
+	c3.EXPECT().GetLogPrefix().AnyTimes().Return("1-2-3")
 
 	cs.RegisterConnection("h1", c1)
 	cs.RegisterConnection("h2", c2)

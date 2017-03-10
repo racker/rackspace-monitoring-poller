@@ -233,6 +233,11 @@ type PollerPrepareStartRequest struct {
 	Params PollerPrepareStartParams `json:"params"`
 }
 
+func (req *PollerPrepareStartRequest) String() string {
+	json, _ := json.Marshal(req)
+	return string(json)
+}
+
 func (req *PollerPrepareStartRequest) GetPreparationVersion() int {
 	return req.Params.Version
 }
@@ -259,6 +264,11 @@ type PollerPrepareBlockParams struct {
 type PollerPrepareBlockRequest struct {
 	FrameMsg
 	Params PollerPrepareBlockParams `json:"params"`
+}
+
+func (req *PollerPrepareBlockRequest) String() string {
+	json, _ := json.Marshal(req)
+	return string(json)
 }
 
 func (req *PollerPrepareBlockRequest) GetPreparationVersion() int {
@@ -288,6 +298,11 @@ type PollerPrepareEndParams struct {
 type PollerPrepareEndRequest struct {
 	FrameMsg
 	Params PollerPrepareEndParams `json:"params"`
+}
+
+func (req *PollerPrepareEndRequest) String() string {
+	json, _ := json.Marshal(req)
+	return string(json)
 }
 
 func (req *PollerPrepareEndRequest) GetPreparationVersion() int {

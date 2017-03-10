@@ -107,7 +107,7 @@ func (ch *HTTPCheck) Run() (*ResultSet, error) {
 		}
 	}
 	ip, err := ch.GetTargetIP()
-	if err != nil && err != InvalidTargetIPError {
+	if err != nil && err != ErrInvalidTargetIP {
 		return crs, err
 	}
 	if ip == "" {

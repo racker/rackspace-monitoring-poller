@@ -34,6 +34,8 @@ import (
 // EleConnectionStream implements ConnectionStream
 // See ConnectionStream for more information
 type EleConnectionStream struct {
+	LogPrefixGetter
+
 	ctx     context.Context
 	rootCAs *x509.CertPool
 
@@ -82,7 +84,7 @@ func (cs *EleConnectionStream) GetLogPrefix() string {
 
 // getRegisteredConnectionNames returns the registered connection names
 func (cs *EleConnectionStream) getRegisteredConnectionNames() []string {
-	names := make([]string, 0)
+	names := []string{}
 	for _, conn := range cs.conns {
 		names = append(names, conn.GetLogPrefix())
 	}
