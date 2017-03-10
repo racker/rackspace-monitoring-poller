@@ -31,4 +31,4 @@ RUN openssl req \
 
 EXPOSE 55000
 
-CMD ./rackspace-monitoring-poller endpoint --config contrib/endpoint-config.json  --debug
+ENTRYPOINT ./rackspace-monitoring-poller
