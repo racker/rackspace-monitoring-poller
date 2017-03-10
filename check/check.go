@@ -61,8 +61,10 @@ import (
 	"crypto/x509"
 	"errors"
 
+	"fmt"
 	"io"
 	"strings"
+
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -86,6 +88,7 @@ type Check interface {
 	GetTargetIP() (string, error)
 	SetCheckType(checkType string)
 	GetPeriod() uint64
+	GetLogPrefix() string
 	GetWaitPeriod() time.Duration
 	SetPeriod(period uint64)
 	GetTimeout() uint64
@@ -141,6 +144,11 @@ func (ch *Base) SetID(id string) {
 // GetCheckType returns check's type
 func (ch *Base) GetCheckType() string {
 	return ch.CheckType
+}
+
+// GetLogPrefix returns the log prefix
+func (ch *Base) GetLogPrefix() string {
+	return fmt.Sprintf("%v:%v", ch.GetID(), ch.GetCheckType())
 }
 
 // SetCheckType sets check's checktype to

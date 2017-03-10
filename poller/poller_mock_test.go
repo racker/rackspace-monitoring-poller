@@ -214,6 +214,16 @@ func (_mr *_MockConnectionRecorder) GetGUID() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetGUID")
 }
 
+func (_m *MockConnection) GetLogPrefix() string {
+	ret := _m.ctrl.Call(_m, "GetLogPrefix")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+func (_mr *_MockConnectionRecorder) GetLogPrefix() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetLogPrefix")
+}
+
 // Mock of ConnectionHealthProvider interface
 type MockConnectionHealthProvider struct {
 	ctrl     *gomock.Controller

@@ -19,6 +19,7 @@ package poller
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"io"
 	"net"
 	"time"
@@ -99,6 +100,10 @@ func (conn *EleConnection) SetWriteDeadline(deadline time.Time) {
 	}
 }
 
+func (conn *EleConnection) GetLogPrefix() string {
+	return fmt.Sprintf("%v", conn.address)
+}
+
 // Connect sets up a tcp connection with connection defined address
 // and passed in tlsConfig
 // If context is not set, ErrUndefinedContext is returned
@@ -109,7 +114,7 @@ func (conn *EleConnection) Connect(ctx context.Context, config *config.Config, t
 		return ErrUndefinedContext
 	}
 	log.WithFields(log.Fields{
-		"address": conn.address,
+		"prefix":  conn.GetLogPrefix(),
 		"timeout": conn.connectionTimeout,
 	}).Info("Connecting to agent/poller endpoint")
 	nd := net.Dialer{Timeout: conn.connectionTimeout}
@@ -117,9 +122,12 @@ func (conn *EleConnection) Connect(ctx context.Context, config *config.Config, t
 	if err != nil {
 		return err
 	}
-	log.Info("  ... Connected")
 	conn.conn = tlsConn
 	conn.session = NewSession(ctx, conn, conn.checksReconciler, config)
+	log.WithFields(log.Fields{
+		"prefix":         conn.GetLogPrefix(),
+		"remote_address": tlsConn.RemoteAddr(),
+	}).Info("Connected")
 	return nil
 }
 

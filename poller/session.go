@@ -81,6 +81,8 @@ type EleSession struct {
 	completionsMu sync.Mutex
 	completions   map[uint64]*CompletionFrame
 
+	logPrefix string
+
 	sendCh chan protocol.Frame
 	readCh chan *protocol.FrameMsg
 
@@ -110,6 +112,7 @@ func NewSession(ctx context.Context, connection Connection, checksReconciler Che
 		completions:        make(map[uint64]*CompletionFrame),
 	}
 	session.ctx, session.cancel = context.WithCancel(ctx)
+	session.logPrefix = fmt.Sprintf("session: %v", connection.GetLogPrefix())
 	go session.runFrameReading()
 	go session.runFrameHandlingAndTimeout()
 	go session.runFrameSending()
@@ -165,7 +168,10 @@ func (s *EleSession) handleResponse(resp *protocol.FrameMsg) error {
 		case protocol.MethodHandshakeHello:
 			resp := protocol.DecodeHandshakeResponse(resp)
 			if resp.Error != nil {
-				log.Errorf("Handshake Error: %s", resp.Error.Message)
+				log.WithFields(log.Fields{
+					"prefix": s.logPrefix,
+					"error":  resp.Error.Message,
+				}).Error("handshake error")
 				return errors.New(resp.Error.Message)
 			}
 			// just to be sure guard against multiple handshake starting multiple heartbeat routines
@@ -176,7 +182,10 @@ func (s *EleSession) handleResponse(resp *protocol.FrameMsg) error {
 			s.heartbeatResponses <- resp
 		case protocol.MethodCheckMetricsPostMulti:
 		default:
-			log.Errorf("Unexpected method: %s", req.Method)
+			log.WithFields(log.Fields{
+				"prefix": s.logPrefix,
+				"method": req.Method,
+			}).Error("Unexpected method")
 		}
 	}
 	return nil
@@ -193,8 +202,8 @@ func (s *EleSession) computeWriteDeadline() time.Time {
 }
 
 func (s *EleSession) runFrameReading() {
-	log.Debug("read starting")
-	defer log.Debug("read exiting")
+	log.WithField("prefix", s.logPrefix).Debug("read starting")
+	defer log.WithField("prefix", s.logPrefix).Debug("read exiting")
 	defer s.cancel()
 
 	for {
@@ -216,8 +225,8 @@ func (s *EleSession) runFrameReading() {
 }
 
 func (s *EleSession) runFrameHandlingAndTimeout() {
-	log.Debug("frame handling starting")
-	defer log.Debug("frame handling exiting")
+	log.WithField("prefix", s.logPrefix).Debug("frame handling starting")
+	defer log.WithField("prefix", s.logPrefix).Debug("frame handling exiting")
 
 	for {
 		select {
@@ -227,8 +236,10 @@ func (s *EleSession) runFrameHandlingAndTimeout() {
 		case f := <-s.readCh:
 			if err := s.handleFrame(f); err != nil {
 				s.error = err
-				log.WithField("err", err).Error("Error during handleFrame")
-
+				log.WithFields(log.Fields{
+					"prefix": s.logPrefix,
+					"error":  err,
+				}).Debug("Error during handleFrame")
 				// but loop back around since frame-level errors are not catastrophic
 			}
 
@@ -244,16 +255,17 @@ func (s *EleSession) runFrameHandlingAndTimeout() {
 func (s *EleSession) handleFrame(f *protocol.FrameMsg) error {
 	if log.GetLevel() >= log.DebugLevel {
 		js, _ := f.Encode()
-		log.Debugf("RECV: %s", js)
+		log.WithFields(log.Fields{
+			"prefix":  s.logPrefix,
+			"payload": string(js),
+		}).Debug("RECV")
 	}
-
 	var err error
 	switch f.GetMethod() {
 	case protocol.MethodEmpty: // Responses do not have a method name
 		err = s.handleResponse(f)
 	case protocol.MethodHostInfoGet:
 		go s.handleHostInfo(f)
-
 	case protocol.MethodPollerPrepare:
 		s.handlePollerPrepare(f)
 	case protocol.MethodPollerPrepareBlock:
@@ -262,9 +274,11 @@ func (s *EleSession) handleFrame(f *protocol.FrameMsg) error {
 		s.handlePollerPrepareEnd(f)
 	case protocol.MethodPollerCommit:
 		s.handlePollerCommit(f)
-
 	default:
-		log.Errorf("  Need to handle method: %v", f.GetMethod())
+		log.WithFields(log.Fields{
+			"prefix": s.logPrefix,
+			"method": f.GetMethod(),
+		}).Error("Need to handle method")
 	}
 	return err
 }
@@ -273,10 +287,13 @@ func (s *EleSession) handleHostInfo(f *protocol.FrameMsg) {
 	if hinfo := hostinfo.NewHostInfo(f.GetRawParams()); hinfo != nil {
 		result, err := hinfo.Run()
 		if err != nil {
-			log.Error("Hostinfo returned error", err)
-		} else {
-			s.Respond(hostinfo.NewHostInfoResponse(result, f))
+			log.WithFields(log.Fields{
+				"prefix": s.logPrefix,
+				"error":  err,
+			}).Error("Hostinfo returned error")
+			return
 		}
+		s.Respond(hostinfo.NewHostInfoResponse(result, f))
 	}
 }
 
@@ -328,14 +345,16 @@ func (s *EleSession) handlePollerPrepare(f *protocol.FrameMsg) {
 
 func (s *EleSession) handlePollerPrepareBlock(f *protocol.FrameMsg) {
 	req := protocol.DecodePollerPrepareBlockRequest(f)
-
 	if !s.prepDetails.activePrep.VersionApplies(req.Params.Version) {
-		log.WithFields(log.Fields{"req": req, "details": s.prepDetails}).Warn("Ignoring prepare block with wrong version")
+		log.WithFields(log.Fields{
+			"prefix":  s.logPrefix,
+			"req":     req,
+			"details": s.prepDetails,
+		}).Warn("Ignoring prepare block with wrong version")
 		return
 	}
 
 	s.prepDetails.activePrep.AddDefinitions(req.Params.Block)
-
 	t := s.prepDetails.prepareToEndTimer
 	if !t.Stop() {
 		<-t.C
@@ -377,30 +396,33 @@ func (s *EleSession) handlePollerPrepareEnd(f *protocol.FrameMsg) {
 	s.prepDetails.prepareToEndTimer.Stop()
 	s.prepDetails.prepareToEndTimer = nil
 
-	log.WithFields(log.Fields{"req": req, "details": s.prepDetails}).Debug("Responding to end of poller prepare")
 	result := protocol.PollerPrepareResult{
 		ZoneId:  s.prepDetails.activePrep.ZoneId,
 		Version: req.Params.Version,
 		Status:  protocol.PrepareResultStatusPrepared,
 	}
 	resp := protocol.NewPollerPrepareResponse(s.prepDetails.srcPrepMsg, result)
-
+	if log.GetLevel() >= log.DebugLevel {
+		reqEncoded, _ := json.Marshal(req)
+		detailsEncoded, _ := json.Marshal(s.prepDetails)
+		log.WithFields(log.Fields{
+			"prefix":  s.logPrefix,
+			"req":     string(reqEncoded),
+			"details": string(detailsEncoded),
+		}).Debug("Responding to end of poller prepare")
+	}
 	s.Respond(resp)
 }
 
 func (s *EleSession) handlePollerCommit(f *protocol.FrameMsg) {
 	req := protocol.DecodePollerCommitRequest(f)
-
 	if !s.prepDetails.activePrep.VersionApplies(req.Params.Version) {
 		details := "Poller commit request specified non-applicable version"
-		log.WithField("req", req).Warn(details)
-
+		log.WithFields(log.Fields{"prefix": s.logPrefix, "req": req}).Warn(details)
 		s.respondCommitResult(f, req, protocol.PrepareResultStatusIgnored, details)
 		return
 	}
-
 	s.respondCommitResult(f, req, protocol.PrepareResultStatusCommitted, "")
-
 	s.prepDetails.commit()
 }
 
@@ -420,8 +442,9 @@ func (s *EleSession) respondCommitResult(f *protocol.FrameMsg, req *protocol.Pol
 func (s *EleSession) respondFailureToPollerPrepare(f *protocol.FrameMsg, req protocol.PollerPrepareRequest, status string, details string) {
 	if details != "" {
 		log.WithFields(log.Fields{
-			"req":  req,
-			"prep": s.prepDetails,
+			"prefix": s.logPrefix,
+			"req":    req,
+			"prep":   s.prepDetails,
 		}).Warn(details)
 	}
 	result := protocol.PollerPrepareResult{
@@ -431,16 +454,13 @@ func (s *EleSession) respondFailureToPollerPrepare(f *protocol.FrameMsg, req pro
 		Details: details,
 	}
 	resp := protocol.NewPollerPrepareResponse(f, result)
-
 	s.Respond(resp)
-
 }
 
 // runHeartbeats is driven by a timer on heartbeatInterval
 func (s *EleSession) runHeartbeats() {
-	log.Debug("heartbeat starting")
-	defer log.Debug("heartbeat exiting")
-
+	log.WithField("prefix", s.logPrefix).Debug("heartbeat starting")
+	defer log.WithField("prefix", s.logPrefix).Debug("heartbeat exiting")
 	for {
 		select {
 		case <-s.ctx.Done():
@@ -448,14 +468,15 @@ func (s *EleSession) runHeartbeats() {
 		case <-time.After(s.heartbeatInterval):
 			req := protocol.NewHeartbeatRequest()
 			req.SetId(&s.seq)
-
 			s.prepareHeartbeatMeasurement(req)
-			log.WithField("req", req).Debug("Initiating heartbeat")
+			log.WithFields(log.Fields{
+				"prefix": s.logPrefix,
+				"req":    req,
+			}).Debug("Sending heartbeat")
 			s.Send(req)
 
 		case resp := <-s.heartbeatResponses:
 			s.updateHeartbeatMeasurement(resp)
-
 		}
 	}
 }
@@ -472,6 +493,7 @@ func (s *EleSession) prepareHeartbeatMeasurement(req *protocol.HeartbeatRequest)
 func (s *EleSession) updateHeartbeatMeasurement(resp *protocol.HeartbeatResponse) {
 	if s.heartbeatMeasurement.expectedSeqID != resp.Id {
 		log.WithFields(log.Fields{
+			"prefix":   s.logPrefix,
 			"expected": s.heartbeatMeasurement.expectedSeqID,
 			"received": resp.Id,
 		}).Warn("Received out of sequence heartbeat response. Unable to compute latency from it.")
@@ -484,17 +506,19 @@ func (s *EleSession) updateHeartbeatMeasurement(resp *protocol.HeartbeatResponse
 
 	offset, latency, err := s.heartbeatMeasurement.tracking.ComputeSkew()
 	if err != nil {
-		log.WithField("err", err).Warn("Failed to compute skew")
+		log.WithFields(log.Fields{
+			"prefix": s.logPrefix,
+			"error":  err,
+		}).Warn("Failed to compute skew")
 		return
 	}
-
+	s.heartbeatMeasurement.offset = offset
+	s.heartbeatMeasurement.latency = latency
 	log.WithFields(log.Fields{
+		"prefix": s.logPrefix,
 		"offset": offset,
 		"delay":  latency,
 	}).Debug("Computed poller-server latencies")
-
-	s.heartbeatMeasurement.offset = offset
-	s.heartbeatMeasurement.latency = latency
 }
 
 func (s *EleSession) GetClockOffset() int64 {
@@ -514,10 +538,9 @@ func (s *EleSession) addCompletion(frame protocol.Frame) {
 
 // runs it it's own go routine and consumes from sendCh
 func (s *EleSession) runFrameSending() {
-	log.Debug("send starting")
-	defer log.Debug("send exiting")
+	log.WithField("prefix", s.logPrefix).Debug("send starting")
+	defer log.WithField("prefix", s.logPrefix).Debug("send exiting")
 	defer s.cancel()
-
 	for {
 		select {
 		case <-s.ctx.Done():
@@ -531,7 +554,10 @@ func (s *EleSession) runFrameSending() {
 				return
 			}
 			if log.GetLevel() >= log.DebugLevel {
-				log.Debugf("SEND: %s", data)
+				log.WithFields(log.Fields{
+					"prefix": s.logPrefix,
+					"data":   string(data),
+				}).Debug("SEND")
 			}
 			_, err = s.connection.GetFarendWriter().Write(data)
 			if err != nil {
@@ -548,7 +574,10 @@ func (s *EleSession) runFrameSending() {
 }
 
 func (s *EleSession) exitError(err error) {
-	log.Warnf("Session exiting with error: %v", err)
+	log.WithFields(log.Fields{
+		"prefix": s.logPrefix,
+		"error":  err,
+	}).Warn("Session exiting with error")
 	s.shutdownLock.Lock()
 	if s.error == nil {
 		s.error = err

@@ -41,7 +41,6 @@ func NewPingCheck(base *Base) Check {
 		log.Printf("Error unmarshalling check details")
 		return nil
 	}
-	check.PrintDefaults()
 	return check
 }
 
@@ -67,15 +66,15 @@ func (ch *PingCheck) Run() (*ResultSet, error) {
 
 	pinger.SetOnRecv(func(pkt *ping.Packet) {
 		log.WithFields(log.Fields{
-			"id":    ch.GetID(),
-			"bytes": pkt.Nbytes,
-			"seq":   pkt.Seq,
-			"rtt":   pkt.Rtt,
+			"prefix": ch.GetLogPrefix(),
+			"bytes":  pkt.Nbytes,
+			"seq":    pkt.Seq,
+			"rtt":    pkt.Rtt,
 		}).Debug("Received ping packet")
 	})
 
 	log.WithFields(log.Fields{
-		"id":         ch.GetID(),
+		"prefix":     ch.GetLogPrefix(),
 		"count":      pinger.Count(),
 		"timeoutSec": ch.Timeout,
 		"timeoutDur": pinger.Timeout(),
@@ -95,14 +94,16 @@ func (ch *PingCheck) Run() (*ResultSet, error) {
 	)
 	crs := NewResultSet(ch, cr)
 	if stats.PacketsSent == 0 {
-		log.Warn("No ping packets were sent, likely due to lack of permission")
+		log.WithFields(log.Fields{
+			"prefix": ch.GetLogPrefix(),
+		}).Debug("No ping packets were sent, likely due to lack of permission")
 		crs.SetStateUnavailable()
 	} else {
 		crs.SetStateAvailable()
 	}
 
 	log.WithFields(log.Fields{
-		"id":     ch.GetID(),
+		"prefix": ch.GetLogPrefix(),
 		"stats":  stats,
 		"result": cr,
 	}).Debug("Finished remote.ping check")

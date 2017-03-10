@@ -72,6 +72,7 @@ type Connection interface {
 	GetFarendWriter() io.Writer
 	GetFarendReader() io.Reader
 	GetGUID() string
+	GetLogPrefix() string
 }
 
 type ConnectionHealthProvider interface {

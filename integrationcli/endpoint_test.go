@@ -33,7 +33,7 @@ func TestStartEndpoint(t *testing.T) {
 		{
 			name: "Happy path",
 			args: []string{
-				"endpoint", "--config",
+				"endpoint", "--json-logger", "--config",
 				"testdata/endpoint-config.json"},
 			expectedStdOut: []*utils.OutputMessage{},
 			expectedStdErr: []*utils.OutputMessage{
@@ -64,7 +64,7 @@ func TestStartEndpoint(t *testing.T) {
 		{
 			name: "No agent configured",
 			args: []string{
-				"endpoint", "--config",
+				"endpoint", "--json-logger", "--config",
 				"testdata/endpoint-config.noagents.json"},
 			expectedStdOut: []*utils.OutputMessage{},
 			expectedStdErr: []*utils.OutputMessage{
@@ -95,7 +95,7 @@ func TestStartEndpoint(t *testing.T) {
 		{
 			name: "No certs specified",
 			args: []string{
-				"endpoint", "--config",
+				"endpoint", "--json-logger", "--config",
 				"testdata/endpoint-config.nocerts.json"},
 			expectedStdOut: []*utils.OutputMessage{},
 			expectedStdErr: []*utils.OutputMessage{
@@ -117,7 +117,7 @@ func TestStartEndpoint(t *testing.T) {
 		{
 			name: "No bind port specified (uses default port)",
 			args: []string{
-				"endpoint", "--config",
+				"endpoint", "--json-logger", "--config",
 				"testdata/endpoint-config.nobind.json"},
 			expectedStdOut: []*utils.OutputMessage{},
 			expectedStdErr: []*utils.OutputMessage{

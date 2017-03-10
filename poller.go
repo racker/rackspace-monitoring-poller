@@ -25,14 +25,16 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	prefixed "github.com/x-cray/logrus-prefixed-formatter"
+
 	"github.com/racker/rackspace-monitoring-poller/commands"
 	"github.com/racker/rackspace-monitoring-poller/version"
 	"github.com/spf13/cobra"
-	"os/signal"
-	"syscall"
 )
 
 const (
@@ -49,12 +51,7 @@ var (
 	globalFlags struct {
 		Debug       bool
 		LogfileName string
-	}
-
-	// Formatter is a log formatter utilized for poller.  Defaulted to JSONFormatter
-	// due to simplicity for parsing by 3rd party logging tools
-	Formatter log.Formatter = &log.JSONFormatter{
-		TimestampFormat: time.RFC1123,
+		JsonLogger  bool
 	}
 )
 
@@ -71,6 +68,7 @@ func init() {
 	log.SetOutput(os.Stderr)
 	pollerCmd.PersistentFlags().BoolVar(&globalFlags.Debug, "debug", false, "Enable debug")
 	pollerCmd.PersistentFlags().StringVarP(&globalFlags.LogfileName, "logfile", "l", "", "Location of the log file")
+	pollerCmd.PersistentFlags().BoolVar(&globalFlags.JsonLogger, "json-logger", false, "JSON logger")
 }
 
 func initEnv() {
@@ -78,10 +76,10 @@ func initEnv() {
 		log.SetLevel(log.DebugLevel)
 	}
 
-	if os.Getenv("LOG_TEXT_FORMAT") == "true" {
-		log.SetFormatter(&log.TextFormatter{ForceColors: true})
+	if globalFlags.JsonLogger {
+		log.SetFormatter(&log.JSONFormatter{TimestampFormat: time.RFC3339})
 	} else {
-		log.SetFormatter(Formatter)
+		log.SetFormatter(&prefixed.TextFormatter{TimestampFormat: time.RFC1123})
 	}
 
 	if globalFlags.LogfileName != "" {

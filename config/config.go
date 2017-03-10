@@ -36,6 +36,7 @@ import (
 var (
 	ErrorNoZones = errors.New("No zones are defined")
 	ErrorNoToken = errors.New("No token is defined")
+	prefix       = "config"
 )
 
 const (
@@ -95,7 +96,7 @@ func NewConfig(guid string, useStaging bool) *Config {
 	cfg.UseStaging = useStaging
 	if useStaging {
 		cfg.SrvQueries = DefaultStagingSrvEndpoints
-		log.Warn("Using staging endpoints")
+		log.WithField("prefix", prefix).Warn("Using staging endpoints")
 	} else {
 		cfg.SrvQueries = DefaultProdSrvEndpoints
 	}
@@ -138,7 +139,10 @@ func (cfg *Config) LoadFromFile(filepath string) error {
 		return err
 	}
 
-	log.WithField("file", filepath).Info("Loaded configuration")
+	log.WithFields(log.Fields{
+		"prefix": prefix,
+		"file":   filepath,
+	}).Info("Loaded configuration")
 	return nil
 }
 
@@ -214,7 +218,11 @@ func (cfg *Config) ParseFields(configEntries []configEntry, fields []string) err
 				}
 
 				*valuePtr = fields[1]
-				log.WithFields(log.Fields{"name": entry.Name, "value": *valuePtr}).Debug("Setting configuration field")
+				log.WithFields(log.Fields{
+					"prefix": prefix,
+					"name":   entry.Name,
+					"value":  *valuePtr,
+				}).Debug("Setting configuration field")
 
 			case *[]string:
 				rawParts := strings.Split(fields[1], ",")
@@ -227,7 +235,11 @@ func (cfg *Config) ParseFields(configEntries []configEntry, fields []string) err
 					parts[i] = v
 				}
 				*valuePtr = parts
-				log.WithFields(log.Fields{"name": entry.Name, "value": *valuePtr}).Debug("Setting configuration field")
+				log.WithFields(log.Fields{
+					"prefix": prefix,
+					"name":   entry.Name,
+					"value":  *valuePtr,
+				}).Debug("Setting configuration field")
 
 			default:
 				return fmt.Errorf("Unsupported config entry type for %s", entry.Name)

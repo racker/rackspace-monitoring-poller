@@ -17,9 +17,12 @@
 package poller
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+
 	log "github.com/Sirupsen/logrus"
+
 	"github.com/racker/rackspace-monitoring-poller/protocol"
 	"github.com/racker/rackspace-monitoring-poller/protocol/check"
 )
@@ -94,8 +97,10 @@ func NewChecksPreparation(zoneId string, version int, manifest []protocol.Poller
 			},
 		}
 	}
-
-	log.WithField("actions", cp.Actions).Debug("Prepared checks from manifest")
+	log.WithFields(log.Fields{
+		"prefix":  cp.GetLogPrefix(),
+		"actions": cp.Actions,
+	}).Debug("Prepared checks from manifest")
 	return cp, nil
 }
 
@@ -116,13 +121,15 @@ func doesCheckPreparationNeedPopulating(action string) bool {
 	return action != protocol.PrepareActionContinue
 }
 
+func (cp *ChecksPreparation) GetLogPrefix() string {
+	return fmt.Sprintf("checks.preparation zoneid=%v, version=%v", cp.ZoneId, cp.Version)
+}
+
 func (cp *ChecksPreparation) GetActionableChecks() (actionableChecks []ActionableCheck) {
 	actionableChecks = make([]ActionableCheck, 0, len(cp.Actions))
-
 	for _, ac := range cp.Actions {
 		actionableChecks = append(actionableChecks, ac)
 	}
-
 	return
 }
 
@@ -139,17 +146,20 @@ func (cp *ChecksPreparation) IsOlder(version int) bool {
 }
 
 func (cp *ChecksPreparation) AddDefinitions(block []*check.CheckIn) {
-
 	for _, ch := range block {
 		actionable := cp.Actions[ch.Id]
 		actionable.Populated = true
 		actionable.CheckIn = *ch
-
 		cp.Actions[ch.Id] = actionable
-
-		log.WithFields(log.Fields{"chId": ch.Id, "entry": actionable}).Debug("Added definition to actions")
+		if log.GetLevel() >= log.DebugLevel {
+			actionableEncoded, _ := json.Marshal(actionable)
+			log.WithFields(log.Fields{
+				"prefix":   cp.GetLogPrefix(),
+				"check_id": ch.Id,
+				"entry":    string(actionableEncoded),
+			}).Debug("Added definition to actions")
+		}
 	}
-
 }
 
 func (cp *ChecksPreparation) Validate(version int) error {
