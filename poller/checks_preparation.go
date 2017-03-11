@@ -157,11 +157,10 @@ func (cp *ChecksPreparation) AddDefinitions(block []*check.CheckIn) {
 		actionable.CheckIn = *ch
 		cp.Actions[ch.Id] = actionable
 		if log.GetLevel() >= log.DebugLevel {
-			actionableEncoded, _ := json.Marshal(actionable)
 			log.WithFields(log.Fields{
 				"prefix":   cp.GetLogPrefix(),
 				"check_id": ch.Id,
-				"entry":    string(actionableEncoded),
+				"entry":    actionable.String(),
 			}).Debug("Added definition to actions")
 		}
 	}
