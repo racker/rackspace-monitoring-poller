@@ -60,7 +60,6 @@ func NewHTTPCheck(base *Base) Check {
 		log.Error("Error unmarshalling base")
 		return nil
 	}
-	check.PrintDefaults()
 	return check
 }
 
@@ -73,9 +72,10 @@ func disableRedirects(req *http.Request, via []*http.Request) error {
 func (ch *HTTPCheck) Run() (*ResultSet, error) {
 	// TODO: refactor.  High cyclomatic complexity (21)
 	log.WithFields(log.Fields{
-		"type": ch.CheckType,
-		"id":   ch.Id,
-	}).Info("Running HTTP Check")
+		"prefix": ch.GetLogPrefix(),
+		"type":   ch.CheckType,
+		"id":     ch.Id,
+	}).Debug("Running HTTP Check")
 
 	ctx, cancel := context.WithTimeout(context.Background(), ch.GetTimeoutDuration())
 	defer cancel()
@@ -107,12 +107,12 @@ func (ch *HTTPCheck) Run() (*ResultSet, error) {
 		}
 	}
 	ip, err := ch.GetTargetIP()
-	if err != nil && err != InvalidTargetIPError {
+	if err != nil && err != ErrInvalidTargetIP {
 		return crs, err
 	}
 	if ip == "" {
 		log.WithFields(log.Fields{
-			"id": ch.Id,
+			"prefix": ch.GetLogPrefix(),
 		}).Debug("Setting host to IP. IP was an empty string")
 		ip = host
 	}
@@ -138,9 +138,8 @@ func (ch *HTTPCheck) Run() (*ResultSet, error) {
 	method := strings.ToUpper(ch.Details.Method)
 
 	log.WithFields(log.Fields{
-		"id":     ch.Id,
+		"prefix": ch.GetLogPrefix(),
 		"method": method,
-		"type":   ch.CheckType,
 		"url":    url,
 	}).Debug("Debug Request")
 

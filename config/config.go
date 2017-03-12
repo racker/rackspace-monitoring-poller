@@ -36,6 +36,7 @@ import (
 var (
 	ErrorNoZones = errors.New("No zones are defined")
 	ErrorNoToken = errors.New("No token is defined")
+	prefix       = "config"
 )
 
 const (
@@ -74,10 +75,11 @@ type Config struct {
 }
 
 type configEntry struct {
-	Name     string
-	ValuePtr interface{}
-	Tweak    func()
-	Allowed  []string
+	Name      string
+	ValuePtr  interface{}
+	Tweak     func()
+	Allowed   []string
+	Sensitive bool
 }
 
 func NewConfig(guid string, useStaging bool) *Config {
@@ -95,7 +97,7 @@ func NewConfig(guid string, useStaging bool) *Config {
 	cfg.UseStaging = useStaging
 	if useStaging {
 		cfg.SrvQueries = DefaultStagingSrvEndpoints
-		log.Warn("Using staging endpoints")
+		log.WithField("prefix", prefix).Warn("Using staging endpoints")
 	} else {
 		cfg.SrvQueries = DefaultProdSrvEndpoints
 	}
@@ -138,7 +140,10 @@ func (cfg *Config) LoadFromFile(filepath string) error {
 		return err
 	}
 
-	log.WithField("file", filepath).Info("Loaded configuration")
+	log.WithFields(log.Fields{
+		"prefix": prefix,
+		"file":   filepath,
+	}).Info("Loaded configuration")
 	return nil
 }
 
@@ -178,8 +183,9 @@ func (cfg *Config) DefineConfigEntries() []configEntry {
 			ValuePtr: &cfg.AgentId,
 		},
 		{
-			Name:     "monitoring_token",
-			ValuePtr: &cfg.Token,
+			Name:      "monitoring_token",
+			ValuePtr:  &cfg.Token,
+			Sensitive: true,
 		},
 		{
 			Name:     "monitoring_private_zones",
@@ -200,11 +206,22 @@ func (cfg *Config) DefineConfigEntries() []configEntry {
 	}
 }
 
+func ApplyMask(entry *configEntry, data interface{}) interface{} {
+	if entry.Sensitive {
+		switch data.(type) {
+		case []string:
+			return strings.Repeat("*", 10)
+		case string:
+			return strings.Repeat("*", len(data.(string)))
+		}
+	}
+	return data
+}
+
 func (cfg *Config) ParseFields(configEntries []configEntry, fields []string) error {
 	if len(fields) < 2 {
 		return fmt.Errorf("Invalid fields length: %v", fields)
 	}
-
 	for _, entry := range configEntries {
 		if entry.Name == fields[0] {
 			switch valuePtr := entry.ValuePtr.(type) {
@@ -214,8 +231,11 @@ func (cfg *Config) ParseFields(configEntries []configEntry, fields []string) err
 				}
 
 				*valuePtr = fields[1]
-				log.WithFields(log.Fields{"name": entry.Name, "value": *valuePtr}).Debug("Setting configuration field")
-
+				log.WithFields(log.Fields{
+					"prefix": prefix,
+					"name":   entry.Name,
+					"value":  ApplyMask(&entry, *valuePtr),
+				}).Debug("Setting configuration field")
 			case *[]string:
 				rawParts := strings.Split(fields[1], ",")
 				parts := make([]string, len(rawParts))
@@ -227,19 +247,19 @@ func (cfg *Config) ParseFields(configEntries []configEntry, fields []string) err
 					parts[i] = v
 				}
 				*valuePtr = parts
-				log.WithFields(log.Fields{"name": entry.Name, "value": *valuePtr}).Debug("Setting configuration field")
-
+				log.WithFields(log.Fields{
+					"prefix": prefix,
+					"name":   entry.Name,
+					"value":  ApplyMask(&entry, *valuePtr),
+				}).Debug("Setting configuration field")
 			default:
 				return fmt.Errorf("Unsupported config entry type for %s", entry.Name)
 			}
-
 			if entry.Tweak != nil {
 				entry.Tweak()
 			}
-
 		}
 	}
-
 	return nil
 }
 

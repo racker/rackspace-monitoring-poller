@@ -140,8 +140,7 @@ func (ch *TCPCheck) Run() (*ResultSet, error) {
 	starttime := utils.NowTimestampMillis()
 	addr, _ := ch.GenerateAddress()
 	log.WithFields(log.Fields{
-		"type":    ch.CheckType,
-		"id":      ch.Id,
+		"prefix":  ch.GetLogPrefix(),
 		"address": addr,
 		"ssl":     ch.Details.UseSSL,
 	}).Info("Running TCP Check")

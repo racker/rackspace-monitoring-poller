@@ -61,8 +61,10 @@ import (
 	"crypto/x509"
 	"errors"
 
+	"fmt"
 	"io"
 	"strings"
+
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -78,6 +80,7 @@ import (
 
 // send the request, and parse the response
 type Check interface {
+	utils.LogPrefixGetter
 	GetID() string
 	SetID(id string)
 	GetEntityID() string
@@ -102,7 +105,9 @@ type Check interface {
 // for how long the check should wait before retrying.
 // By default, it'll wait for check's "period" seconds
 var WaitPeriodTimeMeasurement = time.Second
-var InvalidTargetIPError = errors.New("Invalid Target IP")
+
+// ErrInvalidTargetIP invalid target IP
+var ErrInvalidTargetIP = errors.New("Invalid Target IP")
 
 // Base provides an abstract implementation of the Check
 // interface leaving Run to be implemented.
@@ -125,7 +130,7 @@ func (ch *Base) GetTargetIP() (string, error) {
 	} else if ch.TargetHostname != nil && *ch.TargetHostname != "" {
 		return *ch.TargetHostname, nil
 	}
-	return "", InvalidTargetIPError
+	return "", ErrInvalidTargetIP
 }
 
 // GetID  returns check's id
@@ -141,6 +146,11 @@ func (ch *Base) SetID(id string) {
 // GetCheckType returns check's type
 func (ch *Base) GetCheckType() string {
 	return ch.CheckType
+}
+
+// GetLogPrefix returns the log prefix
+func (ch *Base) GetLogPrefix() string {
+	return fmt.Sprintf("%v:%v", ch.GetID(), ch.GetCheckType())
 }
 
 // SetCheckType sets check's checktype to

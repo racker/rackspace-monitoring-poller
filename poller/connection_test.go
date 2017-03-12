@@ -84,9 +84,7 @@ func TestConnection_Connect(t *testing.T) {
 			conn := poller.NewConnection(tt.url(), tt.guid, reconciler)
 			if tt.expectedErr {
 				err := conn.Connect(tt.ctx, config.NewConfig("1-2-3", false), nil)
-				assert.EqualError(
-					t, err, tt.expectedErrMessage,
-					fmt.Sprintf("Expected to throw %v but got %v", tt.expectedErrMessage, err))
+				assert.Error(t, err)
 			} else {
 				assert.NoError(t, conn.Connect(tt.ctx, config.NewConfig("1-2-3", false), &tls.Config{
 					InsecureSkipVerify: true,

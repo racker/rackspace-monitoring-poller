@@ -46,6 +46,10 @@ var (
 	CheckSpreadInMilliseconds = 30000
 )
 
+type LogPrefixGetter interface {
+	GetLogPrefix() string
+}
+
 // ConnectionStream interface wraps the necessary information to
 // register, connect, and send data in connections.
 // It is the main factory for connection handling
@@ -62,6 +66,7 @@ type ConnectionStream interface {
 // single connection.
 type Connection interface {
 	ConnectionHealthProvider
+	LogPrefixGetter
 
 	GetSession() Session
 	SetReadDeadline(deadline time.Time)

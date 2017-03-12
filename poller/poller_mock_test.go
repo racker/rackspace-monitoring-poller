@@ -14,6 +14,37 @@ import (
 	time "time"
 )
 
+// Mock of LogPrefixGetter interface
+type MockLogPrefixGetter struct {
+	ctrl     *gomock.Controller
+	recorder *_MockLogPrefixGetterRecorder
+}
+
+// Recorder for MockLogPrefixGetter (not exported)
+type _MockLogPrefixGetterRecorder struct {
+	mock *MockLogPrefixGetter
+}
+
+func NewMockLogPrefixGetter(ctrl *gomock.Controller) *MockLogPrefixGetter {
+	mock := &MockLogPrefixGetter{ctrl: ctrl}
+	mock.recorder = &_MockLogPrefixGetterRecorder{mock}
+	return mock
+}
+
+func (_m *MockLogPrefixGetter) EXPECT() *_MockLogPrefixGetterRecorder {
+	return _m.recorder
+}
+
+func (_m *MockLogPrefixGetter) GetLogPrefix() string {
+	ret := _m.ctrl.Call(_m, "GetLogPrefix")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+func (_mr *_MockLogPrefixGetterRecorder) GetLogPrefix() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetLogPrefix")
+}
+
 // Mock of ConnectionStream interface
 type MockConnectionStream struct {
 	ctrl     *gomock.Controller
@@ -130,6 +161,16 @@ func (_m *MockConnection) GetLatency() int64 {
 
 func (_mr *_MockConnectionRecorder) GetLatency() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetLatency")
+}
+
+func (_m *MockConnection) GetLogPrefix() string {
+	ret := _m.ctrl.Call(_m, "GetLogPrefix")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+func (_mr *_MockConnectionRecorder) GetLogPrefix() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetLogPrefix")
 }
 
 func (_m *MockConnection) GetSession() Session {

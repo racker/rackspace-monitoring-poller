@@ -34,6 +34,8 @@ import (
 // EleConnectionStream implements ConnectionStream
 // See ConnectionStream for more information
 type EleConnectionStream struct {
+	LogPrefixGetter
+
 	ctx     context.Context
 	rootCAs *x509.CertPool
 
@@ -75,6 +77,20 @@ func NewCustomConnectionStream(config *config.Config, rootCAs *x509.CertPool, co
 	return stream
 }
 
+// GetLogPrefix returns the log prefix for this module
+func (cs *EleConnectionStream) GetLogPrefix() string {
+	return "stream"
+}
+
+// getRegisteredConnectionNames returns the registered connection names
+func (cs *EleConnectionStream) getRegisteredConnectionNames() []string {
+	names := []string{}
+	for _, conn := range cs.conns {
+		names = append(names, conn.GetLogPrefix())
+	}
+	return names
+}
+
 // RegisterConnection sets up a new connection and adds it to
 // connection stream
 // If no connection list has been initialized, this method will
@@ -87,8 +103,10 @@ func (cs *EleConnectionStream) RegisterConnection(qry string, conn Connection) e
 		return ErrInvalidConnectionStream
 	}
 	cs.conns[qry] = conn
-	log.WithField("connections", cs.conns).
-		Debug("Currently registered connections")
+	log.WithFields(log.Fields{
+		"prefix":      cs.GetLogPrefix(),
+		"connections": cs.getRegisteredConnectionNames(),
+	}).Debug("Currently registered connections")
 	return nil
 }
 
@@ -104,6 +122,7 @@ func (cs *EleConnectionStream) ValidateChecks(cp ChecksPreparing) error {
 		err := sched.ValidateChecks(cp)
 		if err != nil {
 			log.WithFields(log.Fields{
+				"prefix":    cs.GetLogPrefix(),
 				"scheduler": sched,
 				"cp":        cp,
 				"err":       err,
@@ -180,14 +199,23 @@ func (cs *EleConnectionStream) WaitCh() <-chan struct{} {
 func (cs *EleConnectionStream) connectBySrv(qry string) {
 	_, addrs, err := net.LookupSRV("", "", qry)
 	if err != nil {
-		log.Errorf("SRV Lookup Failure : %v", err)
+		log.WithFields(log.Fields{
+			"prefix": cs.GetLogPrefix(),
+		}).Errorf("SRV Lookup Failure : %v", err)
 		return
 	}
 	if len(addrs) == 0 {
-		log.Error("No addresses returned")
+		log.WithFields(log.Fields{
+			"prefix": cs.GetLogPrefix(),
+		}).Error("no addresses returned")
 		return
 	}
-	addr := fmt.Sprintf("%s:%v", addrs[0].Target, addrs[0].Port)
+	addr := net.JoinHostPort(addrs[0].Target, fmt.Sprintf("%v", addrs[0].Port))
+	log.WithFields(log.Fields{
+		"prefix": cs.GetLogPrefix(),
+		"query":  qry,
+		"addr":   addr,
+	}).Debug("Connecting")
 	cs.connectByHost(addr)
 }
 
@@ -203,20 +231,33 @@ func (cs *EleConnectionStream) connectByHost(addr string) {
 		if err != nil {
 			goto conn_error
 		}
-		log.Debugf("Connected to " + addr)
 		conn.Wait()
 		goto new_connection
 	conn_error:
-		log.Errorf("Error: %v", err)
+		log.WithFields(log.Fields{
+			"prefix":  cs.GetLogPrefix(),
+			"address": addr,
+		}).Errorf("Error: %v", err)
 	new_connection:
-		log.Debugf("  connection sleeping %v", ReconnectTimeout)
+		log.WithFields(log.Fields{
+			"prefix":  cs.GetLogPrefix(),
+			"address": addr,
+			"timeout": ReconnectTimeout,
+		}).Debug("Connection sleeping")
 		for {
 			select {
 			case <-cs.ctx.Done():
-				log.Infof("connection close")
+				log.WithFields(log.Fields{
+					"prefix":  cs.GetLogPrefix(),
+					"address": addr,
+				}).Debug("Connection cancelled")
 				return
 			case <-time.After(ReconnectTimeout):
-				log.Debug("Reconnecting to " + addr)
+				log.WithField("prefix", cs.GetLogPrefix()).Debug("Reconnecting")
+				log.WithFields(log.Fields{
+					"prefix":  cs.GetLogPrefix(),
+					"address": addr,
+				}).Debug("Connection cancelled")
 				continue
 			}
 		}

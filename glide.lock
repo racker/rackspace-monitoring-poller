@@ -1,5 +1,5 @@
-hash: cd503a0920a83c12072b0550b1cc300d68ae0fdd1858311fbd3e320e0a850f70
-updated: 2017-03-01T14:20:58.950875151-06:00
+hash: 6db76f36451f0f808c6688594f93a7e60330d075cd2dee9fcb2b841c9def3d5c
+updated: 2017-03-10T11:47:43.138098192-06:00
 imports:
 - name: github.com/davecgh/go-spew
   version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
@@ -20,6 +20,12 @@ imports:
   - mockgen
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
+- name: github.com/mattn/go-colorable
+  version: acb9493f2794fd0f820de7a27a217dafbb1b65ea
+- name: github.com/mattn/go-isatty
+  version: 57fdcb988a5c543893cc61bce354a6e24ab70022
+- name: github.com/mgutz/ansi
+  version: 9520e82c474b0a04dd04f8a40959027271bab992
 - name: github.com/pmezard/go-difflib
   version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
   subpackages:
@@ -39,7 +45,7 @@ imports:
 - name: github.com/shirou/w32
   version: bb4de0191aa41b5507caa14b0650cdbddcd9280b
 - name: github.com/Sirupsen/logrus
-  version: d26492970760ca5d33129d2d799e34be5c4782eb
+  version: 0208149b40d863d2c1a2f8fe5753096a9cf2cc8b
 - name: github.com/sparrc/go-ping
   version: 416e72114cd1edce2f287648f935a60dfe6cf40e
 - name: github.com/spf13/cobra
@@ -53,6 +59,8 @@ imports:
   subpackages:
   - assert
   - require
+- name: github.com/x-cray/logrus-prefixed-formatter
+  version: 9cd0cf058806896bf8ca66f9a957d36bd9e4ce0f
 - name: golang.org/x/net
   version: 906cda9512f77671ab44f8c8563b13a8e707b230
   subpackages:

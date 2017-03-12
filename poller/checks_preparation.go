@@ -17,9 +17,12 @@
 package poller
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+
 	log "github.com/Sirupsen/logrus"
+
 	"github.com/racker/rackspace-monitoring-poller/protocol"
 	"github.com/racker/rackspace-monitoring-poller/protocol/check"
 )
@@ -44,6 +47,11 @@ type ActionableCheck struct {
 	// Populated indicates if the check.CheckIn has been fully populated; however,
 	// this is not applicable if Action is protocol.PrepareActionContinue.
 	Populated bool
+}
+
+func (ac ActionableCheck) String() string {
+	json, _ := json.Marshal(ac)
+	return string(json)
 }
 
 // ChecksPreparing conveys ActionableCheck instances are are ready to be validated.
@@ -94,8 +102,10 @@ func NewChecksPreparation(zoneId string, version int, manifest []protocol.Poller
 			},
 		}
 	}
-
-	log.WithField("actions", cp.Actions).Debug("Prepared checks from manifest")
+	log.WithFields(log.Fields{
+		"prefix":  cp.GetLogPrefix(),
+		"actions": cp.Actions,
+	}).Debug("Prepared checks from manifest")
 	return cp, nil
 }
 
@@ -116,13 +126,15 @@ func doesCheckPreparationNeedPopulating(action string) bool {
 	return action != protocol.PrepareActionContinue
 }
 
+func (cp *ChecksPreparation) GetLogPrefix() string {
+	return fmt.Sprintf("checks.preparation zoneid=%v, version=%v", cp.ZoneId, cp.Version)
+}
+
 func (cp *ChecksPreparation) GetActionableChecks() (actionableChecks []ActionableCheck) {
 	actionableChecks = make([]ActionableCheck, 0, len(cp.Actions))
-
 	for _, ac := range cp.Actions {
 		actionableChecks = append(actionableChecks, ac)
 	}
-
 	return
 }
 
@@ -139,17 +151,19 @@ func (cp *ChecksPreparation) IsOlder(version int) bool {
 }
 
 func (cp *ChecksPreparation) AddDefinitions(block []*check.CheckIn) {
-
 	for _, ch := range block {
 		actionable := cp.Actions[ch.Id]
 		actionable.Populated = true
 		actionable.CheckIn = *ch
-
 		cp.Actions[ch.Id] = actionable
-
-		log.WithFields(log.Fields{"chId": ch.Id, "entry": actionable}).Debug("Added definition to actions")
+		if log.GetLevel() >= log.DebugLevel {
+			log.WithFields(log.Fields{
+				"prefix":   cp.GetLogPrefix(),
+				"check_id": ch.Id,
+				"entry":    actionable.String(),
+			}).Debug("Added definition to actions")
+		}
 	}
-
 }
 
 func (cp *ChecksPreparation) Validate(version int) error {
