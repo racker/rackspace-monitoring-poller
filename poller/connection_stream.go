@@ -221,6 +221,7 @@ func (cs *EleConnectionStream) connectBySrv(qry string) {
 
 func (cs *EleConnectionStream) connectByHost(addr string) {
 	defer cs.wg.Done()
+reconnect:
 	for {
 		conn := cs.connectionFactory(addr, cs.config.Guid, cs)
 		err := conn.Connect(cs.ctx, cs.config, cs.buildTLSConfig(addr))
@@ -258,7 +259,7 @@ func (cs *EleConnectionStream) connectByHost(addr string) {
 					"prefix":  cs.GetLogPrefix(),
 					"address": addr,
 				}).Debug("Connection cancelled")
-				continue
+				continue reconnect
 			}
 		}
 	}
