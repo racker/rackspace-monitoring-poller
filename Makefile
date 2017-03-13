@@ -36,7 +36,9 @@ WGET := wget
 FPM := fpm
 REPREPRO := reprepro
 
-.PHONY: default repackage package package-deb package-repo-upload package-upload-deb package-deb-local clean generate-mocks stage-deb-exe-local prep
+.PHONY: default repackage package package-deb package-repo-upload package-upload-deb package-deb-local \
+	clean generate-mocks stage-deb-exe-local prep \
+	generate-callgraphs regenerate-callgraphs clean-callgraphs
 
 default: clean package
 
@@ -49,6 +51,22 @@ generate-mocks:
 prep:
 	curl https://glide.sh/get | sh
 	${GOPATH}/bin/glide install
+
+regenerate-callgraphs : clean-callgraphs generate-callgraphs
+
+generate-callgraphs : docs/poller_callgraph.png docs/endpoint_callgraph.png
+
+clean-callgraphs :
+	rm -f docs/*_callgraph.{dot,png}
+
+%_callgraph.png : %_callgraph.dot
+	dot -Tpng -o $@ $<
+
+%_callgraph.dot : ${GOPATH}/bin/go-callvis
+	${GOPATH}/bin/go-callvis -focus $(*F) github.com/racker/rackspace-monitoring-poller > $@
+
+${GOPATH}/bin/go-callvis :
+	go get -u github.com/TrueFurby/go-callvis
 
 package: package-deb
 

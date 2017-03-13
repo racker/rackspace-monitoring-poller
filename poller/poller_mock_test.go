@@ -66,38 +66,8 @@ func (_m *MockConnectionStream) EXPECT() *_MockConnectionStreamRecorder {
 	return _m.recorder
 }
 
-func (_m *MockConnectionStream) RegisterConnection(qry string, conn Connection) error {
-	ret := _m.ctrl.Call(_m, "RegisterConnection", qry, conn)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-func (_mr *_MockConnectionStreamRecorder) RegisterConnection(arg0, arg1 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "RegisterConnection", arg0, arg1)
-}
-
-func (_m *MockConnectionStream) Stop() {
-	_m.ctrl.Call(_m, "Stop")
-}
-
-func (_mr *_MockConnectionStreamRecorder) Stop() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Stop")
-}
-
-func (_m *MockConnectionStream) StopNotify() chan struct{} {
-	ret := _m.ctrl.Call(_m, "StopNotify")
-	ret0, _ := ret[0].(chan struct{})
-	return ret0
-}
-
-func (_mr *_MockConnectionStreamRecorder) StopNotify() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "StopNotify")
-}
-
-func (_m *MockConnectionStream) SendMetrics(crs *check.ResultSet) error {
-	ret := _m.ctrl.Call(_m, "SendMetrics", crs)
-	ret0, _ := ret[0].(error)
-	return ret0
+func (_m *MockConnectionStream) SendMetrics(crs *check.ResultSet) {
+	_m.ctrl.Call(_m, "SendMetrics", crs)
 }
 
 func (_mr *_MockConnectionStreamRecorder) SendMetrics(arg0 interface{}) *gomock.Call {
@@ -112,14 +82,14 @@ func (_mr *_MockConnectionStreamRecorder) Connect() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Connect")
 }
 
-func (_m *MockConnectionStream) WaitCh() <-chan struct{} {
-	ret := _m.ctrl.Call(_m, "WaitCh")
+func (_m *MockConnectionStream) Wait() <-chan struct{} {
+	ret := _m.ctrl.Call(_m, "Wait")
 	ret0, _ := ret[0].(<-chan struct{})
 	return ret0
 }
 
-func (_mr *_MockConnectionStreamRecorder) WaitCh() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "WaitCh")
+func (_mr *_MockConnectionStreamRecorder) Wait() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Wait")
 }
 
 // Mock of Connection interface
@@ -217,8 +187,10 @@ func (_mr *_MockConnectionRecorder) Close() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Close")
 }
 
-func (_m *MockConnection) Wait() {
-	_m.ctrl.Call(_m, "Wait")
+func (_m *MockConnection) Wait() <-chan struct{} {
+	ret := _m.ctrl.Call(_m, "Wait")
+	ret0, _ := ret[0].(<-chan struct{})
+	return ret0
 }
 
 func (_mr *_MockConnectionRecorder) Wait() *gomock.Call {
@@ -369,8 +341,10 @@ func (_mr *_MockSessionRecorder) Close() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Close")
 }
 
-func (_m *MockSession) Wait() {
-	_m.ctrl.Call(_m, "Wait")
+func (_m *MockSession) Wait() <-chan struct{} {
+	ret := _m.ctrl.Call(_m, "Wait")
+	ret0, _ := ret[0].(<-chan struct{})
+	return ret0
 }
 
 func (_mr *_MockSessionRecorder) Wait() *gomock.Call {

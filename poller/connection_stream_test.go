@@ -3,12 +3,20 @@ package poller_test
 import (
 	"testing"
 
+	"container/list"
+	"context"
+	"errors"
+	"fmt"
 	"github.com/golang/mock/gomock"
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/poller"
+	"github.com/racker/rackspace-monitoring-poller/protocol"
+	"github.com/racker/rackspace-monitoring-poller/utils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"sync"
+	"time"
 )
 
 func TestConnectionStream_Connect(t *testing.T) {
@@ -85,17 +93,18 @@ func TestConnectionStream_Connect(t *testing.T) {
 				return conn
 			}
 
-			cs := poller.NewCustomConnectionStream(&config.Config{
+			ctx, cancel := context.WithCancel(context.Background())
+			cs := poller.NewCustomConnectionStream(ctx, &config.Config{
 				UseSrv:     tt.useSrv,
 				Addresses:  tt.addresses(),
 				SrvQueries: tt.serverQueries(),
-			}, nil, connFactory)
+			}, nil, connFactory, nil)
 			cs.Connect()
 
 			mockConnWaiting.Wait()
-			cs.Stop()
+			cancel()
 
-			assert.NotEmpty(t, cs.StopNotify())
+			assert.NotEmpty(t, cs.Wait())
 		})
 	}
 }
@@ -162,43 +171,152 @@ func TestConnectionsByHost_ChooseBest(t *testing.T) {
 	}
 }
 
+type mockConnFactory struct {
+	conns *list.List
+	used  chan struct{}
+}
+
+func newMockConnFactory() *mockConnFactory {
+	return &mockConnFactory{
+		conns: list.New(),
+		used:  make(chan struct{}, 1),
+	}
+}
+
+func (f *mockConnFactory) add(conn *poller.MockConnection) *poller.MockConnection {
+	f.conns.PushBack(conn)
+	return conn
+}
+
+func (f *mockConnFactory) produce(address string, guid string, checksReconciler poller.ChecksReconciler) poller.Connection {
+	if f.conns.Len() > 0 {
+		connection := f.conns.Remove(f.conns.Front()).(poller.Connection)
+		if f.conns.Len() == 0 {
+			close(f.used)
+		}
+		return connection
+	} else {
+		return nil
+	}
+}
+
+func (f *mockConnFactory) wait() error {
+	select {
+	case <-f.used:
+		return nil
+	case <-time.After(5 * time.Millisecond):
+		return errors.New("Didn't consume all expected connections")
+	}
+}
+
+func (f *mockConnFactory) renderConfig() *config.Config {
+	cfg := &config.Config{
+		UseSrv:    false,
+		Addresses: make([]string, f.conns.Len()),
+	}
+
+	for i := 0; i < f.conns.Len(); i++ {
+		cfg.Addresses[i] = fmt.Sprintf("c%d", i+1)
+	}
+
+	return cfg
+}
+
 func TestEleConnectionStream_SendMetrics_Normal(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	var cfg config.Config
-	connectionFactory := func(address string, guid string, checksReconciler poller.ChecksReconciler) poller.Connection {
-		return nil
-	}
+	factory := newMockConnFactory()
+	c1 := factory.add(poller.NewMockConnection(ctrl))
+	c2 := factory.add(poller.NewMockConnection(ctrl))
+	c3 := factory.add(poller.NewMockConnection(ctrl))
 
-	cs := poller.NewCustomConnectionStream(&cfg, nil, connectionFactory)
+	cfg := factory.renderConfig()
 
-	c1 := poller.NewMockConnection(ctrl)
+	failedMetrics := make(chan *check.ResultSet, 1)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	cs := poller.NewCustomConnectionStream(ctx, cfg, nil, factory.produce, func(crs *check.ResultSet) {
+		failedMetrics <- crs
+	})
+	cs.Connect()
+	require.NoError(t, factory.wait())
+
 	c1.EXPECT().GetLatency().AnyTimes().Return(int64(50))
 	c1.EXPECT().GetLogPrefix().AnyTimes().Return("1-2-3")
 
 	mockSession := poller.NewMockSession(ctrl)
 	mockSession.EXPECT().Send(gomock.Any())
 
-	c2 := poller.NewMockConnection(ctrl)
 	c2.EXPECT().GetLatency().AnyTimes().Return(int64(10))
 	c2.EXPECT().GetClockOffset().AnyTimes().Return(int64(0))
 	c2.EXPECT().GetSession().Return(mockSession)
 	c2.EXPECT().GetLogPrefix().AnyTimes().Return("1-2-3")
 
-	c3 := poller.NewMockConnection(ctrl)
 	c3.EXPECT().GetLatency().AnyTimes().Return(int64(20))
 	c3.EXPECT().GetLogPrefix().AnyTimes().Return("1-2-3")
-
-	cs.RegisterConnection("h1", c1)
-	cs.RegisterConnection("h2", c2)
-	cs.RegisterConnection("h3", c3)
 
 	crs := check.ResultSet{
 		Check: &check.TCPCheck{},
 	}
-	err := cs.SendMetrics(&crs)
-	assert.NoError(t, err)
+	cs.SendMetrics(&crs)
+
+	// allow for send metrics channel
+	time.Sleep(5 * time.Millisecond)
+
+	assert.Empty(t, failedMetrics)
+}
+
+func TestEleConnectionStream_SendMetrics_OneThenDrop(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	c2Done := make(chan struct{}, 1)
+	factory := newMockConnFactory()
+	c1 := factory.add(poller.NewMockConnection(ctrl))
+	c2 := factory.add(poller.NewMockConnection(ctrl))
+	c2.EXPECT().Wait().AnyTimes().Return(c2Done)
+
+	cfg := factory.renderConfig()
+
+	failedMetrics := make(chan *check.ResultSet, 1)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	cs := poller.NewCustomConnectionStream(ctx, cfg, nil, factory.produce, func(crs *check.ResultSet) {
+		failedMetrics <- crs
+	})
+	cs.Connect()
+	require.NoError(t, factory.wait())
+
+	mock2Session := poller.NewMockSession(ctrl)
+	mock2Session.EXPECT().Send(gomock.Any()).Do(func(protocol.Frame) {
+		// let one post through, then "close" the connection
+		close(c2Done)
+	})
+
+	c1.EXPECT().GetLatency().AnyTimes().Return(int64(50))
+	c1.EXPECT().GetLogPrefix().AnyTimes().Return("1-2-3")
+
+	c2.EXPECT().GetLatency().AnyTimes().Return(int64(10))
+	c2.EXPECT().GetClockOffset().AnyTimes().Return(int64(0))
+	c2.EXPECT().GetSession().Return(mock2Session)
+	c2.EXPECT().GetLogPrefix().AnyTimes().Return("1-2-3")
+
+	crs := check.ResultSet{
+		Check: &check.TCPCheck{},
+	}
+	cs.SendMetrics(&crs)
+
+	// wait for the "closure" we induced above
+	utils.Timebox(t, 5*time.Millisecond, func(t *testing.T) {
+		<-c2Done
+	})
+	assert.Empty(t, failedMetrics)
+
+	// post again after all connections gone
+	cs.SendMetrics(&crs)
 
 }
 
@@ -206,17 +324,33 @@ func TestEleConnectionStream_SendMetrics_NoConnections(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	var cfg config.Config
-	connectionFactory := func(address string, guid string, checksReconciler poller.ChecksReconciler) poller.Connection {
-		return nil
-	}
+	factory := newMockConnFactory()
 
-	cs := poller.NewCustomConnectionStream(&cfg, nil, connectionFactory)
+	mockConn := factory.add(poller.NewMockConnection(ctrl))
+	mockConn.EXPECT().Connect(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(errors.New("simulating failed connect"))
 
-	crs := check.ResultSet{
+	failedMetrics := make(chan *check.ResultSet, 1)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	cs := poller.NewCustomConnectionStream(ctx, factory.renderConfig(), nil, factory.produce, func(crs *check.ResultSet) {
+		failedMetrics <- crs
+	})
+	cs.Connect()
+	err := factory.wait()
+	require.NoError(t, err)
+
+	crs := &check.ResultSet{
 		Check: &check.TCPCheck{},
 	}
-	err := cs.SendMetrics(&crs)
-	assert.EqualError(t, err, poller.ErrNoConnections.Error())
+	cs.SendMetrics(crs)
+
+	select {
+	case m := <-failedMetrics:
+		assert.Equal(t, crs, m)
+	case <-time.After(5 * time.Millisecond):
+		assert.Fail(t, "Expected a failed metric")
+	}
 
 }

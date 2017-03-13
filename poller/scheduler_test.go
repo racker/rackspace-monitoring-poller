@@ -1,14 +1,12 @@
 package poller_test
 
 import (
-	"crypto/x509"
 	"testing"
 	"time"
 
 	"fmt"
 	"github.com/golang/mock/gomock"
 	"github.com/racker/rackspace-monitoring-poller/check"
-	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/poller"
 	"github.com/racker/rackspace-monitoring-poller/protocol"
 	"github.com/racker/rackspace-monitoring-poller/utils"
@@ -17,30 +15,24 @@ import (
 )
 
 func TestNewScheduler(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	type args struct {
 		zoneID string
-		stream poller.ConnectionStream
 	}
 	tests := []struct {
 		name   string
 		zoneID string
-		stream poller.ConnectionStream
 	}{
 		{
 			name:   "Happy path",
 			zoneID: "pzAwesome",
-			stream: poller.NewConnectionStream(
-				&config.Config{
-					AgentId: "awesome agent",
-					ZoneIds: []string{"pzAwesome", "pzGreat"},
-				},
-				x509.NewCertPool(),
-			),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := poller.NewScheduler(tt.zoneID, tt.stream)
+			got := poller.NewScheduler(tt.zoneID, poller.NewMockConnectionStream(ctrl))
 			//assert that zoneID is the same
 			assert.Equal(t, tt.zoneID, got.GetZoneID())
 		})
@@ -48,12 +40,10 @@ func TestNewScheduler(t *testing.T) {
 }
 
 func TestEleScheduler_Close(t *testing.T) {
-	schedule := poller.NewScheduler("pzAwesome", poller.NewConnectionStream(
-		&config.Config{
-			AgentId: "awesome",
-		},
-		x509.NewCertPool(),
-	))
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	schedule := poller.NewScheduler("pzAwesome", poller.NewMockConnectionStream(ctrl))
 	ctx, _ := schedule.GetContext()
 	schedule.Close()
 	completed := utils.Timebox(t, 100*time.Millisecond, func(t *testing.T) {
