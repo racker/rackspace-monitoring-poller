@@ -315,7 +315,7 @@ reconnect:
 					"prefix":  cs.GetLogPrefix(),
 					"address": addr,
 				}).Debug("Connection timed out")
-				continue
+				continue reconnect
 			}
 		}
 	}
