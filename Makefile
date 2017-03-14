@@ -66,7 +66,7 @@ clean-callgraphs :
 	dot -Tpng -o $@ $<
 
 %_callgraph.dot : ${GOPATH}/bin/go-callvis
-	${GOPATH}/bin/go-callvis -focus $(*F) github.com/racker/rackspace-monitoring-poller > $@
+	${GOPATH}/bin/go-callvis -focus $(*F) -nostd -group type github.com/racker/rackspace-monitoring-poller > $@
 
 ${GOPATH}/bin/go-callvis :
 	go get -u github.com/TrueFurby/go-callvis
