@@ -130,10 +130,6 @@ func (conn *EleConnection) Connect(ctx context.Context, config *config.Config, t
 	return nil
 }
 
-func (conn *EleConnection) Registered(cs ConnectionStream) {
-	// only implemented during testing
-}
-
 // Close closes the session
 func (conn *EleConnection) Close() {
 	if conn.conn != nil {

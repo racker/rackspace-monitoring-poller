@@ -70,7 +70,6 @@ type Connection interface {
 	SetReadDeadline(deadline time.Time)
 	SetWriteDeadline(deadline time.Time)
 	Connect(ctx context.Context, config *config.Config, tlsConfig *tls.Config) error
-	Registered(cs ConnectionStream)
 	Close()
 	// Done returns a channel that is closed when the connection is finished or closed.
 	Done() <-chan struct{}

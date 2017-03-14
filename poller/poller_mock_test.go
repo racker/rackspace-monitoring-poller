@@ -229,14 +229,6 @@ func (_mr *_MockConnectionRecorder) GetSession() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetSession")
 }
 
-func (_m *MockConnection) Registered(_param0 poller.ConnectionStream) {
-	_m.ctrl.Call(_m, "Registered", _param0)
-}
-
-func (_mr *_MockConnectionRecorder) Registered(arg0 interface{}) *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "Registered", arg0)
-}
-
 func (_m *MockConnection) SetReadDeadline(_param0 time.Time) {
 	_m.ctrl.Call(_m, "SetReadDeadline", _param0)
 }
