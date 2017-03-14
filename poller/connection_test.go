@@ -69,7 +69,7 @@ func TestConnection_Connect(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			reconciler := poller.NewMockChecksReconciler(ctrl)
+			reconciler := NewMockChecksReconciler(ctrl)
 
 			conn := poller.NewConnection(tt.url(), tt.guid, reconciler)
 			if tt.expectedErr {

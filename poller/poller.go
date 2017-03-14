@@ -28,6 +28,7 @@ import (
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/protocol"
+	"github.com/racker/rackspace-monitoring-poller/utils"
 )
 
 var (
@@ -52,9 +53,11 @@ type LogPrefixGetter interface {
 // register, connect, and send data in connections.
 // It is the main factory for connection handling
 type ConnectionStream interface {
+	utils.EventSource
+
 	SendMetrics(crs *check.ResultSet)
 	Connect()
-	Wait() <-chan struct{}
+	Done() <-chan struct{}
 }
 
 // Connection interface wraps the methods required to manage a
@@ -67,9 +70,10 @@ type Connection interface {
 	SetReadDeadline(deadline time.Time)
 	SetWriteDeadline(deadline time.Time)
 	Connect(ctx context.Context, config *config.Config, tlsConfig *tls.Config) error
+	Registered(cs ConnectionStream)
 	Close()
-	// Wait returns a channel that is closed when the connection is finished or closed.
-	Wait() <-chan struct{}
+	// Done returns a channel that is closed when the connection is finished or closed.
+	Done() <-chan struct{}
 	GetFarendWriter() io.Writer
 	GetFarendReader() io.Reader
 	GetGUID() string
@@ -90,7 +94,7 @@ type Session interface {
 	Send(msg protocol.Frame)
 	Respond(msg protocol.Frame)
 	Close()
-	Wait() <-chan struct{}
+	Done() <-chan struct{}
 	GetError() error
 }
 
@@ -135,5 +139,3 @@ type Scheduler interface {
 type ConnectionFactory func(address string, guid string, checksReconciler ChecksReconciler) Connection
 
 type ConnectionsByHost map[string]Connection
-
-type FailedMetricsConsumer func(crs *check.ResultSet)

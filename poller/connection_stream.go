@@ -29,24 +29,26 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/config"
+	"github.com/racker/rackspace-monitoring-poller/utils"
 	"math"
 )
 
 const (
 	metricsChannelSize       = 100
 	registrationsChannelSize = 1
+	// EventTypeRegister has a target of Connection
+	EventTypeRegister = "register"
+	// EventTypeDeregister has a target of Connection
+	EventTypeDeregister = "deregister"
+	// EventTypeDroppedMetric has a target of *check.ResultSet
+	EventTypeDroppedMetric = "dropped"
 )
-
-type connectionRegistration struct {
-	register bool
-	qry      string
-	conn     Connection
-}
 
 // EleConnectionStream implements ConnectionStream
 // See ConnectionStream for more information
 type EleConnectionStream struct {
 	LogPrefixGetter
+	utils.EventConsumerRegistry
 
 	ctx     context.Context
 	cancel  context.CancelFunc
@@ -54,10 +56,9 @@ type EleConnectionStream struct {
 
 	config *config.Config
 
-	connectionFactory     ConnectionFactory
-	conns                 ConnectionsByHost
-	wg                    sync.WaitGroup
-	failedMetricsConsumer FailedMetricsConsumer
+	connectionFactory ConnectionFactory
+	conns             ConnectionsByHost
+	wg                sync.WaitGroup
 
 	registrations chan *connectionRegistration
 	metricsToSend chan *check.ResultSet
@@ -66,26 +67,30 @@ type EleConnectionStream struct {
 	schedulers map[string]Scheduler
 }
 
+type connectionRegistration struct {
+	register bool
+	qry      string
+	conn     Connection
+}
+
 // NewConnectionStream instantiates a new EleConnectionStream
 // It sets up the contexts and the starts the schedulers based on configured private zones
 func NewConnectionStream(ctx context.Context, config *config.Config, rootCAs *x509.CertPool) ConnectionStream {
-	return NewCustomConnectionStream(ctx, config, rootCAs, nil, nil)
+	return NewCustomConnectionStream(ctx, config, rootCAs, nil)
 }
 
 // NewCustomConnectionStream is a variant of NewConnectionStream that allows providing a customized ConnectionFactory
-func NewCustomConnectionStream(ctx context.Context, config *config.Config, rootCAs *x509.CertPool, connectionFactory ConnectionFactory,
-	failedMetricsConsumer FailedMetricsConsumer) ConnectionStream {
+func NewCustomConnectionStream(ctx context.Context, config *config.Config, rootCAs *x509.CertPool, connectionFactory ConnectionFactory) ConnectionStream {
 	if connectionFactory == nil {
 		connectionFactory = NewConnection
 	}
 	stream := &EleConnectionStream{
-		config:                config,
-		rootCAs:               rootCAs,
-		schedulers:            make(map[string]Scheduler),
-		connectionFactory:     connectionFactory,
-		metricsToSend:         make(chan *check.ResultSet, metricsChannelSize),
-		registrations:         make(chan *connectionRegistration, registrationsChannelSize),
-		failedMetricsConsumer: failedMetricsConsumer,
+		config:            config,
+		rootCAs:           rootCAs,
+		schedulers:        make(map[string]Scheduler),
+		connectionFactory: connectionFactory,
+		metricsToSend:     make(chan *check.ResultSet, metricsChannelSize),
+		registrations:     make(chan *connectionRegistration, registrationsChannelSize),
 	}
 	stream.ctx, stream.cancel = context.WithCancel(ctx)
 	stream.conns = make(ConnectionsByHost)
@@ -140,12 +145,14 @@ func (cs *EleConnectionStream) registerConnection(qry string, conn Connection) {
 		"prefix":      cs.GetLogPrefix(),
 		"connections": cs.getRegisteredConnectionNames(),
 	}).Debug("After registering, currently registered connections")
+	cs.Emit(utils.NewEvent(EventTypeRegister, conn))
 }
 
 func (cs *EleConnectionStream) deregisterConnection(qry string, conn Connection) {
 	delete(cs.conns, qry)
 	log.WithField("connections", cs.conns).
 		Debug("After deregistring, currently registered connections")
+	cs.Emit(utils.NewEvent(EventTypeDeregister, conn))
 }
 
 // ReconcileChecks routes the ChecksPreparation to its schedulers.
@@ -172,22 +179,6 @@ func (cs *EleConnectionStream) ValidateChecks(cp ChecksPreparing) error {
 	return nil
 }
 
-// Stop explicitly stops all connections in the stream and notifies the channel
-func (cs *EleConnectionStream) Stop() {
-	if cs.conns == nil {
-		return
-	}
-	for _, conn := range cs.conns {
-		conn.Close()
-	}
-	cs.cancel()
-}
-
-// StopNotify returns a stop channel
-func (cs *EleConnectionStream) StopNotify() <-chan struct{} {
-	return cs.ctx.Done()
-}
-
 // SendMetrics sends a CheckResultSet via the first connection it can
 // retrieve in the connection list
 func (cs *EleConnectionStream) SendMetrics(crs *check.ResultSet) {
@@ -196,19 +187,13 @@ func (cs *EleConnectionStream) SendMetrics(crs *check.ResultSet) {
 
 func (cs *EleConnectionStream) sendMetrics(crs *check.ResultSet) {
 	if cs.conns == nil || len(cs.conns) == 0 {
+		crsJson, _ := json.Marshal(crs)
 		log.WithFields(log.Fields{
-			"prefix": cs.GetLogPrefix(),
+			"prefix":    cs.GetLogPrefix(),
+			"resultSet": string(crsJson),
 		}).Warn("No connections are available for sending metrics")
 
-		if cs.failedMetricsConsumer != nil {
-			cs.failedMetricsConsumer(crs)
-		} else {
-			crsJson, _ := json.Marshal(crs)
-			log.WithFields(log.Fields{
-				"prefix":    cs.GetLogPrefix(),
-				"resultSet": crsJson,
-			}).Warn("LOST metrics data due to no connections or fallback")
-		}
+		cs.Emit(utils.NewEvent(EventTypeDroppedMetric, crs))
 
 		return
 	}
@@ -240,12 +225,12 @@ func (cs *EleConnectionStream) Connect() {
 	}
 }
 
-// Wait provides a channel for waiting on connection closure
-func (cs *EleConnectionStream) Wait() <-chan struct{} {
+// Done provides a channel for waiting on connection closure
+func (cs *EleConnectionStream) Done() <-chan struct{} {
 	c := make(chan struct{}, 1)
 	go func() {
 		cs.wg.Wait()
-		c <- struct{}{}
+		close(c)
 	}()
 	return c
 }
@@ -256,12 +241,14 @@ func (cs *EleConnectionStream) connectBySrv(qry string) {
 		log.WithFields(log.Fields{
 			"prefix": cs.GetLogPrefix(),
 		}).Errorf("SRV Lookup Failure : %v", err)
+		cs.wg.Done()
 		return
 	}
 	if len(addrs) == 0 {
 		log.WithFields(log.Fields{
 			"prefix": cs.GetLogPrefix(),
 		}).Error("no addresses returned")
+		cs.wg.Done()
 		return
 	}
 	addr := net.JoinHostPort(addrs[0].Target, fmt.Sprintf("%v", addrs[0].Port))
@@ -289,10 +276,11 @@ func (cs *EleConnectionStream) connectByHost(addr string) {
 		}
 
 		select {
-		case <-cs.ctx.Done():
+		case <-cs.ctx.Done(): // external cancellation
+			conn.Close()
 			return
 
-		case <-conn.Wait():
+		case <-conn.Done(): // connection closed
 			cs.registrations <- &connectionRegistration{
 				register: false,
 				qry:      addr,

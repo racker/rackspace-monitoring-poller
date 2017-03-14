@@ -130,6 +130,10 @@ func (conn *EleConnection) Connect(ctx context.Context, config *config.Config, t
 	return nil
 }
 
+func (conn *EleConnection) Registered(cs ConnectionStream) {
+	// only implemented during testing
+}
+
 // Close closes the session
 func (conn *EleConnection) Close() {
 	if conn.conn != nil {
@@ -139,6 +143,6 @@ func (conn *EleConnection) Close() {
 }
 
 // Wait returns a channel that is populated when the connection is finished or closed.
-func (conn *EleConnection) Wait() <-chan struct{} {
-	return conn.GetSession().Wait()
+func (conn *EleConnection) Done() <-chan struct{} {
+	return conn.GetSession().Done()
 }

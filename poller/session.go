@@ -598,7 +598,7 @@ func (s *EleSession) Close() {
 }
 
 // Wait waits for the context to complete
-func (s *EleSession) Wait() <-chan struct{} {
+func (s *EleSession) Done() <-chan struct{} {
 	return s.ctx.Done()
 }
 

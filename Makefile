@@ -32,6 +32,8 @@ OWNED_DIRS :=
 DEB_CONFIG_FILES := ${APP_CFG} ${LOGROTATE_CFG}
 DEB_ALL_FILES := ${DEB_CONFIG_FILES} ${UPSTART_CONF} ${UPSTART_DEFAULT}
 
+MOCK_POLLER := LogPrefixGetter,ConnectionStream,Connection,Session,CheckScheduler,CheckExecutor,Scheduler,ChecksReconciler
+
 WGET := wget
 FPM := fpm
 REPREPRO := reprepro
@@ -43,7 +45,8 @@ REPREPRO := reprepro
 default: clean package
 
 generate-mocks:
-	mockgen -source=poller/poller.go -package=poller -destination=poller/poller_mock_test.go
+	mockgen -package=poller_test -destination=poller/poller_mock_test.go github.com/racker/rackspace-monitoring-poller/poller ${MOCK_POLLER}
+	mockgen -source=utils/events.go -package=utils -destination=utils/events_mock_test.go
 	mockgen -destination check/pinger_mock_test.go -package=check github.com/racker/rackspace-monitoring-poller/check Pinger
 	sed -i '' s,$(PROJECT_VENDOR)/,, check/pinger_mock_test.go
 	mockgen -destination mock_golang/mock_conn.go -package mock_golang net Conn

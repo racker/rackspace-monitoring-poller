@@ -49,7 +49,7 @@ func Run(configFilePath string, insecure bool) {
 			case <-signalNotify:
 				log.Info("Shutdown...")
 				cancel()
-			case <-stream.Wait(): // for cancel to propagate
+			case <-stream.Done(): // for cancel to propagate
 				return
 			}
 		}
