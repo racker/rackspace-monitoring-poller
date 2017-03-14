@@ -145,14 +145,14 @@ func (cs *EleConnectionStream) registerConnection(qry string, conn Connection) {
 		"prefix":      cs.GetLogPrefix(),
 		"connections": cs.getRegisteredConnectionNames(),
 	}).Debug("After registering, currently registered connections")
-	cs.Emit(utils.NewEvent(EventTypeRegister, conn))
+	cs.EmitEvent(utils.NewEvent(EventTypeRegister, conn))
 }
 
 func (cs *EleConnectionStream) deregisterConnection(qry string, conn Connection) {
 	delete(cs.conns, qry)
 	log.WithField("connections", cs.conns).
 		Debug("After deregistring, currently registered connections")
-	cs.Emit(utils.NewEvent(EventTypeDeregister, conn))
+	cs.EmitEvent(utils.NewEvent(EventTypeDeregister, conn))
 }
 
 // ReconcileChecks routes the ChecksPreparation to its schedulers.
@@ -193,7 +193,7 @@ func (cs *EleConnectionStream) sendMetrics(crs *check.ResultSet) {
 			"resultSet": string(crsJson),
 		}).Warn("No connections are available for sending metrics")
 
-		cs.Emit(utils.NewEvent(EventTypeDroppedMetric, crs))
+		cs.EmitEvent(utils.NewEvent(EventTypeDroppedMetric, crs))
 
 		return
 	}

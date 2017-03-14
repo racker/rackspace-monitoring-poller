@@ -35,7 +35,7 @@ func TestNewEventConsumerRegistry_Empty(t *testing.T) {
 	var registry utils.EventConsumerRegistry
 
 	event := utils.NewEvent("noop", registry)
-	registry.Emit(event)
+	registry.EmitEvent(event)
 }
 
 func TestNewEventConsumerRegistry_Normal(t *testing.T) {
@@ -50,7 +50,7 @@ func TestNewEventConsumerRegistry_Normal(t *testing.T) {
 	event := utils.NewEvent("noop", registry)
 
 	consumer.EXPECT().HandleEvent(event)
-	registry.Emit(event)
+	registry.EmitEvent(event)
 }
 
 func TestNewEventConsumerRegistry_ReReg(t *testing.T) {
@@ -66,7 +66,7 @@ func TestNewEventConsumerRegistry_ReReg(t *testing.T) {
 	event := utils.NewEvent("noop", registry)
 
 	consumer.EXPECT().HandleEvent(event)
-	registry.Emit(event)
+	registry.EmitEvent(event)
 }
 
 func TestNewEventConsumerRegistry_ReDeReg(t *testing.T) {
@@ -81,11 +81,11 @@ func TestNewEventConsumerRegistry_ReDeReg(t *testing.T) {
 	event := utils.NewEvent("noop", registry)
 
 	consumer.EXPECT().HandleEvent(event) // only this once
-	registry.Emit(event)
+	registry.EmitEvent(event)
 
 	registry.DeregisterEventConsumer(consumer)
 	registry.DeregisterEventConsumer(consumer)
-	registry.Emit(event)
+	registry.EmitEvent(event)
 }
 
 func TestNewEventConsumerRegistry_NormalDeregister(t *testing.T) {
@@ -100,11 +100,11 @@ func TestNewEventConsumerRegistry_NormalDeregister(t *testing.T) {
 	event := utils.NewEvent("noop", registry)
 
 	consumer.EXPECT().HandleEvent(event) // only this once
-	registry.Emit(event)
+	registry.EmitEvent(event)
 
 	registry.DeregisterEventConsumer(consumer)
 
-	registry.Emit(event)
+	registry.EmitEvent(event)
 }
 
 func TestNewEventConsumerRegistry_Multiple(t *testing.T) {
@@ -122,7 +122,7 @@ func TestNewEventConsumerRegistry_Multiple(t *testing.T) {
 
 	consumer1.EXPECT().HandleEvent(event)
 	consumer2.EXPECT().HandleEvent(event)
-	registry.Emit(event)
+	registry.EmitEvent(event)
 }
 
 func TestNewEventConsumerRegistry_TerminatedByConsumer(t *testing.T) {
@@ -140,5 +140,5 @@ func TestNewEventConsumerRegistry_TerminatedByConsumer(t *testing.T) {
 
 	consumer1.EXPECT().HandleEvent(event).Return(errors.New("cancel"))
 	consumer2.EXPECT().HandleEvent(event).Times(0)
-	registry.Emit(event)
+	registry.EmitEvent(event)
 }
