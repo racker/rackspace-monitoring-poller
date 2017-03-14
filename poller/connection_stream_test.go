@@ -20,11 +20,11 @@ import (
 func TestConnectionStream_Connect(t *testing.T) {
 
 	tests := []struct {
-		name                    string
-		addresses               func() []string
-		serverQueries           func() []string
-		useSrv                  bool
-		neverAttemptsConnection bool
+		name                string
+		addresses           func() []string
+		serverQueries       func() []string
+		useSrv              bool
+		connectionTimeoutMs int
 	}{
 		{
 			name: "Happy path",
@@ -34,7 +34,8 @@ func TestConnectionStream_Connect(t *testing.T) {
 			serverQueries: func() []string {
 				return []string{}
 			},
-			useSrv: false,
+			useSrv:              false,
+			connectionTimeoutMs: 15,
 		},
 		{
 			name: "Use service",
@@ -44,7 +45,8 @@ func TestConnectionStream_Connect(t *testing.T) {
 			serverQueries: func() []string {
 				return []string{"_monitoringagent._tcp.dfw1.prod.monitoring.api.rackspacecloud.com"}
 			},
-			useSrv: true,
+			useSrv:              true,
+			connectionTimeoutMs: 500,
 		},
 		{
 			name: "Invalid url",
@@ -54,7 +56,8 @@ func TestConnectionStream_Connect(t *testing.T) {
 			serverQueries: func() []string {
 				return []string{}
 			},
-			useSrv: false,
+			useSrv:              false,
+			connectionTimeoutMs: 15,
 		},
 	}
 	for _, tt := range tests {
@@ -66,17 +69,13 @@ func TestConnectionStream_Connect(t *testing.T) {
 			done := make(chan struct{}, 1)
 
 			conn := NewMockConnection(ctrl)
-			if !tt.neverAttemptsConnection {
-				conn.EXPECT().Connect(gomock.Any(), gomock.Any(), gomock.Any())
-				conn.EXPECT().Done().Return(done)
-				conn.EXPECT().GetLogPrefix().AnyTimes().Return("1234")
-				conn.EXPECT().Close().AnyTimes().Do(func() {
-					t.Log("Mock conn is closing")
-					close(done)
-				})
-			} else {
+			conn.EXPECT().Connect(gomock.Any(), gomock.Any(), gomock.Any())
+			conn.EXPECT().Done().Return(done)
+			conn.EXPECT().GetLogPrefix().AnyTimes().Return("1234")
+			conn.EXPECT().Close().AnyTimes().Do(func() {
+				t.Log("Mock conn is closing")
 				close(done)
-			}
+			})
 
 			connFactory := func(address string, guid string, stream poller.ChecksReconciler) poller.Connection {
 				return conn
@@ -93,10 +92,8 @@ func TestConnectionStream_Connect(t *testing.T) {
 			cs.RegisterEventConsumer(consumer)
 
 			cs.Connect()
-			if !tt.neverAttemptsConnection {
-				consumer.waitFor(t, 15*time.Millisecond, poller.EventTypeRegister, conn)
-				cancel()
-			}
+			consumer.waitFor(t, time.Duration(tt.connectionTimeoutMs)*time.Millisecond, poller.EventTypeRegister, conn)
+			cancel()
 
 			select {
 			case <-cs.Done():
