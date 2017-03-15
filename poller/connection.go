@@ -138,7 +138,7 @@ func (conn *EleConnection) Close() {
 	conn.GetSession().Close()
 }
 
-// Wait sets the connection session to wait for a new request
-func (conn *EleConnection) Wait() {
-	conn.GetSession().Wait()
+// Wait returns a channel that is populated when the connection is finished or closed.
+func (conn *EleConnection) Done() <-chan struct{} {
+	return conn.GetSession().Done()
 }

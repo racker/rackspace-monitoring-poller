@@ -1,14 +1,12 @@
 package poller_test
 
 import (
-	"crypto/x509"
 	"testing"
 	"time"
 
 	"fmt"
 	"github.com/golang/mock/gomock"
 	"github.com/racker/rackspace-monitoring-poller/check"
-	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/poller"
 	"github.com/racker/rackspace-monitoring-poller/protocol"
 	"github.com/racker/rackspace-monitoring-poller/utils"
@@ -17,30 +15,24 @@ import (
 )
 
 func TestNewScheduler(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	type args struct {
 		zoneID string
-		stream poller.ConnectionStream
 	}
 	tests := []struct {
 		name   string
 		zoneID string
-		stream poller.ConnectionStream
 	}{
 		{
 			name:   "Happy path",
 			zoneID: "pzAwesome",
-			stream: poller.NewConnectionStream(
-				&config.Config{
-					AgentId: "awesome agent",
-					ZoneIds: []string{"pzAwesome", "pzGreat"},
-				},
-				x509.NewCertPool(),
-			),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := poller.NewScheduler(tt.zoneID, tt.stream)
+			got := poller.NewScheduler(tt.zoneID, NewMockConnectionStream(ctrl))
 			//assert that zoneID is the same
 			assert.Equal(t, tt.zoneID, got.GetZoneID())
 		})
@@ -48,12 +40,10 @@ func TestNewScheduler(t *testing.T) {
 }
 
 func TestEleScheduler_Close(t *testing.T) {
-	schedule := poller.NewScheduler("pzAwesome", poller.NewConnectionStream(
-		&config.Config{
-			AgentId: "awesome",
-		},
-		x509.NewCertPool(),
-	))
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	schedule := poller.NewScheduler("pzAwesome", NewMockConnectionStream(ctrl))
 	ctx, _ := schedule.GetContext()
 	schedule.Close()
 	completed := utils.Timebox(t, 100*time.Millisecond, func(t *testing.T) {
@@ -65,7 +55,7 @@ func TestEleScheduler_Close(t *testing.T) {
 func TestEleScheduler_SendMetrics(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
-	mockStream := poller.NewMockConnectionStream(mockCtrl)
+	mockStream := NewMockConnectionStream(mockCtrl)
 	schedule := poller.NewScheduler("pzAwesome", mockStream)
 	mockStream.EXPECT().SendMetrics(gomock.Any()).Times(1)
 	schedule.SendMetrics(&check.ResultSet{})
@@ -93,9 +83,9 @@ func TestEleScheduler_ReconcileChecks_AllStart(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	mockStream := poller.NewMockConnectionStream(mockCtrl)
-	checkScheduler := poller.NewMockCheckScheduler(mockCtrl)
-	checkExecutor := poller.NewMockCheckExecutor(mockCtrl)
+	mockStream := NewMockConnectionStream(mockCtrl)
+	checkScheduler := NewMockCheckScheduler(mockCtrl)
+	checkExecutor := NewMockCheckExecutor(mockCtrl)
 
 	scheduler := poller.NewCustomScheduler("znA", mockStream, checkScheduler, checkExecutor)
 	defer scheduler.Close()
@@ -135,7 +125,7 @@ func TestEleScheduler_ReconcileChecks(t *testing.T) {
 
 	tests := []struct {
 		name              string
-		prepMockScheduler func(checkScheduler *poller.MockCheckScheduler)
+		prepMockScheduler func(checkScheduler *MockCheckScheduler)
 		cp                *poller.ChecksPreparation
 		verify            func(t *testing.T, scheduled []check.Check, scheduledAfter []check.Check)
 	}{
@@ -159,7 +149,7 @@ func TestEleScheduler_ReconcileChecks(t *testing.T) {
 		{
 			name: "restartOne",
 
-			prepMockScheduler: func(checkScheduler *poller.MockCheckScheduler) {
+			prepMockScheduler: func(checkScheduler *MockCheckScheduler) {
 				checkScheduler.EXPECT().Schedule(checkIdMatcher{id: "ch1"})
 			},
 
@@ -183,7 +173,7 @@ func TestEleScheduler_ReconcileChecks(t *testing.T) {
 		{
 			name: "startAnother",
 
-			prepMockScheduler: func(checkScheduler *poller.MockCheckScheduler) {
+			prepMockScheduler: func(checkScheduler *MockCheckScheduler) {
 				checkScheduler.EXPECT().Schedule(checkIdMatcher{id: "ch3"})
 			},
 
@@ -225,9 +215,9 @@ func TestEleScheduler_ReconcileChecks(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 			defer mockCtrl.Finish()
 
-			mockStream := poller.NewMockConnectionStream(mockCtrl)
-			checkScheduler := poller.NewMockCheckScheduler(mockCtrl)
-			checkExecutor := poller.NewMockCheckExecutor(mockCtrl)
+			mockStream := NewMockConnectionStream(mockCtrl)
+			checkScheduler := NewMockCheckScheduler(mockCtrl)
+			checkExecutor := NewMockCheckExecutor(mockCtrl)
 
 			scheduler := poller.NewCustomScheduler("znA", mockStream, checkScheduler, checkExecutor)
 			defer scheduler.Close()
@@ -337,9 +327,9 @@ func TestEleScheduler_ValidateChecks_Fails(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 			defer mockCtrl.Finish()
 
-			mockStream := poller.NewMockConnectionStream(mockCtrl)
-			checkScheduler := poller.NewMockCheckScheduler(mockCtrl)
-			checkExecutor := poller.NewMockCheckExecutor(mockCtrl)
+			mockStream := NewMockConnectionStream(mockCtrl)
+			checkScheduler := NewMockCheckScheduler(mockCtrl)
+			checkExecutor := NewMockCheckExecutor(mockCtrl)
 
 			scheduler := poller.NewCustomScheduler("znA", mockStream, checkScheduler, checkExecutor)
 			defer scheduler.Close()
@@ -371,8 +361,8 @@ func TestEleScheduler_Schedule_DisabledChecks(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	mockStream := poller.NewMockConnectionStream(mockCtrl)
-	checkExecutor := poller.NewMockCheckExecutor(mockCtrl)
+	mockStream := NewMockConnectionStream(mockCtrl)
+	checkExecutor := NewMockCheckExecutor(mockCtrl)
 
 	scheduler := poller.NewCustomScheduler("znA", mockStream,
 		nil, // use default scheduler, since that's what we're testing

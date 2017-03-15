@@ -62,10 +62,10 @@ func (fm frameMatcher) Matches(in interface{}) bool {
 	return true
 }
 
-func setupConnStreamExpectations(ctrl *gomock.Controller) (eleConn *poller.MockConnection,
-	reconciler *poller.MockChecksReconciler,
+func setupConnStreamExpectations(ctrl *gomock.Controller) (eleConn *MockConnection,
+	reconciler *MockChecksReconciler,
 	writesHere *utils.BlockingReadBuffer, readsHere *utils.BlockingReadBuffer) {
-	eleConn = poller.NewMockConnection(ctrl)
+	eleConn = NewMockConnection(ctrl)
 
 	writesHere = utils.NewBlockingReadBuffer()
 	readsHere = utils.NewBlockingReadBuffer()
@@ -78,7 +78,7 @@ func setupConnStreamExpectations(ctrl *gomock.Controller) (eleConn *poller.MockC
 	eleConn.EXPECT().SetWriteDeadline(gomock.Any()).AnyTimes()
 	eleConn.EXPECT().GetLogPrefix().AnyTimes().Return("1-2-3")
 
-	reconciler = poller.NewMockChecksReconciler(ctrl)
+	reconciler = NewMockChecksReconciler(ctrl)
 
 	return
 }

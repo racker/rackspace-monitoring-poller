@@ -214,6 +214,7 @@ func (s *EleSession) runFrameReading() {
 			f := new(protocol.FrameMsg)
 			s.connection.SetReadDeadline(s.computeReadDeadline())
 			if err := s.dec.Decode(f); err == io.EOF {
+				log.WithField("connection", s.connection).Info("Far end closed connection")
 				return
 			} else if err != nil {
 				s.exitError(err)
@@ -597,8 +598,8 @@ func (s *EleSession) Close() {
 }
 
 // Wait waits for the context to complete
-func (s *EleSession) Wait() {
-	<-s.ctx.Done()
+func (s *EleSession) Done() <-chan struct{} {
+	return s.ctx.Done()
 }
 
 func (cp *prepDetails) String() string {

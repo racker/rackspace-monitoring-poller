@@ -28,7 +28,6 @@ func TestConnection_Connect(t *testing.T) {
 		name               string
 		url                func() string
 		guid               string
-		stream             poller.ConnectionStream
 		expectedErr        bool
 		expectedErrMessage string
 		ctx                context.Context
@@ -39,10 +38,7 @@ func TestConnection_Connect(t *testing.T) {
 				testURL, _ := url.Parse(ts.URL)
 				return testURL.Host
 			},
-			guid: "happy-test",
-			stream: poller.NewConnectionStream(&config.Config{
-				Guid: "test-guid",
-			}, nil),
+			guid:        "happy-test",
 			ctx:         context.Background(),
 			expectedErr: false,
 		},
@@ -51,10 +47,7 @@ func TestConnection_Connect(t *testing.T) {
 			url: func() string {
 				return "invalid-url"
 			},
-			guid: "another-test",
-			stream: poller.NewConnectionStream(&config.Config{
-				Guid: "test-guid",
-			}, nil),
+			guid:               "another-test",
 			ctx:                context.Background(),
 			expectedErr:        true,
 			expectedErrMessage: "dial tcp: address invalid-url: missing port in address",
@@ -65,10 +58,7 @@ func TestConnection_Connect(t *testing.T) {
 				testURL, _ := url.Parse(ts.URL)
 				return testURL.Host
 			},
-			guid: "empty-context-guid",
-			stream: poller.NewConnectionStream(&config.Config{
-				Guid: "test-guid",
-			}, nil),
+			guid:               "empty-context-guid",
 			ctx:                nil,
 			expectedErr:        true,
 			expectedErrMessage: "Context is undefined",
@@ -79,7 +69,7 @@ func TestConnection_Connect(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			reconciler := poller.NewMockChecksReconciler(ctrl)
+			reconciler := NewMockChecksReconciler(ctrl)
 
 			conn := poller.NewConnection(tt.url(), tt.guid, reconciler)
 			if tt.expectedErr {

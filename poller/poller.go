@@ -28,6 +28,7 @@ import (
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/protocol"
+	"github.com/racker/rackspace-monitoring-poller/utils"
 )
 
 var (
@@ -35,8 +36,6 @@ var (
 	ReconnectTimeout = 25 * time.Second
 	// ErrInvalidConnectionStream used when conneciton stream is not properly initialized
 	ErrInvalidConnectionStream = errors.New("ConnectionStream has not been properly set up.  Re-initialize")
-	// ErrNoConnections used when no connections were set up in the stream
-	ErrNoConnections = errors.New("No connections")
 	// ErrUndefinedContext used when passed in context in Connect is undefined
 	ErrUndefinedContext = errors.New("Context is undefined")
 	// ErrCheckEmpty used when a check is nil or empty
@@ -54,12 +53,11 @@ type LogPrefixGetter interface {
 // register, connect, and send data in connections.
 // It is the main factory for connection handling
 type ConnectionStream interface {
-	RegisterConnection(qry string, conn Connection) error
-	Stop()
-	StopNotify() chan struct{}
-	SendMetrics(crs *check.ResultSet) error
+	utils.EventSource
+
+	SendMetrics(crs *check.ResultSet)
 	Connect()
-	WaitCh() <-chan struct{}
+	Done() <-chan struct{}
 }
 
 // Connection interface wraps the methods required to manage a
@@ -73,7 +71,8 @@ type Connection interface {
 	SetWriteDeadline(deadline time.Time)
 	Connect(ctx context.Context, config *config.Config, tlsConfig *tls.Config) error
 	Close()
-	Wait()
+	// Done returns a channel that is closed when the connection is finished or closed.
+	Done() <-chan struct{}
 	GetFarendWriter() io.Writer
 	GetFarendReader() io.Reader
 	GetGUID() string
@@ -94,7 +93,7 @@ type Session interface {
 	Send(msg protocol.Frame)
 	Respond(msg protocol.Frame)
 	Close()
-	Wait()
+	Done() <-chan struct{}
 	GetError() error
 }
 

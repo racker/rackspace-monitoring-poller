@@ -17,6 +17,7 @@
 package poller
 
 import (
+	"context"
 	log "github.com/Sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/utils"
@@ -39,18 +40,16 @@ func Run(configFilePath string, insecure bool) {
 
 	rootCAs := config.LoadRootCAs(insecure, useStaging)
 	signalNotify := utils.HandleInterrupts()
+	ctx, cancel := context.WithCancel(context.Background())
 	for {
-		stream := NewConnectionStream(cfg, rootCAs)
+		stream := NewConnectionStream(ctx, cfg, rootCAs)
 		stream.Connect()
-		waitCh := stream.WaitCh()
 		for {
 			select {
-			case <-waitCh:
-				break
 			case <-signalNotify:
 				log.Info("Shutdown...")
-				stream.Stop()
-			case <-stream.StopNotify():
+				cancel()
+			case <-stream.Done(): // for cancel to propagate
 				return
 			}
 		}

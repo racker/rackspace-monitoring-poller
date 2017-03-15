@@ -32,16 +32,21 @@ OWNED_DIRS :=
 DEB_CONFIG_FILES := ${APP_CFG} ${LOGROTATE_CFG}
 DEB_ALL_FILES := ${DEB_CONFIG_FILES} ${UPSTART_CONF} ${UPSTART_DEFAULT}
 
+MOCK_POLLER := LogPrefixGetter,ConnectionStream,Connection,Session,CheckScheduler,CheckExecutor,Scheduler,ChecksReconciler
+
 WGET := wget
 FPM := fpm
 REPREPRO := reprepro
 
-.PHONY: default repackage package package-deb package-repo-upload package-upload-deb package-deb-local clean generate-mocks stage-deb-exe-local prep
+.PHONY: default repackage package package-deb package-repo-upload package-upload-deb package-deb-local \
+	clean generate-mocks stage-deb-exe-local prep \
+	generate-callgraphs regenerate-callgraphs clean-callgraphs
 
 default: clean package
 
 generate-mocks:
-	mockgen -source=poller/poller.go -package=poller -destination=poller/poller_mock_test.go
+	mockgen -package=poller_test -destination=poller/poller_mock_test.go github.com/racker/rackspace-monitoring-poller/poller ${MOCK_POLLER}
+	mockgen -source=utils/events.go -package=utils -destination=utils/events_mock_test.go
 	mockgen -destination check/pinger_mock_test.go -package=check github.com/racker/rackspace-monitoring-poller/check Pinger
 	sed -i '' s,$(PROJECT_VENDOR)/,, check/pinger_mock_test.go
 	mockgen -destination mock_golang/mock_conn.go -package mock_golang net Conn
@@ -49,6 +54,22 @@ generate-mocks:
 prep:
 	curl https://glide.sh/get | sh
 	${GOPATH}/bin/glide install
+
+regenerate-callgraphs : clean-callgraphs generate-callgraphs
+
+generate-callgraphs : docs/poller_callgraph.png docs/endpoint_callgraph.png
+
+clean-callgraphs :
+	rm -f docs/*_callgraph.{dot,png}
+
+%_callgraph.png : %_callgraph.dot
+	dot -Tpng -o $@ $<
+
+%_callgraph.dot : ${GOPATH}/bin/go-callvis
+	${GOPATH}/bin/go-callvis -focus $(*F) -nostd -group type github.com/racker/rackspace-monitoring-poller > $@
+
+${GOPATH}/bin/go-callvis :
+	go get -u github.com/TrueFurby/go-callvis
 
 package: package-deb
 
