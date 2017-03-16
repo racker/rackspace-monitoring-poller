@@ -3,7 +3,7 @@
   "zone_id": "pzA",
   "entity_id": "enAAAAIPV4",
   "details": {
-    "count": 3
+    "count": 30
   },
   "type": "remote.ping",
   "timeout": 5,

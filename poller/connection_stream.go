@@ -244,6 +244,10 @@ func (cs *EleConnectionStream) Done() <-chan struct{} {
 }
 
 func (cs *EleConnectionStream) connectBySrv(qry string) {
+	log.WithFields(log.Fields{
+		"prefix": cs.GetLogPrefix(),
+		"query":  qry,
+	}).Debug("Resolving by service")
 	_, addrs, err := net.LookupSRV("", "", qry)
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -264,11 +268,19 @@ func (cs *EleConnectionStream) connectBySrv(qry string) {
 		"prefix": cs.GetLogPrefix(),
 		"query":  qry,
 		"addr":   addr,
-	}).Debug("Connecting")
+	}).Debug("Resolved service")
 	cs.connectByHost(addr)
 }
 
 func (cs *EleConnectionStream) connectByHost(addr string) {
+	log.WithFields(log.Fields{
+		"prefix": cs.GetLogPrefix(),
+		"addr":   addr,
+	}).Debug("Connecting by address")
+	defer log.WithFields(log.Fields{
+		"prefix": cs.GetLogPrefix(),
+		"addr":   addr,
+	}).Debug("Connection exiting")
 	defer cs.wg.Done()
 
 	b := &backoff.Backoff{

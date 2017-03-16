@@ -70,6 +70,7 @@ type agent struct {
 	responses    chan protocol.Frame
 	// The following are only accessed within runPrepareResponseCoordinator go routine
 
+	checkId         uint64
 	outMsgId        uint64
 	checksVersion   uint64
 	committedChecks set.Set // of check IDs
@@ -204,6 +205,9 @@ func (a *agent) loadChecks(pathToChecks string, zone string) ([]check.Check, err
 				}).Warn("Unable to read checks file")
 				continue
 			}
+
+			a.checkId++
+			ch.SetID(fmt.Sprintf("ch%08X", a.checkId))
 
 			startChecks = append(startChecks, ch)
 		}

@@ -302,16 +302,6 @@ func (_mr *_MockSessionRecorder) GetClockOffset() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetClockOffset")
 }
 
-func (_m *MockSession) GetError() error {
-	ret := _m.ctrl.Call(_m, "GetError")
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-func (_mr *_MockSessionRecorder) GetError() *gomock.Call {
-	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetError")
-}
-
 func (_m *MockSession) GetLatency() int64 {
 	ret := _m.ctrl.Call(_m, "GetLatency")
 	ret0, _ := ret[0].(int64)
