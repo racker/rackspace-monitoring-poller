@@ -47,7 +47,7 @@ const (
 	// MinBackoff the minimum backoff in seconds
 	MinBackoff = 25 * time.Second
 	// MaxBackoff the maximum backoff in seconds
-	MaxBackoff = 90 * time.Second
+	MaxBackoff = 180 * time.Second
 	// FactorBackoff the factor for the backoff
 	FactorBackoff = 2
 )
