@@ -1,5 +1,5 @@
-hash: aca2336fef0e9610d22d976593a105b6fde55686282723be5dcf5de3cee91b01
-updated: 2017-03-13T10:19:48.397086731-05:00
+hash: a7d131ead8f805538f9744d651ea7839fbfdfceacb923a2c2e686ecf5ec19c84
+updated: 2017-03-16T11:25:32.285894-05:00
 imports:
 - name: github.com/davecgh/go-spew
   version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
@@ -20,6 +20,8 @@ imports:
   - mockgen
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
+- name: github.com/jpillora/backoff
+  version: 06c7a16c845dc8e0bf575fafeeca0f5462f5eb4d
 - name: github.com/mattn/go-colorable
   version: acb9493f2794fd0f820de7a27a217dafbb1b65ea
 - name: github.com/mattn/go-isatty

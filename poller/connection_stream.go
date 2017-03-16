@@ -20,17 +20,19 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
+	"math"
 	"net"
 	"sync"
 	"time"
 
-	"encoding/json"
 	log "github.com/Sirupsen/logrus"
+	"github.com/jpillora/backoff"
+
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/utils"
-	"math"
 )
 
 const (
@@ -42,6 +44,12 @@ const (
 	EventTypeDeregister = "deregister"
 	// EventTypeDroppedMetric has a target of *check.ResultSet
 	EventTypeDroppedMetric = "dropped"
+	// MinBackoff the minimum backoff in seconds
+	MinBackoff = 25 * time.Second
+	// MaxBackoff the maximum backoff in seconds
+	MaxBackoff = 90 * time.Second
+	// FactorBackoff the factor for the backoff
+	FactorBackoff = 2
 )
 
 // EleConnectionStream implements ConnectionStream
@@ -262,6 +270,14 @@ func (cs *EleConnectionStream) connectBySrv(qry string) {
 
 func (cs *EleConnectionStream) connectByHost(addr string) {
 	defer cs.wg.Done()
+
+	b := &backoff.Backoff{
+		Min:    MinBackoff,
+		Max:    MaxBackoff,
+		Factor: FactorBackoff,
+		Jitter: true,
+	}
+
 reconnect:
 	for {
 		conn := cs.connectionFactory(addr, cs.config.Guid, cs)
@@ -269,6 +285,9 @@ reconnect:
 		if err != nil {
 			goto conn_error
 		}
+
+		// Successful connection. reset backoff
+		b.Reset()
 
 		cs.registrations <- &connectionRegistration{
 			register: true,
@@ -296,10 +315,11 @@ reconnect:
 			"address": addr,
 		}).Errorf("Error: %v", err)
 	new_connection:
+		sleepDuration := b.Duration()
 		log.WithFields(log.Fields{
 			"prefix":  cs.GetLogPrefix(),
 			"address": addr,
-			"timeout": ReconnectTimeout,
+			"timeout": sleepDuration,
 		}).Debug("Connection sleeping")
 		for {
 			select {
@@ -309,12 +329,11 @@ reconnect:
 					"address": addr,
 				}).Debug("Connection cancelled")
 				return
-			case <-time.After(ReconnectTimeout):
-				log.WithField("prefix", cs.GetLogPrefix()).Debug("Reconnecting")
+			case <-time.After(sleepDuration):
 				log.WithFields(log.Fields{
 					"prefix":  cs.GetLogPrefix(),
 					"address": addr,
-				}).Debug("Connection timed out")
+				}).Debug("Reconnecting")
 				continue reconnect
 			}
 		}
