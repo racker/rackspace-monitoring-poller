@@ -40,8 +40,10 @@ type CompletionFrame struct {
 }
 
 const (
-	sendChannelSize = 128
-	readChannelSize = 256
+	sendChannelSize    = 128
+	readChannelSize    = 256
+	EventTypeSendError = "SessionSendError"
+	EventTypeReadError = "SessionReadError"
 )
 
 type prepDetails struct {
@@ -56,6 +58,8 @@ type prepDetails struct {
 // EleSession implements Session interface
 // See Session for more information
 type EleSession struct {
+	utils.EventConsumerRegistry
+
 	// reference to the connection
 	connection Connection
 
@@ -229,6 +233,7 @@ func (s *EleSession) runFrameHandlingAndTimeout() {
 
 		case f := <-s.readCh:
 			if err := s.handleFrame(f); err != nil {
+				s.EmitEvent(utils.NewEvent(EventTypeReadError, &FrameMsgError{Frame: f, Error: err}))
 				log.WithFields(log.Fields{
 					"prefix": s.logPrefix,
 					"error":  err,
@@ -569,6 +574,7 @@ func (s *EleSession) exitError(err error) {
 		"prefix": s.logPrefix,
 		"error":  err,
 	}).Warn("Session exiting with error")
+	s.EmitEvent(utils.NewEvent(EventTypeSendError, err))
 	s.Close()
 }
 

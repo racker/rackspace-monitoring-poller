@@ -282,6 +282,14 @@ func (_mr *_MockSessionRecorder) Close() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Close")
 }
 
+func (_m *MockSession) DeregisterEventConsumer(_param0 utils.EventConsumer) {
+	_m.ctrl.Call(_m, "DeregisterEventConsumer", _param0)
+}
+
+func (_mr *_MockSessionRecorder) DeregisterEventConsumer(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "DeregisterEventConsumer", arg0)
+}
+
 func (_m *MockSession) Done() <-chan struct{} {
 	ret := _m.ctrl.Call(_m, "Done")
 	ret0, _ := ret[0].(<-chan struct{})
@@ -310,6 +318,14 @@ func (_m *MockSession) GetLatency() int64 {
 
 func (_mr *_MockSessionRecorder) GetLatency() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetLatency")
+}
+
+func (_m *MockSession) RegisterEventConsumer(_param0 utils.EventConsumer) {
+	_m.ctrl.Call(_m, "RegisterEventConsumer", _param0)
+}
+
+func (_mr *_MockSessionRecorder) RegisterEventConsumer(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "RegisterEventConsumer", arg0)
 }
 
 func (_m *MockSession) Respond(_param0 protocol.Frame) {
