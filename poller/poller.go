@@ -32,8 +32,6 @@ import (
 )
 
 var (
-	// ReconnectTimeout sets up 25 second timeout for reconnection
-	ReconnectTimeout = 25 * time.Second
 	// ErrInvalidConnectionStream used when conneciton stream is not properly initialized
 	ErrInvalidConnectionStream = errors.New("ConnectionStream has not been properly set up.  Re-initialize")
 	// ErrUndefinedContext used when passed in context in Connect is undefined
