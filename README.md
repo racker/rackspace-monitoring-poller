@@ -74,7 +74,7 @@ start the Endpoint server and Poller server.
 
 ```
 docker build -t racker-poller .
-docker run -ti --rm -v $(pwd)/config:/config racker-poller
+docker run -ti --rm -v $(pwd)/contrib:/config racker-poller
 ```
 
 #### If running locally, then

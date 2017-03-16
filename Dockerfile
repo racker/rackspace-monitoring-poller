@@ -33,4 +33,4 @@ EXPOSE 55000
 
 ENTRYPOINT ./rackspace-monitoring-poller
 
-CMD serve --config contrib/local-docker-endpoint.cfg --insecure  --debug
+CMD serve --config /config/local-docker-endpoint.cfg --insecure  --debug
