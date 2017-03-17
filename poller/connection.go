@@ -134,6 +134,7 @@ func (conn *EleConnection) Connect(ctx context.Context, config *config.Config, t
 func (conn *EleConnection) Close() {
 	if conn.conn != nil {
 		conn.conn.Close()
+		conn.conn = nil
 	}
 	conn.GetSession().Close()
 }

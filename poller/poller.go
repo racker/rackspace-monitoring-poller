@@ -86,13 +86,13 @@ type ConnectionHealthProvider interface {
 // response timeout management, and transferring data
 type Session interface {
 	ConnectionHealthProvider
+	utils.EventSource
 
 	Auth()
 	Send(msg protocol.Frame)
 	Respond(msg protocol.Frame)
 	Close()
 	Done() <-chan struct{}
-	GetError() error
 }
 
 // CheckScheduler arranges the periodic invocation of the given Check
@@ -136,3 +136,8 @@ type Scheduler interface {
 type ConnectionFactory func(address string, guid string, checksReconciler ChecksReconciler) Connection
 
 type ConnectionsByHost map[string]Connection
+
+type FrameMsgError struct {
+	Frame *protocol.FrameMsg
+	Error error
+}

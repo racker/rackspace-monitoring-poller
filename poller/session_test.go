@@ -225,14 +225,15 @@ func TestEleSession_HandshakeError(t *testing.T) {
 	eleConn, reconciler, writesHere, readsHere := setupConnStreamExpectations(ctrl)
 	defer readsHere.Close()
 
+	eventConsumer := newPhasingEventConsumer()
 	cfg := config.NewConfig("1-2-3", false)
 	es := poller.NewSession(context.Background(), eleConn, reconciler, cfg)
+	es.RegisterEventConsumer(eventConsumer)
 	defer es.Close()
 
 	handshakeError(t, writesHere, readsHere, 400, "some error")
 
-	time.Sleep(10 * time.Millisecond)
-	require.Error(t, es.GetError())
+	eventConsumer.waitFor(t, 10*time.Millisecond, poller.EventTypeReadError, gomock.Any())
 }
 
 func TestEleSession_PollerPrepare(t *testing.T) {

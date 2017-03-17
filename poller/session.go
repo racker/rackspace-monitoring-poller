@@ -40,8 +40,10 @@ type CompletionFrame struct {
 }
 
 const (
-	sendChannelSize = 128
-	readChannelSize = 256
+	sendChannelSize    = 128
+	readChannelSize    = 256
+	EventTypeSendError = "SessionSendError"
+	EventTypeReadError = "SessionReadError"
 )
 
 type prepDetails struct {
@@ -56,6 +58,8 @@ type prepDetails struct {
 // EleSession implements Session interface
 // See Session for more information
 type EleSession struct {
+	utils.EventConsumerRegistry
+
 	// reference to the connection
 	connection Connection
 
@@ -73,10 +77,6 @@ type EleSession struct {
 
 	// sequence message ID
 	seq uint64
-
-	shutdownLock sync.Mutex
-	shutdown     bool
-	error        error
 
 	completionsMu sync.Mutex
 	completions   map[uint64]*CompletionFrame
@@ -146,10 +146,6 @@ func (s *EleSession) Respond(msg protocol.Frame) {
 	s.sendCh <- msg
 }
 
-func (s *EleSession) GetError() error {
-	return s.error
-}
-
 func (s *EleSession) getCompletionRequest(resp protocol.Frame) *CompletionFrame {
 	s.completionsMu.Lock()
 	req, ok := s.completions[resp.GetId()]
@@ -204,7 +200,6 @@ func (s *EleSession) computeWriteDeadline() time.Time {
 func (s *EleSession) runFrameReading() {
 	log.WithField("prefix", s.logPrefix).Debug("read starting")
 	defer log.WithField("prefix", s.logPrefix).Debug("read exiting")
-	defer s.cancel()
 
 	for {
 		select {
@@ -215,9 +210,11 @@ func (s *EleSession) runFrameReading() {
 			s.connection.SetReadDeadline(s.computeReadDeadline())
 			if err := s.dec.Decode(f); err == io.EOF {
 				log.WithField("connection", s.connection).Info("Far end closed connection")
+				s.cancel()
 				return
 			} else if err != nil {
 				s.exitError(err)
+				s.cancel()
 				return
 			}
 			s.readCh <- f
@@ -236,7 +233,7 @@ func (s *EleSession) runFrameHandlingAndTimeout() {
 
 		case f := <-s.readCh:
 			if err := s.handleFrame(f); err != nil {
-				s.error = err
+				s.EmitEvent(utils.NewEvent(EventTypeReadError, &FrameMsgError{Frame: f, Error: err}))
 				log.WithFields(log.Fields{
 					"prefix": s.logPrefix,
 					"error":  err,
@@ -577,27 +574,16 @@ func (s *EleSession) exitError(err error) {
 		"prefix": s.logPrefix,
 		"error":  err,
 	}).Warn("Session exiting with error")
-	s.shutdownLock.Lock()
-	if s.error == nil {
-		s.error = err
-	}
-	s.shutdownLock.Unlock()
+	s.EmitEvent(utils.NewEvent(EventTypeSendError, err))
 	s.Close()
 }
 
 // Close shuts down session's context and closes session
 func (s *EleSession) Close() {
-	s.shutdownLock.Lock()
-	if s.shutdown {
-		s.shutdownLock.Unlock()
-		return
-	}
-	s.shutdown = true
-	s.shutdownLock.Unlock()
 	s.cancel()
 }
 
-// Wait waits for the context to complete
+// Done returns the context-done channel scoped to this session
 func (s *EleSession) Done() <-chan struct{} {
 	return s.ctx.Done()
 }

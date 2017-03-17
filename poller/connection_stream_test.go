@@ -92,7 +92,7 @@ func TestConnectionStream_Connect(t *testing.T) {
 			cs.RegisterEventConsumer(consumer)
 
 			cs.Connect()
-			consumer.waitFor(t, time.Duration(tt.connectionTimeoutMs)*time.Millisecond, poller.EventTypeRegister, conn)
+			consumer.waitFor(t, time.Duration(tt.connectionTimeoutMs)*time.Millisecond, poller.EventTypeRegister, gomock.Eq(conn))
 			cancel()
 
 			select {
@@ -205,9 +205,9 @@ func TestEleConnectionStream_SendMetrics_Normal(t *testing.T) {
 
 	cs.Connect()
 	factory.waitForConnections(t, 20*time.Millisecond)
-	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeRegister, c1)
-	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeRegister, c2)
-	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeRegister, c3)
+	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeRegister, gomock.Eq(c1))
+	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeRegister, gomock.Eq(c2))
+	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeRegister, gomock.Eq(c3))
 
 	crs := check.ResultSet{
 		Check: &check.TCPCheck{},
@@ -260,9 +260,9 @@ func TestEleConnectionStream_SendMetrics_RollOver(t *testing.T) {
 
 	cs.Connect()
 	factory.waitForConnections(t, 20*time.Millisecond)
-	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeRegister, c1)
-	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeRegister, c2)
-	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeRegister, c3)
+	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeRegister, gomock.Eq(c1))
+	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeRegister, gomock.Eq(c2))
+	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeRegister, gomock.Eq(c3))
 
 	crs := check.ResultSet{
 		Check: &check.TCPCheck{},
@@ -273,7 +273,7 @@ func TestEleConnectionStream_SendMetrics_RollOver(t *testing.T) {
 	consumer.assertNoEvent(t, 5*time.Millisecond)
 
 	close(doneEarly) // closes c2
-	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeDeregister, c2)
+	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeDeregister, gomock.Eq(c2))
 
 	cs.SendMetrics(&crs)
 	factory.waitForFrame(t, 5*time.Millisecond)
@@ -308,7 +308,7 @@ func TestEleConnectionStream_SendMetrics_OneThenDrop(t *testing.T) {
 
 	cs.Connect()
 	factory.waitForConnections(t, 20*time.Millisecond)
-	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeRegister, c2)
+	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeRegister, gomock.Eq(c2))
 
 	crs := &check.ResultSet{
 		Check: &check.TCPCheck{},
@@ -319,10 +319,10 @@ func TestEleConnectionStream_SendMetrics_OneThenDrop(t *testing.T) {
 	consumer.assertNoEvent(t, 5*time.Millisecond)
 
 	close(done)
-	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeDeregister, c2)
+	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeDeregister, gomock.Eq(c2))
 
 	cs.SendMetrics(crs)
-	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeDroppedMetric, crs)
+	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeDroppedMetric, gomock.Eq(crs))
 }
 
 func TestEleConnectionStream_SendMetrics_NoConnections(t *testing.T) {
@@ -348,7 +348,7 @@ func TestEleConnectionStream_SendMetrics_NoConnections(t *testing.T) {
 	}
 	cs.SendMetrics(crs)
 
-	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeDroppedMetric, crs)
+	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeDroppedMetric, gomock.Eq(crs))
 }
 
 type mockConnFactory struct {
@@ -443,11 +443,13 @@ func (c *phasingEventConsumer) HandleEvent(evt utils.Event) error {
 	return nil
 }
 
-func (c *phasingEventConsumer) waitFor(t *testing.T, timeout time.Duration, eventType string, eventTarget interface{}) {
+func (c *phasingEventConsumer) waitFor(t *testing.T, timeout time.Duration, eventType string, targetMatcher gomock.Matcher) {
 	select {
 	case evt := <-c.events:
 		assert.Equal(t, eventType, evt.Type(), "Wrong event type")
-		assert.Equal(t, eventTarget, evt.Target(), "Wrong event type")
+		if !targetMatcher.Matches(evt.Target()) {
+			assert.Fail(t, targetMatcher.String())
+		}
 	case <-time.After(timeout):
 		assert.Fail(t, "Did not observe an event")
 	}
