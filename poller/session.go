@@ -583,7 +583,7 @@ func (s *EleSession) Close() {
 	s.cancel()
 }
 
-// Wait waits for the context to complete
+// Done returns the context-done channel scoped to this session
 func (s *EleSession) Done() <-chan struct{} {
 	return s.ctx.Done()
 }

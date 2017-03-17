@@ -228,7 +228,7 @@ func (cs *EleConnectionStream) Connect() {
 	} else {
 		for _, addr := range cs.config.Addresses {
 			cs.wg.Add(1)
-			go cs.connectByHost(addr)
+			go cs.runHostConnection(addr)
 		}
 	}
 }
@@ -269,10 +269,10 @@ func (cs *EleConnectionStream) connectBySrv(qry string) {
 		"query":  qry,
 		"addr":   addr,
 	}).Debug("Resolved service")
-	cs.connectByHost(addr)
+	cs.runHostConnection(addr)
 }
 
-func (cs *EleConnectionStream) connectByHost(addr string) {
+func (cs *EleConnectionStream) runHostConnection(addr string) {
 	log.WithFields(log.Fields{
 		"prefix": cs.GetLogPrefix(),
 		"addr":   addr,
