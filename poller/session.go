@@ -127,11 +127,13 @@ func NewSession(ctx context.Context, connection Connection, checksReconciler Che
 func (s *EleSession) Auth() {
 	request := protocol.NewHandshakeRequest(s.cfg)
 	s.Send(request)
-	s.authTimer = time.AfterFunc(s.cfg.TimeoutAuth, func() {
-		log.WithField("prefix", s.logPrefix).Warn("Closing connection due to expired auth")
-		s.connection.Close()
-		s.EmitEvent(utils.NewEvent(EventTypeAuthTimeout, nil))
-	})
+	if s.cfg.TimeoutAuth > 0 {
+		s.authTimer = time.AfterFunc(s.cfg.TimeoutAuth, func() {
+			log.WithField("prefix", s.logPrefix).Warn("Closing connection due to expired auth")
+			s.connection.Close()
+			s.EmitEvent(utils.NewEvent(EventTypeAuthTimeout, nil))
+		})
+	}
 }
 
 // Send stages a frame for sending after setting the target and source.
@@ -169,7 +171,10 @@ func (s *EleSession) handleResponse(resp *protocol.FrameMsg) error {
 	if req := s.getCompletionRequest(resp); req != nil {
 		switch req.Method {
 		case protocol.MethodHandshakeHello:
-			s.authTimer.Stop()
+			if s.authTimer != nil {
+				s.authTimer.Stop()
+				s.authTimer = nil
+			}
 			resp := protocol.DecodeHandshakeResponse(resp)
 			if resp.Error != nil {
 				log.WithFields(log.Fields{
