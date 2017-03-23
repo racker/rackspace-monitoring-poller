@@ -46,3 +46,19 @@ func TestDecodePollerPrepareBlockRequest(t *testing.T) {
 
 	assert.Len(t, *msg.Params.Block, 10)
 }
+
+func TestParamsDecode_PollerPrepareBlockParams(t *testing.T) {
+	file, err := os.Open("testdata/PollerPrepareBlockParams.json")
+	require.NoError(t, err)
+	defer file.Close()
+
+	raw, err := ioutil.ReadAll(file)
+	require.NoError(t, err)
+
+	var params protocol.PollerPrepareBlockParams
+
+	err = json.Unmarshal(raw, &params)
+	require.NoError(t, err)
+
+	assert.Len(t, params.Block, 10)
+}
