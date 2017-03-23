@@ -38,7 +38,7 @@ func TestNewMetricsPostRequest(t *testing.T) {
 	  "ip_addresses":{"default":"127.0.0.1"},
 	  "target_alias":"default",
 	  "target_hostname":"",
-	  "target_resolver":"",
+	  "target_resolver":1,
 	  "disabled":false
 	  }`
 	ch, err := check.NewCheck(context.Background(), []byte(checkData))

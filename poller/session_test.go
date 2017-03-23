@@ -303,6 +303,8 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 		expectedCommitResponse protocol.PollerCommitResult
 		expectValidate         bool
 		expectReconcile        bool
+		actionCount            int
+		expectedZone           string
 		reconcileValidateErr   error
 	}{
 		/*
@@ -335,6 +337,8 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 				},
 			},
 			expectValidate: true,
+			actionCount:    10,
+			expectedZone:   "pzUFXMulHf",
 		},
 		/*
 			{
@@ -546,7 +550,7 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 
 			if tt.expectValidate {
 				reconciler.EXPECT().ValidateChecks(gomock.Any()).Do(func(cp poller.ChecksPreparing) {
-					assert.Len(t, cp.GetActionableChecks(), 1)
+					assert.Len(t, cp.GetActionableChecks(), tt.actionCount)
 				}).Return(tt.reconcileValidateErr).AnyTimes()
 			}
 
@@ -564,7 +568,7 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 
 					assert.Equal(t, expected.Version, resp.Result.Version)
 					assert.Equal(t, expected.Status, resp.Result.Status)
-					assert.Equal(t, "zn1", resp.Result.ZoneId)
+					assert.Equal(t, tt.expectedZone, resp.Result.ZoneId)
 				}
 
 			})

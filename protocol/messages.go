@@ -256,9 +256,9 @@ func DecodePollerPrepareStartRequest(frame *FrameMsg) *PollerPrepareStartRequest
 
 // PollerPrepareBlockParams is the params of a message with method=MethodPollerPrepareBlock
 type PollerPrepareBlockParams struct {
-	ZoneId  string            `json:"zone_id"`
-	Version int               `json:"version"`
-	Block   *[]*check.CheckIn `json:"block"`
+	ZoneId  string           `json:"zone_id"`
+	Version int              `json:"version"`
+	Block   []*check.CheckIn `json:"block"`
 }
 
 type PollerPrepareBlockRequest struct {

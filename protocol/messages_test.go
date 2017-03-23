@@ -44,7 +44,7 @@ func TestDecodePollerPrepareBlockRequest(t *testing.T) {
 	msg := protocol.DecodePollerPrepareBlockRequest(&frame)
 	require.NotNil(t, msg)
 
-	assert.Len(t, *msg.Params.Block, 10)
+	assert.Len(t, msg.Params.Block, 10)
 }
 
 func TestParamsDecode_PollerPrepareBlockParams(t *testing.T) {
