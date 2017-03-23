@@ -19,6 +19,7 @@ package poller_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/golang/mock/gomock"
 	"github.com/racker/rackspace-monitoring-poller/config"
@@ -307,25 +308,25 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 		expectedZone           string
 		reconcileValidateErr   error
 	}{
-		/*
-			{
-				name:       "normal",
-				prepareSeq: "normal",
-				commitSeq:  "5",
-				expectedPrepResponses: []protocol.PollerPrepareResult{
-					{
-						Status:  "prepared",
-						Version: 5,
-					},
-				},
-				expectedCommitResponse: protocol.PollerCommitResult{
-					Status:  "committed",
+		{
+			name:       "normal",
+			prepareSeq: "normal",
+			commitSeq:  "5",
+			expectedPrepResponses: []protocol.PollerPrepareResult{
+				{
+					Status:  "prepared",
 					Version: 5,
 				},
-				expectValidate:  true,
-				expectReconcile: true,
 			},
-		*/
+			expectedCommitResponse: protocol.PollerCommitResult{
+				Status:  "committed",
+				Version: 5,
+			},
+			expectValidate:  true,
+			expectReconcile: true,
+			actionCount:     1,
+			expectedZone:    "zn1",
+		},
 		{
 			name:       "larger",
 			prepareSeq: "larger",
@@ -340,194 +341,218 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 			actionCount:    10,
 			expectedZone:   "pzUFXMulHf",
 		},
-		/*
-			{
-				name:       "oldPrepare",
-				prepareSeq: "oldPrepare",
-				commitSeq:  "5",
-				expectedPrepResponses: []protocol.PollerPrepareResult{
-					{
-						Status:  "ignored",
-						Version: 4,
-					},
-					{
-						Status:  "prepared",
-						Version: 5,
-					},
+		{
+			name:       "oldPrepare",
+			prepareSeq: "oldPrepare",
+			commitSeq:  "5",
+			expectedPrepResponses: []protocol.PollerPrepareResult{
+				{
+					Status:  "ignored",
+					Version: 4,
 				},
-				expectedCommitResponse: protocol.PollerCommitResult{
-					Status:  "committed",
+				{
+					Status:  "prepared",
 					Version: 5,
 				},
-				expectValidate:  true,
-				expectReconcile: true,
 			},
-			{
-				name:       "wrongCommit",
-				prepareSeq: "normal",
-				commitSeq:  "6",
-				expectedPrepResponses: []protocol.PollerPrepareResult{
-					{
-						Status:  "prepared",
-						Version: 5,
-					},
+			expectedCommitResponse: protocol.PollerCommitResult{
+				Status:  "committed",
+				Version: 5,
+			},
+			expectValidate:  true,
+			expectReconcile: true,
+			actionCount:     1,
+			expectedZone:    "zn1",
+		},
+		{
+			name:       "wrongCommit",
+			prepareSeq: "normal",
+			commitSeq:  "6",
+			expectedPrepResponses: []protocol.PollerPrepareResult{
+				{
+					Status:  "prepared",
+					Version: 5,
 				},
-				expectedCommitResponse: protocol.PollerCommitResult{
-					Status:  "ignored",
+			},
+			expectedCommitResponse: protocol.PollerCommitResult{
+				Status:  "ignored",
+				Version: 6,
+			},
+			expectValidate:  true,
+			expectReconcile: false,
+			actionCount:     1,
+			expectedZone:    "zn1",
+		},
+		{
+			name:       "abort",
+			prepareSeq: "abort",
+			commitSeq:  "",
+			expectedPrepResponses: []protocol.PollerPrepareResult{
+				{
+					Status:  "aborted",
+					Version: 5,
+				},
+			},
+			expectValidate:  true,
+			expectReconcile: false,
+			actionCount:     1,
+			expectedZone:    "zn1",
+		},
+		{
+			name:       "badDirective",
+			prepareSeq: "badDirective",
+			commitSeq:  "",
+			expectedPrepResponses: []protocol.PollerPrepareResult{
+				{
+					Status:  "failed",
+					Version: 5,
+				},
+			},
+			expectValidate:  true,
+			expectReconcile: false,
+			actionCount:     1,
+			expectedZone:    "zn1",
+		},
+		{
+			name:       "wrongEndVersion",
+			prepareSeq: "wrongEndVersion",
+			commitSeq:  "",
+			expectedPrepResponses: []protocol.PollerPrepareResult{
+				{
+					Status:  "failed",
 					Version: 6,
 				},
-				expectValidate:  true,
-				expectReconcile: false,
 			},
-			{
-				name:       "abort",
-				prepareSeq: "abort",
-				commitSeq:  "",
-				expectedPrepResponses: []protocol.PollerPrepareResult{
-					{
-						Status:  "aborted",
-						Version: 5,
-					},
+			expectValidate:  true,
+			expectReconcile: false,
+			actionCount:     1,
+			expectedZone:    "zn1",
+		},
+		{
+			name:       "missingBlock",
+			prepareSeq: "missingBlock",
+			commitSeq:  "",
+			expectedPrepResponses: []protocol.PollerPrepareResult{
+				{
+					Status:  "failed",
+					Version: 5,
 				},
-				expectValidate:  true,
-				expectReconcile: false,
 			},
-			{
-				name:       "badDirective",
-				prepareSeq: "badDirective",
-				commitSeq:  "",
-				expectedPrepResponses: []protocol.PollerPrepareResult{
-					{
-						Status:  "failed",
-						Version: 5,
-					},
+			expectValidate:  true,
+			expectReconcile: false,
+			actionCount:     1,
+			expectedZone:    "zn1",
+		},
+		{
+			name:       "wrongBlockVer",
+			prepareSeq: "wrongBlockVer",
+			commitSeq:  "",
+			expectedPrepResponses: []protocol.PollerPrepareResult{
+				{
+					Status:  "failed",
+					Version: 5,
 				},
-				expectValidate:  true,
-				expectReconcile: false,
 			},
-			{
-				name:       "wrongEndVersion",
-				prepareSeq: "wrongEndVersion",
-				commitSeq:  "",
-				expectedPrepResponses: []protocol.PollerPrepareResult{
-					{
-						Status:  "failed",
-						Version: 6,
-					},
+			expectValidate:  true,
+			expectReconcile: false,
+			actionCount:     1,
+			expectedZone:    "zn1",
+		},
+		{
+			name:       "missingInManifest",
+			prepareSeq: "missingInManifest",
+			commitSeq:  "",
+			expectedPrepResponses: []protocol.PollerPrepareResult{
+				{
+					Status:  "failed",
+					Version: 5,
 				},
-				expectValidate:  true,
-				expectReconcile: false,
 			},
-			{
-				name:       "missingBlock",
-				prepareSeq: "missingBlock",
-				commitSeq:  "",
-				expectedPrepResponses: []protocol.PollerPrepareResult{
-					{
-						Status:  "failed",
-						Version: 5,
-					},
+			expectValidate:  true,
+			expectReconcile: false,
+			actionCount:     1,
+			expectedZone:    "zn1",
+		},
+		{
+			name:       "olderThanCommitted",
+			prepareSeq: "olderThanCommitted",
+			commitSeq:  "",
+			expectedPrepResponses: []protocol.PollerPrepareResult{
+				{
+					Status:  "ignored",
+					Version: -1,
 				},
-				expectValidate:  true,
-				expectReconcile: false,
 			},
-			{
-				name:       "wrongBlockVer",
-				prepareSeq: "wrongBlockVer",
-				commitSeq:  "",
-				expectedPrepResponses: []protocol.PollerPrepareResult{
-					{
-						Status:  "failed",
-						Version: 5,
-					},
+			expectValidate:  false,
+			expectReconcile: false,
+			actionCount:     1,
+			expectedZone:    "zn1",
+		},
+		{
+			name:       "badStartAction",
+			prepareSeq: "badStartAction",
+			commitSeq:  "",
+			expectedPrepResponses: []protocol.PollerPrepareResult{
+				{
+					Status:  "failed",
+					Version: 5,
 				},
-				expectValidate:  true,
-				expectReconcile: false,
 			},
-			{
-				name:       "missingInManifest",
-				prepareSeq: "missingInManifest",
-				commitSeq:  "",
-				expectedPrepResponses: []protocol.PollerPrepareResult{
-					{
-						Status:  "failed",
-						Version: 5,
-					},
+			expectValidate:  false,
+			expectReconcile: false,
+			actionCount:     1,
+			expectedZone:    "zn1",
+		},
+		{
+			name:       "reconcilerValidateError",
+			prepareSeq: "normal",
+			commitSeq:  "",
+			expectedPrepResponses: []protocol.PollerPrepareResult{
+				{
+					Status:  "failed",
+					Version: 5,
 				},
-				expectValidate:  true,
-				expectReconcile: false,
 			},
-			{
-				name:       "olderThanCommitted",
-				prepareSeq: "olderThanCommitted",
-				commitSeq:  "",
-				expectedPrepResponses: []protocol.PollerPrepareResult{
-					{
-						Status:  "ignored",
-						Version: -1,
-					},
+			expectValidate:       true,
+			reconcileValidateErr: errors.New("Some kind of inconsistency"),
+			expectReconcile:      false,
+			actionCount:          1,
+			expectedZone:         "zn1",
+		},
+		{
+			name:       "endNoPrep",
+			prepareSeq: "endNoPrep",
+			commitSeq:  "",
+			expectedPrepResponses: []protocol.PollerPrepareResult{
+				{
+					Status:  "failed",
+					Version: 5,
 				},
-				expectValidate:  false,
-				expectReconcile: false,
 			},
-			{
-				name:       "badStartAction",
-				prepareSeq: "badStartAction",
-				commitSeq:  "",
-				expectedPrepResponses: []protocol.PollerPrepareResult{
-					{
-						Status:  "failed",
-						Version: 5,
-					},
+			expectValidate:  false,
+			expectReconcile: false,
+			actionCount:     1,
+			expectedZone:    "zn1",
+		},
+		{
+			name:       "newSupercedesInProgress",
+			prepareSeq: "newSupercedesInProgress",
+			commitSeq:  "",
+			expectedPrepResponses: []protocol.PollerPrepareResult{
+				{
+					Status:  "ignored",
+					Version: 5,
 				},
-				expectValidate:  false,
-				expectReconcile: false,
-			},
-			{
-				name:       "reconcilerValidateError",
-				prepareSeq: "normal",
-				commitSeq:  "",
-				expectedPrepResponses: []protocol.PollerPrepareResult{
-					{
-						Status:  "failed",
-						Version: 5,
-					},
+				{
+					Status:  "prepared",
+					Version: 6,
 				},
-				expectValidate:       true,
-				reconcileValidateErr: errors.New("Some kind of inconsistency"),
-				expectReconcile:      false,
 			},
-			{
-				name:       "endNoPrep",
-				prepareSeq: "endNoPrep",
-				commitSeq:  "",
-				expectedPrepResponses: []protocol.PollerPrepareResult{
-					{
-						Status:  "failed",
-						Version: 5,
-					},
-				},
-				expectValidate:  false,
-				expectReconcile: false,
-			},
-			{
-				name:       "newSupercedesInProgress",
-				prepareSeq: "newSupercedesInProgress",
-				commitSeq:  "",
-				expectedPrepResponses: []protocol.PollerPrepareResult{
-					{
-						Status:  "ignored",
-						Version: 5,
-					},
-					{
-						Status:  "prepared",
-						Version: 6,
-					},
-				},
-				expectValidate:  true,
-				expectReconcile: false,
-			},
-		*/
+			expectValidate:  true,
+			expectReconcile: false,
+			actionCount:     1,
+			expectedZone:    "zn1",
+		},
 	}
 
 	for _, tt := range tests {
