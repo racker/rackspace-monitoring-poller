@@ -56,12 +56,12 @@ func (ac ActionableCheck) String() string {
 
 // ChecksPreparing conveys ActionableCheck instances are are ready to be validated.
 type ChecksPreparing interface {
-	GetActionableChecks() (actionableChecks []ActionableCheck)
+	GetActionableChecks() (actionableChecks []*ActionableCheck)
 }
 
 // ChecksPrepared conveys ActionableCheck instances that are fully populated and ready to be reconciled
 type ChecksPrepared interface {
-	GetActionableChecks() (actionableChecks []ActionableCheck)
+	GetActionableChecks() (actionableChecks []*ActionableCheck)
 }
 
 type ChecksPreparation struct {
@@ -69,7 +69,7 @@ type ChecksPreparation struct {
 	Version int
 
 	// Actions is a map of checkId->ActionableCheck
-	Actions map[string] /*checkId*/ ActionableCheck
+	Actions map[string] /*checkId*/ *ActionableCheck
 }
 
 // NewChecksPreparation initiates a new checks preparation session.
@@ -78,7 +78,7 @@ func NewChecksPreparation(zoneId string, version int, manifest []protocol.Poller
 	cp := &ChecksPreparation{
 		ZoneId:  zoneId,
 		Version: version,
-		Actions: make(map[string]ActionableCheck),
+		Actions: make(map[string]*ActionableCheck),
 	}
 
 	for _, m := range manifest {
@@ -87,7 +87,7 @@ func NewChecksPreparation(zoneId string, version int, manifest []protocol.Poller
 		if actionType == ActionTypeUnknown {
 			return nil, errors.New(fmt.Sprintf("Unsupported action in manifest: action=%s, check=%s", m.Action, m.Id))
 		}
-		cp.Actions[m.Id] = ActionableCheck{
+		cp.Actions[m.Id] = &ActionableCheck{
 			Action: actionType,
 			// "pre populate" actions we don't expect to see defined
 			Populated: !doesCheckPreparationNeedPopulating(m.Action),
@@ -130,8 +130,8 @@ func (cp *ChecksPreparation) GetLogPrefix() string {
 	return fmt.Sprintf("checks.preparation zoneid=%v, version=%v", cp.ZoneId, cp.Version)
 }
 
-func (cp *ChecksPreparation) GetActionableChecks() (actionableChecks []ActionableCheck) {
-	actionableChecks = make([]ActionableCheck, 0, len(cp.Actions))
+func (cp *ChecksPreparation) GetActionableChecks() (actionableChecks []*ActionableCheck) {
+	actionableChecks = make([]*ActionableCheck, 0, len(cp.Actions))
 	for _, ac := range cp.Actions {
 		actionableChecks = append(actionableChecks, ac)
 	}
@@ -152,10 +152,19 @@ func (cp *ChecksPreparation) IsOlder(version int) bool {
 
 func (cp *ChecksPreparation) AddDefinitions(block []*check.CheckIn) {
 	for _, ch := range block {
-		actionable := cp.Actions[ch.Id]
+		actionable, ok := cp.Actions[ch.Id]
+		if !ok {
+			// place "undefined" entry for validation
+			cp.Actions[ch.Id] = &ActionableCheck{}
+			log.WithFields(log.Fields{
+				"prefix":   cp.GetLogPrefix(),
+				"check_id": ch.Id,
+			}).Warn("Trying to add definition for check that wasn't previously declared")
+			continue
+		}
 		actionable.Populated = true
 		actionable.CheckIn = *ch
-		cp.Actions[ch.Id] = actionable
+
 		if log.GetLevel() >= log.DebugLevel {
 			log.WithFields(log.Fields{
 				"prefix":   cp.GetLogPrefix(),
