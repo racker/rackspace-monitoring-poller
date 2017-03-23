@@ -363,15 +363,11 @@ func (ch *Base) readLimit(conn io.Reader, limit int64) ([]byte, error) {
 func (ch *Base) PrintDefaults() {
 	var targetAlias string
 	var targetHostname string
-	var targetResolver string
 	if ch.TargetAlias != nil {
 		targetAlias = *ch.TargetAlias
 	}
 	if ch.TargetHostname != nil {
 		targetHostname = *ch.TargetHostname
-	}
-	if ch.TargetResolver != nil {
-		targetResolver = *ch.TargetResolver
 	}
 	log.WithFields(log.Fields{
 		"type":            ch.CheckType,
@@ -381,7 +377,7 @@ func (ch *Base) PrintDefaults() {
 		"ipaddresses":     ch.IpAddresses,
 		"target_alias":    targetAlias,
 		"target_hostname": targetHostname,
-		"target_resolver": targetResolver,
+		"target_resolver": ch.TargetResolver,
 		"details":         string(*ch.RawDetails),
 	}).Infof("New check %v", ch.GetID())
 }

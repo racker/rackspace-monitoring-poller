@@ -169,7 +169,7 @@ func (s *EleScheduler) reconcile(cp ChecksPrepared) {
 				log.WithField("checkId", ac.Id).Warn("Reconciling was told to start a check, but it already existed.")
 				existingCheck.Cancel()
 			}
-			err := s.initiateCheck(ac)
+			err := s.initiateCheck(*ac)
 			if err != nil {
 				log.WithField("details", string(*ac.RawDetails)).Warn("Unable to initiate check")
 			}
@@ -181,7 +181,7 @@ func (s *EleScheduler) reconcile(cp ChecksPrepared) {
 			} else {
 				log.WithField("checkId", ac.Id).Warn("Reconciling was told to restart a check, but it does not exist.")
 			}
-			err := s.initiateCheck(ac)
+			err := s.initiateCheck(*ac)
 			if err != nil {
 				log.WithField("details", string(*ac.RawDetails)).Warn("Unable to initiate check")
 			}

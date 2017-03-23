@@ -32,7 +32,7 @@ type CheckHeader struct {
 	IpAddresses    map[string]string `json:"ip_addresses"`
 	TargetAlias    *string           `json:"target_alias"`
 	TargetHostname *string           `json:"target_hostname"`
-	TargetResolver *string           `json:"target_resolver"`
+	TargetResolver uint64            `json:"target_resolver"`
 }
 
 // CheckIn is used for unmarshalling received check requests.

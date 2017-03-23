@@ -280,12 +280,12 @@ func TestEleSession_HandshakeTimeoutStoppedOnSuccess(t *testing.T) {
 	err := decoder.Decode(handshakeReq)
 	require.NoError(t, err)
 	/*
-		        soon after this the handshake response is "sent back"
-		       /   auth timeout would have fired here, but should be stopped
-		      /   /      end of test
-		     /   /      /       first heartbeat would have been sent
-	      	/   /      /       /
-		  0    10     20      30   ms
+			        soon after this the handshake response is "sent back"
+			       /   auth timeout would have fired here, but should be stopped
+			      /   /      end of test
+			     /   /      /       first heartbeat would have been sent
+		      	/   /      /       /
+			  0    10     20      30   ms
 	*/
 
 	prepareHandshakeResponse(30, readsHere)
@@ -304,6 +304,8 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 		expectedCommitResponse protocol.PollerCommitResult
 		expectValidate         bool
 		expectReconcile        bool
+		actionCount            int
+		expectedZone           string
 		reconcileValidateErr   error
 	}{
 		{
@@ -322,6 +324,22 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 			},
 			expectValidate:  true,
 			expectReconcile: true,
+			actionCount:     1,
+			expectedZone:    "zn1",
+		},
+		{
+			name:       "larger",
+			prepareSeq: "larger",
+			commitSeq:  "",
+			expectedPrepResponses: []protocol.PollerPrepareResult{
+				{
+					Status:  "prepared",
+					Version: 618,
+				},
+			},
+			expectValidate: true,
+			actionCount:    10,
+			expectedZone:   "pzUFXMulHf",
 		},
 		{
 			name:       "oldPrepare",
@@ -343,6 +361,8 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 			},
 			expectValidate:  true,
 			expectReconcile: true,
+			actionCount:     1,
+			expectedZone:    "zn1",
 		},
 		{
 			name:       "wrongCommit",
@@ -360,6 +380,8 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 			},
 			expectValidate:  true,
 			expectReconcile: false,
+			actionCount:     1,
+			expectedZone:    "zn1",
 		},
 		{
 			name:       "abort",
@@ -373,6 +395,8 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 			},
 			expectValidate:  true,
 			expectReconcile: false,
+			actionCount:     1,
+			expectedZone:    "zn1",
 		},
 		{
 			name:       "badDirective",
@@ -386,6 +410,8 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 			},
 			expectValidate:  true,
 			expectReconcile: false,
+			actionCount:     1,
+			expectedZone:    "zn1",
 		},
 		{
 			name:       "wrongEndVersion",
@@ -399,6 +425,8 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 			},
 			expectValidate:  true,
 			expectReconcile: false,
+			actionCount:     1,
+			expectedZone:    "zn1",
 		},
 		{
 			name:       "missingBlock",
@@ -412,6 +440,8 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 			},
 			expectValidate:  true,
 			expectReconcile: false,
+			actionCount:     1,
+			expectedZone:    "zn1",
 		},
 		{
 			name:       "wrongBlockVer",
@@ -425,6 +455,8 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 			},
 			expectValidate:  true,
 			expectReconcile: false,
+			actionCount:     1,
+			expectedZone:    "zn1",
 		},
 		{
 			name:       "missingInManifest",
@@ -438,6 +470,8 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 			},
 			expectValidate:  true,
 			expectReconcile: false,
+			actionCount:     1,
+			expectedZone:    "zn1",
 		},
 		{
 			name:       "olderThanCommitted",
@@ -451,6 +485,8 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 			},
 			expectValidate:  false,
 			expectReconcile: false,
+			actionCount:     1,
+			expectedZone:    "zn1",
 		},
 		{
 			name:       "badStartAction",
@@ -464,6 +500,8 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 			},
 			expectValidate:  false,
 			expectReconcile: false,
+			actionCount:     1,
+			expectedZone:    "zn1",
 		},
 		{
 			name:       "reconcilerValidateError",
@@ -478,6 +516,8 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 			expectValidate:       true,
 			reconcileValidateErr: errors.New("Some kind of inconsistency"),
 			expectReconcile:      false,
+			actionCount:          1,
+			expectedZone:         "zn1",
 		},
 		{
 			name:       "endNoPrep",
@@ -491,6 +531,8 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 			},
 			expectValidate:  false,
 			expectReconcile: false,
+			actionCount:     1,
+			expectedZone:    "zn1",
 		},
 		{
 			name:       "newSupercedesInProgress",
@@ -508,6 +550,8 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 			},
 			expectValidate:  true,
 			expectReconcile: false,
+			actionCount:     1,
+			expectedZone:    "zn1",
 		},
 	}
 
@@ -531,7 +575,7 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 
 			if tt.expectValidate {
 				reconciler.EXPECT().ValidateChecks(gomock.Any()).Do(func(cp poller.ChecksPreparing) {
-					assert.Len(t, cp.GetActionableChecks(), 1)
+					assert.Len(t, cp.GetActionableChecks(), tt.actionCount)
 				}).Return(tt.reconcileValidateErr).AnyTimes()
 			}
 
@@ -549,7 +593,7 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 
 					assert.Equal(t, expected.Version, resp.Result.Version)
 					assert.Equal(t, expected.Status, resp.Result.Status)
-					assert.Equal(t, "zn1", resp.Result.ZoneId)
+					assert.Equal(t, tt.expectedZone, resp.Result.ZoneId)
 				}
 
 			})
