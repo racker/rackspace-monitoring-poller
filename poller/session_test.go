@@ -236,6 +236,63 @@ func TestEleSession_HandshakeError(t *testing.T) {
 	eventConsumer.waitFor(t, 10*time.Millisecond, poller.EventTypeReadError, gomock.Any())
 }
 
+func TestEleSession_HandshakeTimeout(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	eleConn, reconciler, _, readsHere := setupConnStreamExpectations(ctrl)
+	defer readsHere.Close()
+
+	eleConn.EXPECT().Close()
+
+	eventConsumer := newPhasingEventConsumer()
+	cfg := config.NewConfig("1-2-3", false)
+	cfg.TimeoutAuth = 10 * time.Millisecond
+	es := poller.NewSession(context.Background(), eleConn, reconciler, cfg)
+	es.RegisterEventConsumer(eventConsumer)
+	defer es.Close()
+
+	eventConsumer.waitFor(t, 2*cfg.TimeoutAuth, poller.EventTypeAuthTimeout, gomock.Any())
+}
+
+func TestEleSession_HandshakeTimeoutStoppedOnSuccess(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	eleConn, reconciler, writesHere, readsHere := setupConnStreamExpectations(ctrl)
+	defer readsHere.Close()
+
+	origTimestamper := installDeterministicTimestamper(1000, 2000)
+	defer utils.InstallAlternateTimestampFunc(origTimestamper)
+
+	eventConsumer := newPhasingEventConsumer()
+	cfg := config.NewConfig("1-2-3", false)
+	cfg.TimeoutAuth = 10 * time.Millisecond
+	es := poller.NewSession(context.Background(), eleConn, reconciler, cfg)
+	es.RegisterEventConsumer(eventConsumer)
+	defer es.Close()
+
+	// decoder is used to consume frames sent out by the poller under test
+	decoder := json.NewDecoder(writesHere)
+
+	// We should see a handshake, but can ignore it
+	handshakeReq := new(protocol.HandshakeRequest)
+	err := decoder.Decode(handshakeReq)
+	require.NoError(t, err)
+	/*
+		        soon after this the handshake response is "sent back"
+		       /   auth timeout would have fired here, but should be stopped
+		      /   /      end of test
+		     /   /      /       first heartbeat would have been sent
+	      	/   /      /       /
+		  0    10     20      30   ms
+	*/
+
+	prepareHandshakeResponse(30, readsHere)
+
+	eventConsumer.assertNoEvent(t, 2*cfg.TimeoutAuth)
+}
+
 func TestEleSession_PollerPrepare(t *testing.T) {
 
 	tests := []struct {

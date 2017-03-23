@@ -40,10 +40,11 @@ type CompletionFrame struct {
 }
 
 const (
-	sendChannelSize    = 128
-	readChannelSize    = 256
-	EventTypeSendError = "SessionSendError"
-	EventTypeReadError = "SessionReadError"
+	sendChannelSize      = 128
+	readChannelSize      = 256
+	EventTypeSendError   = "SessionSendError"
+	EventTypeReadError   = "SessionReadError"
+	EventTypeAuthTimeout = "SessionAuthTimeout"
 )
 
 type prepDetails struct {
@@ -65,7 +66,7 @@ type EleSession struct {
 
 	prepDetails
 
-	config *config.Config
+	cfg *config.Config
 
 	// Used to cancel all go routines
 	ctx    context.Context
@@ -83,8 +84,9 @@ type EleSession struct {
 
 	logPrefix string
 
-	sendCh chan protocol.Frame
-	readCh chan *protocol.FrameMsg
+	sendCh    chan protocol.Frame
+	readCh    chan *protocol.FrameMsg
+	authTimer *time.Timer
 
 	heartbeatsStarter    sync.Once
 	heartbeatInterval    time.Duration
@@ -97,13 +99,13 @@ type EleSession struct {
 	}
 }
 
-func NewSession(ctx context.Context, connection Connection, checksReconciler ChecksReconciler, config *config.Config) Session {
+func NewSession(ctx context.Context, connection Connection, checksReconciler ChecksReconciler, cfg *config.Config) Session {
 	session := &EleSession{
 		connection: connection,
 		prepDetails: prepDetails{
 			reconciler: checksReconciler,
 		},
-		config:             config,
+		cfg:                cfg,
 		dec:                json.NewDecoder(connection.GetFarendReader()),
 		seq:                0, // so that handshake req gets ID 1 after incrementing
 		sendCh:             make(chan protocol.Frame, sendChannelSize),
@@ -123,8 +125,15 @@ func NewSession(ctx context.Context, connection Connection, checksReconciler Che
 // Auth sends a handshake request with token, agent id, name,
 // and process version
 func (s *EleSession) Auth() {
-	request := protocol.NewHandshakeRequest(s.config)
+	request := protocol.NewHandshakeRequest(s.cfg)
 	s.Send(request)
+	if s.cfg.TimeoutAuth > 0 {
+		s.authTimer = time.AfterFunc(s.cfg.TimeoutAuth, func() {
+			log.WithField("prefix", s.logPrefix).Warn("Closing connection due to expired auth")
+			s.connection.Close()
+			s.EmitEvent(utils.NewEvent(EventTypeAuthTimeout, nil))
+		})
+	}
 }
 
 // Send stages a frame for sending after setting the target and source.
@@ -162,6 +171,10 @@ func (s *EleSession) handleResponse(resp *protocol.FrameMsg) error {
 	if req := s.getCompletionRequest(resp); req != nil {
 		switch req.Method {
 		case protocol.MethodHandshakeHello:
+			if s.authTimer != nil {
+				s.authTimer.Stop()
+				s.authTimer = nil
+			}
 			resp := protocol.DecodeHandshakeResponse(resp)
 			if resp.Error != nil {
 				log.WithFields(log.Fields{
@@ -189,12 +202,12 @@ func (s *EleSession) handleResponse(resp *protocol.FrameMsg) error {
 
 // GetReadDeadline adds sessions's heartbeat interval to configured read deadline
 func (s *EleSession) computeReadDeadline() time.Time {
-	return s.config.ComputeReadDeadline(s.heartbeatInterval)
+	return s.cfg.ComputeReadDeadline(s.heartbeatInterval)
 }
 
 // GetWriteDeadline adds sessions's heartbeat interval to configured write deadline
 func (s *EleSession) computeWriteDeadline() time.Time {
-	return s.config.ComputeWriteDeadline(s.heartbeatInterval)
+	return s.cfg.ComputeWriteDeadline(s.heartbeatInterval)
 }
 
 func (s *EleSession) runFrameReading() {
@@ -334,7 +347,7 @@ func (s *EleSession) handlePollerPrepare(f *protocol.FrameMsg) {
 		return
 	}
 
-	s.prepDetails.prepareToEndTimer = time.NewTimer(s.config.TimeoutPrepareEnd)
+	s.prepDetails.prepareToEndTimer = time.NewTimer(s.cfg.TimeoutPrepareEnd)
 
 	// It's all good, so note it and proceed
 	s.prepDetails.srcPrepMsg = f
@@ -357,7 +370,7 @@ func (s *EleSession) handlePollerPrepareBlock(f *protocol.FrameMsg) {
 	if !t.Stop() {
 		<-t.C
 	}
-	t.Reset(s.config.TimeoutPrepareEnd)
+	t.Reset(s.cfg.TimeoutPrepareEnd)
 }
 
 func (s *EleSession) handlePollerPrepareEnd(f *protocol.FrameMsg) {

@@ -43,6 +43,7 @@ const (
 	DefaultTimeoutRead       = 10 * time.Second
 	DefaultTimeoutWrite      = 10 * time.Second
 	DefaultTimeoutPrepareEnd = 60 * time.Second
+	DefaultTimeoutAuth       = 10 * time.Second
 	DefaultAgentId           = "-poller-"
 )
 
@@ -69,6 +70,7 @@ type Config struct {
 	// Timeouts
 	TimeoutRead  time.Duration
 	TimeoutWrite time.Duration
+	TimeoutAuth  time.Duration
 	// TimeoutPrepareEnd declares the max time to elapse between poller.prepare and poller.prepare.end, but
 	// is reset upon receipt of each poller.prepare.block.
 	TimeoutPrepareEnd time.Duration
@@ -94,6 +96,7 @@ func NewConfig(guid string, useStaging bool) *Config {
 	cfg.TimeoutRead = DefaultTimeoutRead
 	cfg.TimeoutWrite = DefaultTimeoutWrite
 	cfg.TimeoutPrepareEnd = DefaultTimeoutPrepareEnd
+	cfg.TimeoutAuth = DefaultTimeoutAuth
 	cfg.UseStaging = useStaging
 	if useStaging {
 		cfg.SrvQueries = DefaultStagingSrvEndpoints
