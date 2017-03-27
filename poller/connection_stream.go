@@ -126,8 +126,8 @@ func (cs *EleConnectionStream) getRegisteredConnectionNames() []string {
 }
 
 func (cs *EleConnectionStream) runRegistrationMetricsCoordinator() {
-	log.Debug("runRegistrationMetricsCoordinator starting")
-	defer log.Debug("runRegistrationMetricsCoordinator exiting")
+	log.WithField("prefix", cs.GetLogPrefix()).Debug("Registration/Metrics Coordinator starting")
+	defer log.WithField("prefix", cs.GetLogPrefix()).Debug("Registration/Metrics Coordinator exiting")
 
 	for {
 		select {
