@@ -22,6 +22,8 @@ import (
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/utils"
 	"github.com/satori/go.uuid"
+	"os"
+	"time"
 )
 
 func Run(configFilePath string, insecure bool) {
@@ -49,6 +51,10 @@ func Run(configFilePath string, insecure bool) {
 			case <-signalNotify:
 				log.Info("Shutdown...")
 				cancel()
+				time.AfterFunc(gracefulShutdownTimeout, func() {
+					log.Warn("Forcing immediate shutdown")
+					os.Exit(0)
+				})
 			case <-stream.Done(): // for cancel to propagate
 				return
 			}

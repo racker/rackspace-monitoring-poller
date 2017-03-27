@@ -43,6 +43,10 @@ var (
 	CheckSpreadInMilliseconds = 30000
 )
 
+const (
+	gracefulShutdownTimeout = 5 * time.Second
+)
+
 type LogPrefixGetter interface {
 	GetLogPrefix() string
 }
