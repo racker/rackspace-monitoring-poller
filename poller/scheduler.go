@@ -150,7 +150,7 @@ func (s *EleScheduler) ValidateChecks(cp ChecksPreparing) error {
 }
 
 func (s *EleScheduler) reconcile(cp ChecksPrepared) {
-	log.WithField("cp", cp).Debug("Reconciling prepared checks")
+	log.WithField("cp", cp.Stringer()).Debug("Reconciling prepared checks")
 
 	// remainder will be used at the end to find ones were implicitly removed and need to be canceled out
 	remainder := set.NewThreadUnsafeSet()

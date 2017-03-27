@@ -480,7 +480,7 @@ func (s *EleSession) runHeartbeats() {
 			s.prepareHeartbeatMeasurement(req)
 			log.WithFields(log.Fields{
 				"prefix": s.logPrefix,
-				"req":    req,
+				"req":    req.Stringer(),
 			}).Debug("Sending heartbeat")
 			s.Send(req)
 

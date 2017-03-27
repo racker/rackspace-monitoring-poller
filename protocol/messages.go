@@ -123,6 +123,14 @@ func (r HeartbeatRequest) Encode() ([]byte, error) {
 	return json.Marshal(r)
 }
 
+func (r HeartbeatRequest) Stringer() string {
+	bytes, err := r.Encode()
+	if err != nil {
+		return ""
+	}
+	return string(bytes)
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Check Schedule Get
 
