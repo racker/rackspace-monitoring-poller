@@ -62,7 +62,6 @@ type ChecksPreparing interface {
 // ChecksPrepared conveys ActionableCheck instances that are fully populated and ready to be reconciled
 type ChecksPrepared interface {
 	GetActionableChecks() (actionableChecks []*ActionableCheck)
-	Stringer() string
 }
 
 type ChecksPreparation struct {
@@ -127,11 +126,8 @@ func doesCheckPreparationNeedPopulating(action string) bool {
 	return action != protocol.PrepareActionContinue
 }
 
-func (cp *ChecksPreparation) Stringer() string {
-	bytes, err := json.Marshal(cp)
-	if err != nil {
-		return ""
-	}
+func (cp *ChecksPreparation) String() string {
+	bytes, _ := json.Marshal(cp)
 	return string(bytes)
 }
 

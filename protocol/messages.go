@@ -123,11 +123,8 @@ func (r HeartbeatRequest) Encode() ([]byte, error) {
 	return json.Marshal(r)
 }
 
-func (r HeartbeatRequest) Stringer() string {
-	bytes, err := r.Encode()
-	if err != nil {
-		return ""
-	}
+func (r HeartbeatRequest) String() string {
+	bytes, _ := r.Encode()
 	return string(bytes)
 }
 
