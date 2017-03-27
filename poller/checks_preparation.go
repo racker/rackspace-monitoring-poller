@@ -43,10 +43,10 @@ const (
 type ActionableCheck struct {
 	check.CheckIn
 
-	Action ActionType
+	Action ActionType `json:"action"`
 	// Populated indicates if the check.CheckIn has been fully populated; however,
 	// this is not applicable if Action is protocol.PrepareActionContinue.
-	Populated bool
+	Populated bool `json:"populated"`
 }
 
 func (ac ActionableCheck) String() string {
@@ -65,11 +65,11 @@ type ChecksPrepared interface {
 }
 
 type ChecksPreparation struct {
-	ZoneId  string
-	Version int
+	ZoneId  string `json:"zone_id"`
+	Version int    `json:"version"`
 
 	// Actions is a map of checkId->ActionableCheck
-	Actions map[string] /*checkId*/ *ActionableCheck
+	Actions map[string] /*checkId*/ *ActionableCheck `json:"actions"`
 }
 
 // NewChecksPreparation initiates a new checks preparation session.
@@ -124,6 +124,11 @@ func mapToActionType(actionStr string) ActionType {
 
 func doesCheckPreparationNeedPopulating(action string) bool {
 	return action != protocol.PrepareActionContinue
+}
+
+func (cp *ChecksPreparation) String() string {
+	bytes, _ := json.Marshal(cp)
+	return string(bytes)
 }
 
 func (cp *ChecksPreparation) GetLogPrefix() string {
