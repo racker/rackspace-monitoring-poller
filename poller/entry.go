@@ -29,8 +29,11 @@ import (
 func Run(configFilePath string, insecure bool) {
 	guid := uuid.NewV4()
 	useStaging := config.IsUsingStaging()
+	features := []map[string]config.Feature{
+		{"poller": config.Feature{Name: "poller", Disabled: false}},
+	}
 
-	cfg := config.NewConfig(guid.String(), useStaging)
+	cfg := config.NewConfig(guid.String(), useStaging, features)
 	if err := cfg.LoadFromFile(configFilePath); err != nil {
 		utils.Die(err, "Failed to load configuration")
 	}

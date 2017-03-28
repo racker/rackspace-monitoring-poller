@@ -73,10 +73,10 @@ func TestConnection_Connect(t *testing.T) {
 
 			conn := poller.NewConnection(tt.url(), tt.guid, reconciler)
 			if tt.expectedErr {
-				err := conn.Connect(tt.ctx, config.NewConfig("1-2-3", false), nil)
+				err := conn.Connect(tt.ctx, config.NewConfig("1-2-3", false, nil), nil)
 				assert.Error(t, err)
 			} else {
-				assert.NoError(t, conn.Connect(tt.ctx, config.NewConfig("1-2-3", false), &tls.Config{
+				assert.NoError(t, conn.Connect(tt.ctx, config.NewConfig("1-2-3", false, nil), &tls.Config{
 					InsecureSkipVerify: true,
 					ServerName:         tt.url(),
 					RootCAs:            nil,

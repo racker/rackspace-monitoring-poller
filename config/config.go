@@ -47,6 +47,11 @@ const (
 	DefaultAgentId           = "-poller-"
 )
 
+type Feature struct {
+	Name     string `json:"name"`
+	Disabled bool   `json:"disabled"`
+}
+
 type Config struct {
 	// Addresses
 	UseSrv     bool
@@ -57,7 +62,7 @@ type Config struct {
 	// Agent Info
 	AgentId        string
 	AgentName      string
-	Features       []map[string]string
+	Features       []map[string]Feature
 	Guid           string
 	BundleVersion  string
 	ProcessVersion string
@@ -84,9 +89,13 @@ type configEntry struct {
 	Sensitive bool
 }
 
-func NewConfig(guid string, useStaging bool) *Config {
+func NewConfig(guid string, useStaging bool, features []map[string]Feature) *Config {
 	cfg := &Config{}
-	cfg.init()
+	if features != nil {
+		cfg.Features = features
+	} else {
+		cfg.Features = make([]map[string]Feature, 0)
+	}
 	cfg.Guid = guid
 	cfg.Token = os.Getenv("AGENT_TOKEN")
 	cfg.AgentId = os.Getenv("AGENT_ID")
@@ -109,10 +118,6 @@ func NewConfig(guid string, useStaging bool) *Config {
 	}
 	cfg.UseSrv = true
 	return cfg
-}
-
-func (cfg *Config) init() {
-	cfg.Features = make([]map[string]string, 0)
 }
 
 // LoadFromFile populates this Config with the values defined in that file and then calls PostProcess.
