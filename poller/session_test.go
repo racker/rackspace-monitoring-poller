@@ -226,7 +226,7 @@ func TestEleSession_HandshakeError(t *testing.T) {
 	defer readsHere.Close()
 
 	eventConsumer := newPhasingEventConsumer()
-	cfg := config.NewConfig("1-2-3", false)
+	cfg := config.NewConfig("1-2-3", false, nil)
 	es := poller.NewSession(context.Background(), eleConn, reconciler, cfg)
 	es.RegisterEventConsumer(eventConsumer)
 	defer es.Close()
@@ -246,7 +246,7 @@ func TestEleSession_HandshakeTimeout(t *testing.T) {
 	eleConn.EXPECT().Close()
 
 	eventConsumer := newPhasingEventConsumer()
-	cfg := config.NewConfig("1-2-3", false)
+	cfg := config.NewConfig("1-2-3", false, nil)
 	cfg.TimeoutAuth = 10 * time.Millisecond
 	es := poller.NewSession(context.Background(), eleConn, reconciler, cfg)
 	es.RegisterEventConsumer(eventConsumer)
@@ -266,7 +266,7 @@ func TestEleSession_HandshakeTimeoutStoppedOnSuccess(t *testing.T) {
 	defer utils.InstallAlternateTimestampFunc(origTimestamper)
 
 	eventConsumer := newPhasingEventConsumer()
-	cfg := config.NewConfig("1-2-3", false)
+	cfg := config.NewConfig("1-2-3", false, nil)
 	cfg.TimeoutAuth = 10 * time.Millisecond
 	es := poller.NewSession(context.Background(), eleConn, reconciler, cfg)
 	es.RegisterEventConsumer(eventConsumer)
@@ -566,7 +566,7 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 			origTimestamper := installDeterministicTimestamper(1000, 2000)
 			defer utils.InstallAlternateTimestampFunc(origTimestamper)
 
-			cfg := config.NewConfig("1-2-3", false)
+			cfg := config.NewConfig("1-2-3", false, nil)
 			es := poller.NewSession(context.Background(), eleConn, reconciler, cfg)
 			defer es.Close()
 

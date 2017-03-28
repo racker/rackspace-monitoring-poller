@@ -25,6 +25,7 @@ import (
 	set "github.com/deckarep/golang-set"
 	"github.com/fsnotify/fsnotify"
 	"github.com/racker/rackspace-monitoring-poller/check"
+	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/protocol"
 	protocheck "github.com/racker/rackspace-monitoring-poller/protocol/check"
 	"github.com/racker/rackspace-monitoring-poller/utils"
@@ -62,7 +63,7 @@ type agent struct {
 	name             string
 	processVersion   string
 	bundleVersion    string
-	features         []map[string]string
+	features         []map[string]config.Feature
 	zones            []string
 	prepareBlockSize int
 
