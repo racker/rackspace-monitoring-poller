@@ -165,7 +165,6 @@ func (r *HostInfoResponse) Encode() ([]byte, error) {
 // Metrics Post
 
 type MetricWrap []map[string]*MetricTVU
-type MetricWrapper []MetricWrap
 
 type MetricTVU struct {
 	Type  string `json:"t"`

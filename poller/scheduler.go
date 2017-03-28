@@ -202,6 +202,13 @@ func (s *EleScheduler) reconcile(cp ChecksPrepared) {
 		delete(s.checks, checkIdToRemoveStr)
 		checkToRemove.Cancel()
 	}
+
+	if log.GetLevel() >= log.DebugLevel {
+		log.WithFields(log.Fields{
+			"prefix": "scheduler",
+			"checks": s.checks,
+		}).Debug("Reconciled and scheduled")
+	}
 }
 
 func (s *EleScheduler) initiateCheck(ac ActionableCheck) error {

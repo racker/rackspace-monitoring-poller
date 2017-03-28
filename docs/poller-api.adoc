@@ -53,6 +53,28 @@ __optional__|<<_frame,Frame>>
 |===
 
 
+[[_metrics_post]]
+=== POST /metrics
+
+==== Parameters
+
+[options="header", cols=".^2,.^3,.^4"]
+|===
+|Type|Name|Schema
+|**Body**|**body** +
+__optional__|<<_checkmetricspostmulti,CheckMetricsPostMulti>>
+|===
+
+
+==== Responses
+
+[options="header", cols=".^2,.^14,.^4"]
+|===
+|HTTP Code|Description|Schema
+|**200**|success|No Content
+|===
+
+
 [[_poller_commit_post]]
 === POST /poller/commit
 
@@ -177,6 +199,55 @@ __required__|string
 |===
 
 
+[[_checkmetricspostmulti]]
+=== CheckMetricsPostMulti
+check_metrics.post_multi
+
+[%hardbreaks]
+__Polymorphism__ : Inheritance
+__Discriminator__ : method
+
+
+[options="header", cols=".^3,.^4"]
+|===
+|Name|Schema
+|**error** +
+__optional__|<<_error,Error>>
+|**id** +
+__required__|integer(int64)
+|**method** +
+__optional__|enum (poller.prepare, poller.prepare.block, poller.prepare.end, poller.commit, check_metrics.post_multi)
+|**params** +
+__optional__|<<_checkmetricspostmulti_params,params>>
+|**source** +
+__required__|string
+|**target** +
+__required__|string
+|**v** +
+__required__|string
+|===
+
+[[_checkmetricspostmulti_params]]
+**params**
+
+[options="header", cols=".^3,.^11,.^4"]
+|===
+|Name|Description|Schema
+|**check_id** +
+__required__||string
+|**check_type** +
+__required__|**Length** : `1 - 64`|string
+|**entity_id** +
+__required__||string
+|**metrics** +
+__required__||< < object > array > array
+|**state** +
+__required__||enum (available, unavailable)
+|**status** +
+__required__|**Length** : `0 - 256`|string
+|===
+
+
 [[_error]]
 === Error
 
@@ -201,7 +272,7 @@ __optional__|<<_error,Error>>
 |**id** +
 __required__|integer(int64)
 |**method** +
-__optional__|enum (poller.prepare, poller.prepare.block, poller.prepare.end, poller.commit)
+__optional__|enum (poller.prepare, poller.prepare.block, poller.prepare.end, poller.commit, check_metrics.post_multi)
 |**source** +
 __required__|string
 |**target** +
@@ -233,7 +304,7 @@ __optional__|<<_error,Error>>
 |**id** +
 __required__|integer(int64)
 |**method** +
-__optional__|enum (poller.prepare, poller.prepare.block, poller.prepare.end, poller.commit)
+__optional__|enum (poller.prepare, poller.prepare.block, poller.prepare.end, poller.commit, check_metrics.post_multi)
 |**params** +
 __optional__|<<_pollercommit_params,params>>
 |**source** +
@@ -251,9 +322,9 @@ __required__|string
 |===
 |Name|Schema
 |**version** +
-__optional__|<<_partitionversion,PartitionVersion>>
+__required__|<<_partitionversion,PartitionVersion>>
 |**zone_id** +
-__optional__|<<_zoneid,ZoneId>>
+__required__|<<_zoneid,ZoneId>>
 |===
 
 
@@ -274,7 +345,7 @@ __optional__|<<_error,Error>>
 |**id** +
 __required__|integer(int64)
 |**method** +
-__optional__|enum (poller.prepare, poller.prepare.block, poller.prepare.end, poller.commit)
+__optional__|enum (poller.prepare, poller.prepare.block, poller.prepare.end, poller.commit, check_metrics.post_multi)
 |**result** +
 __optional__|<<_pollercommitresponse_result,result>>
 |**source** +
@@ -317,7 +388,7 @@ __optional__|<<_error,Error>>
 |**id** +
 __required__|integer(int64)
 |**method** +
-__optional__|enum (poller.prepare, poller.prepare.block, poller.prepare.end, poller.commit)
+__optional__|enum (poller.prepare, poller.prepare.block, poller.prepare.end, poller.commit, check_metrics.post_multi)
 |**params** +
 __optional__|<<_pollerprepare_params,params>>
 |**source** +
@@ -360,7 +431,7 @@ __optional__|<<_error,Error>>
 |**id** +
 __required__|integer(int64)
 |**method** +
-__optional__|enum (poller.prepare, poller.prepare.block, poller.prepare.end, poller.commit)
+__optional__|enum (poller.prepare, poller.prepare.block, poller.prepare.end, poller.commit, check_metrics.post_multi)
 |**params** +
 __optional__|<<_pollerprepareblock_params,params>>
 |**source** +
@@ -403,7 +474,7 @@ __optional__|<<_error,Error>>
 |**id** +
 __required__|integer(int64)
 |**method** +
-__optional__|enum (poller.prepare, poller.prepare.block, poller.prepare.end, poller.commit)
+__optional__|enum (poller.prepare, poller.prepare.block, poller.prepare.end, poller.commit, check_metrics.post_multi)
 |**params** +
 __optional__|<<_pollerprepareend_params,params>>
 |**source** +
@@ -461,7 +532,7 @@ __optional__|<<_error,Error>>
 |**id** +
 __required__|integer(int64)
 |**method** +
-__optional__|enum (poller.prepare, poller.prepare.block, poller.prepare.end, poller.commit)
+__optional__|enum (poller.prepare, poller.prepare.block, poller.prepare.end, poller.commit, check_metrics.post_multi)
 |**result** +
 __optional__|<<_pollerprepareresponse_result,result>>
 |**source** +

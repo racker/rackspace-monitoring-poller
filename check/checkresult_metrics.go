@@ -40,7 +40,10 @@ func NewMetricsPostRequest(crs *ResultSet, clockOffset int64) *protocol.MetricsP
 	if crs.Length() == 0 {
 		req.Params.Metrics = nil
 	} else {
-		req.Params.Metrics = []protocol.MetricWrap{ConvertToMetricResults(crs)}
+		req.Params.Metrics = make([]protocol.MetricWrap, crs.Length())
+		for i := 0; i < crs.Length(); i++ {
+			req.Params.Metrics[i] = ConvertToMetricResults(crs.Get(i))
+		}
 	}
 	return req
 }
@@ -48,20 +51,18 @@ func NewMetricsPostRequest(crs *ResultSet, clockOffset int64) *protocol.MetricsP
 // ConvertToMetricResults function iterates through the check result
 // in check result set and format it to MetricTVU, add it to the list
 // and return that list
-func ConvertToMetricResults(crs *ResultSet) protocol.MetricWrap {
-	wrappers := make(protocol.MetricWrap, 0)
-	wrappers = append(wrappers, nil) // needed for the current protocol
-	for i := 0; i < crs.Length(); i++ {
-		cr := crs.Get(i)
-		mapper := make(map[string]*protocol.MetricTVU)
-		for key, m := range cr.Metrics {
-			mapper[key] = &protocol.MetricTVU{
-				Type:  m.TypeString,
-				Value: fmt.Sprintf("%v", m.Value),
-				Unit:  m.Unit,
-			}
+func ConvertToMetricResults(cr *Result) protocol.MetricWrap {
+	wrapper := make(map[string]*protocol.MetricTVU)
+	for key, m := range cr.Metrics {
+		wrapper[key] = &protocol.MetricTVU{
+			Type:  m.TypeString,
+			Value: fmt.Sprintf("%v", m.Value),
+			Unit:  m.Unit,
 		}
-		wrappers = append(wrappers, mapper)
+	}
+	wrappers := protocol.MetricWrap{
+		nil, // resource/dimension -- usused
+		wrapper,
 	}
 	return wrappers
 }

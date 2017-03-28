@@ -28,7 +28,7 @@ import (
 
 func TestNewMetricsPostRequest(t *testing.T) {
 	checkData := `{
-	  "id":"chTestTCP_TLSRunSuccess",
+	  "check_id":"chTestTCP_TLSRunSuccess",
 	  "zone_id":"pzA",
 	  "entity_id":"enAAAAIPV4",
 	  "details":{"port":443,"ssl":true},
@@ -42,10 +42,14 @@ func TestNewMetricsPostRequest(t *testing.T) {
 	  "disabled":false
 	  }`
 	ch, err := check.NewCheck(context.Background(), []byte(checkData))
+	assert.Equal(t, "chTestTCP_TLSRunSuccess", ch.GetID())
 	require.NoError(t, err)
 
-	cr := check.NewResult(metric.NewMetric("tt_connect", "", metric.MetricNumber, 500, metric.UnitMilliseconds))
-	crs := check.NewResultSet(ch, cr)
+	cr1 := check.NewResult(metric.NewMetric("tt_connect", "", metric.MetricNumber, 250, metric.UnitMilliseconds))
+	crs := check.NewResultSet(ch, cr1)
+	// contrived, but add a distinct cr to validate proper JSON encoding
+	cr2 := check.NewResult(metric.NewMetric("duration", "", metric.MetricNumber, 500, metric.UnitMilliseconds))
+	crs.Add(cr2)
 
 	origTimeStamper := utils.InstallAlternateTimestampFunc(func() int64 {
 		return 5000
@@ -55,4 +59,26 @@ func TestNewMetricsPostRequest(t *testing.T) {
 	req := check.NewMetricsPostRequest(crs, 200)
 
 	assert.Equal(t, int64(5200), req.Params.Timestamp)
+
+	assert.Len(t, req.Params.Metrics, 2)
+
+	assert.Len(t, req.Params.Metrics[0], 2)
+	assert.Nil(t, req.Params.Metrics[0][0])
+	assert.Equal(t, "250", req.Params.Metrics[0][1]["tt_connect"].Value)
+
+	assert.Len(t, req.Params.Metrics[1], 2)
+	assert.Nil(t, req.Params.Metrics[1][0])
+	assert.Equal(t, "500", req.Params.Metrics[1][1]["duration"].Value)
+
+	raw, err := req.Encode()
+	require.NoError(t, err)
+	assert.Equal(t, "{\"v\":\"1\",\"id\":0,\"target\":\"\",\"source\":\"\",\"method\":\"check_metrics.post_multi\","+
+		"\"params\":{"+
+		"\"entity_id\":\"enAAAAIPV4\",\"check_id\":\"chTestTCP_TLSRunSuccess\",\"check_type\":\"remote.tcp\","+
+		"\"metrics\":["+
+		"[null,{\"tt_connect\":{\"t\":\"int64\",\"v\":\"250\",\"u\":\"MILLISECONDS\"}}],"+
+		"[null,{\"duration\":{\"t\":\"int64\",\"v\":\"500\",\"u\":\"MILLISECONDS\"}}]"+
+		"],"+
+		"\"min_check_period\":30000,\"state\":\"unavailable\",\"status\":\"unknown error\",\"timestamp\":5200}"+
+		"}", string(raw))
 }
