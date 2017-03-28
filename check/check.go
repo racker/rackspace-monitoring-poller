@@ -156,7 +156,7 @@ func (ch *Base) GetLogPrefix() string {
 }
 
 func (ch *Base) String() string {
-	return fmt.Sprintf("]id:%v, type:%v]", ch.GetID(), ch.GetCheckType())
+	return fmt.Sprintf("[id:%v, type:%v]", ch.GetID(), ch.GetCheckType())
 }
 
 // SetCheckType sets check's checktype to
