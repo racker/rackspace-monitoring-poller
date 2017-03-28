@@ -240,7 +240,6 @@ func (ch *TCPCheck) Run() (*ResultSet, error) {
 		ch.AddTLSMetrics(cr, tlsConn.ConnectionState())
 	}
 
-	crs.Add(cr)
 	crs.SetStateAvailable()
 	crs.SetStatusSuccess()
 	return crs, nil

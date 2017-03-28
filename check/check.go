@@ -80,6 +80,8 @@ import (
 
 // send the request, and parse the response
 type Check interface {
+	fmt.Stringer
+
 	utils.LogPrefixGetter
 	GetID() string
 	SetID(id string)
@@ -151,6 +153,10 @@ func (ch *Base) GetCheckType() string {
 // GetLogPrefix returns the log prefix
 func (ch *Base) GetLogPrefix() string {
 	return fmt.Sprintf("%v:%v", ch.GetID(), ch.GetCheckType())
+}
+
+func (ch *Base) String() string {
+	return fmt.Sprintf("[id:%v, type:%v]", ch.GetID(), ch.GetCheckType())
 }
 
 // SetCheckType sets check's checktype to
