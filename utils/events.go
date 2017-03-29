@@ -16,6 +16,8 @@
 
 package utils
 
+import "fmt"
+
 // Event is a generic declaration that conveys a type to use as a "discriminator" and
 // a type-generic Target as the payload of the event.
 type Event interface {
@@ -123,6 +125,10 @@ func (evt *BasicEvent) Type() string {
 
 func (evt *BasicEvent) Target() interface{} {
 	return evt.target
+}
+
+func (evt *BasicEvent) String() string {
+	return fmt.Sprintf("[type=%v]", evt.eventType)
 }
 
 func NewEvent(eventType string, target interface{}) Event {

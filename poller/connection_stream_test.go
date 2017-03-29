@@ -119,10 +119,12 @@ func TestConnectionsByHost_ChooseBest(t *testing.T) {
 			name: "multi",
 			fill: func(conns poller.ConnectionsByHost, ctrl *gomock.Controller) {
 				c1 := NewMockConnection(ctrl)
+				c1.EXPECT().HasLatencyMeasurements().AnyTimes().Return(true)
 				c1.EXPECT().GetLatency().Return(int64(50))
 				c1.EXPECT().GetLogPrefix().AnyTimes().Return("1-2-3")
 
 				c2 := NewMockConnection(ctrl)
+				c2.EXPECT().HasLatencyMeasurements().AnyTimes().Return(true)
 				c2.EXPECT().GetLatency().Return(int64(20))
 				c2.EXPECT().GetLogPrefix().AnyTimes().Return("1-2-3")
 
@@ -135,6 +137,7 @@ func TestConnectionsByHost_ChooseBest(t *testing.T) {
 			name: "single",
 			fill: func(conns poller.ConnectionsByHost, ctrl *gomock.Controller) {
 				c1 := NewMockConnection(ctrl)
+				c1.EXPECT().HasLatencyMeasurements().AnyTimes().Return(true)
 				c1.EXPECT().GetLatency().Return(int64(50))
 
 				conns["h1"] = c1
@@ -225,9 +228,11 @@ func TestEleConnectionStream_SendMetrics_Normal(t *testing.T) {
 	c1.SetAuthenticated()
 	c2.SetAuthenticated()
 	c3.SetAuthenticated()
+	c4.SetAuthenticated()
 	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeRegister, gomock.Eq(c1))
 	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeRegister, gomock.Eq(c2))
 	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeRegister, gomock.Eq(c3))
+	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeRegister, gomock.Eq(c4))
 
 	crs := check.ResultSet{
 		Check: &check.TCPCheck{},
@@ -252,11 +257,13 @@ func TestEleConnectionStream_SendMetrics_RollOver(t *testing.T) {
 
 	c1 := factory.add(NewMockConnection(ctrl))
 	c1.EXPECT().GetLatency().AnyTimes().Return(int64(50))
+	c1.EXPECT().HasLatencyMeasurements().AnyTimes().Return(true)
 	c1.EXPECT().GetLogPrefix().AnyTimes().Return("c1")
 	c1.EXPECT().Done().AnyTimes().Return(done)
 
 	c2 := factory.add(NewMockConnection(ctrl))
 	c2.EXPECT().GetLatency().AnyTimes().Return(int64(10))
+	c2.EXPECT().HasLatencyMeasurements().AnyTimes().Return(true)
 	c2.EXPECT().GetClockOffset().AnyTimes().Return(int64(0))
 	c2.EXPECT().GetSession().Return(mockSession)
 	c2.EXPECT().GetLogPrefix().AnyTimes().Return("c2")
@@ -264,6 +271,7 @@ func TestEleConnectionStream_SendMetrics_RollOver(t *testing.T) {
 
 	c3 := factory.add(NewMockConnection(ctrl))
 	c3.EXPECT().GetLatency().AnyTimes().Return(int64(20))
+	c3.EXPECT().HasLatencyMeasurements().AnyTimes().Return(true)
 	c3.EXPECT().GetClockOffset().AnyTimes().Return(int64(0))
 	c3.EXPECT().GetLogPrefix().AnyTimes().Return("c3")
 	c3.EXPECT().Done().AnyTimes().Return(done)
@@ -280,6 +288,9 @@ func TestEleConnectionStream_SendMetrics_RollOver(t *testing.T) {
 
 	cs.Connect()
 	factory.waitForConnections(t, 20*time.Millisecond)
+	c1.SetAuthenticated()
+	c2.SetAuthenticated()
+	c3.SetAuthenticated()
 	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeRegister, gomock.Eq(c1))
 	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeRegister, gomock.Eq(c2))
 	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeRegister, gomock.Eq(c3))
@@ -312,6 +323,7 @@ func TestEleConnectionStream_SendMetrics_OneThenDrop(t *testing.T) {
 
 	c2 := factory.add(NewMockConnection(ctrl))
 	c2.EXPECT().GetLatency().AnyTimes().Return(int64(10))
+	c2.EXPECT().HasLatencyMeasurements().AnyTimes().Return(true)
 	c2.EXPECT().GetClockOffset().AnyTimes().Return(int64(0))
 	c2.EXPECT().GetSession().Return(mockSession)
 	c2.EXPECT().GetLogPrefix().AnyTimes().Return("c2")
@@ -328,6 +340,7 @@ func TestEleConnectionStream_SendMetrics_OneThenDrop(t *testing.T) {
 
 	cs.Connect()
 	factory.waitForConnections(t, 20*time.Millisecond)
+	c2.SetAuthenticated()
 	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeRegister, gomock.Eq(c2))
 
 	crs := &check.ResultSet{
@@ -393,7 +406,7 @@ func (f *mockConnFactory) add(conn *MockConnection) *MockConnection {
 			f.connected <- struct{}{}
 		})
 	conn.EXPECT().Authenticated().AnyTimes().Return(auth)
-	conn.EXPECT().SetAuthenticated().AnyTimes().Do(func() {
+	conn.EXPECT().SetAuthenticated().Do(func() {
 		close(auth)
 	})
 	return conn
@@ -476,14 +489,15 @@ func (c *phasingEventConsumer) waitFor(t *testing.T, timeout time.Duration, even
 			assert.Fail(t, targetMatcher.String())
 		}
 	case <-time.After(timeout):
-		assert.Fail(t, "Did not observe an event")
+		t.Fail()
+		//assert.Fail(t, "Did not observe an event")
 	}
 }
 
 func (c *phasingEventConsumer) assertNoEvent(t *testing.T, timeout time.Duration) {
 	select {
 	case evt := <-c.events:
-		assert.Fail(t, "Should not have seen an event, but got %v", evt)
+		assert.Fail(t, fmt.Sprintf("Should not have seen an event, but got %v", evt.Type()))
 	case <-time.After(timeout):
 		break
 	}
