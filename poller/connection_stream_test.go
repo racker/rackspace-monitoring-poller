@@ -76,6 +76,9 @@ func TestConnectionStream_Connect(t *testing.T) {
 				t.Log("Mock conn is closing")
 				close(done)
 			})
+			preAuthedChannel := make(chan struct{}, 1)
+			close(preAuthedChannel)
+			conn.EXPECT().Authenticated().AnyTimes().Return(preAuthedChannel)
 
 			connFactory := func(address string, guid string, stream poller.ChecksReconciler) poller.Connection {
 				return conn
@@ -179,11 +182,13 @@ func TestEleConnectionStream_SendMetrics_Normal(t *testing.T) {
 
 	c1 := factory.add(NewMockConnection(ctrl))
 	c1.EXPECT().GetLatency().AnyTimes().Return(int64(50))
+	c1.EXPECT().HasLatencyMeasurements().AnyTimes().Return(true)
 	c1.EXPECT().GetLogPrefix().AnyTimes().Return("c1")
 	c1.EXPECT().Done().AnyTimes().Return(done)
 
 	c2 := factory.add(NewMockConnection(ctrl))
 	c2.EXPECT().GetLatency().AnyTimes().Return(int64(10))
+	c2.EXPECT().HasLatencyMeasurements().AnyTimes().Return(true)
 	c2.EXPECT().GetClockOffset().AnyTimes().Return(int64(0))
 	c2.EXPECT().GetSession().Return(mockSession)
 	c2.EXPECT().GetLogPrefix().AnyTimes().Return("c2")
@@ -191,8 +196,15 @@ func TestEleConnectionStream_SendMetrics_Normal(t *testing.T) {
 
 	c3 := factory.add(NewMockConnection(ctrl))
 	c3.EXPECT().GetLatency().AnyTimes().Return(int64(20))
+	c3.EXPECT().HasLatencyMeasurements().AnyTimes().Return(true)
 	c3.EXPECT().GetLogPrefix().AnyTimes().Return("c3")
 	c3.EXPECT().Done().AnyTimes().Return(done)
+
+	c4 := factory.add(NewMockConnection(ctrl))
+	c4.EXPECT().GetLatency().AnyTimes().Return(int64(0))
+	c4.EXPECT().HasLatencyMeasurements().AnyTimes().Return(false)
+	c4.EXPECT().GetLogPrefix().AnyTimes().Return("c4")
+	c4.EXPECT().Done().AnyTimes().Return(done)
 
 	cfg := factory.renderConfig()
 
@@ -205,6 +217,14 @@ func TestEleConnectionStream_SendMetrics_Normal(t *testing.T) {
 
 	cs.Connect()
 	factory.waitForConnections(t, 20*time.Millisecond)
+
+	// None authenticated, so none should be registered yet
+	consumer.assertNoEvent(t, 5*time.Millisecond)
+
+	// ...now mark authenticated
+	c1.SetAuthenticated()
+	c2.SetAuthenticated()
+	c3.SetAuthenticated()
 	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeRegister, gomock.Eq(c1))
 	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeRegister, gomock.Eq(c2))
 	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeRegister, gomock.Eq(c3))
@@ -367,10 +387,15 @@ func newMockConnFactory() *mockConnFactory {
 
 func (f *mockConnFactory) add(conn *MockConnection) *MockConnection {
 	f.conns.PushBack(conn)
+	auth := make(chan struct{}, 1)
 	conn.EXPECT().Connect(gomock.Any(), gomock.Any(), gomock.Any()).
 		Do(func(ctx context.Context, config *config.Config, tlsConfig *tls.Config) {
 			f.connected <- struct{}{}
 		})
+	conn.EXPECT().Authenticated().AnyTimes().Return(auth)
+	conn.EXPECT().SetAuthenticated().AnyTimes().Do(func() {
+		close(auth)
+	})
 	return conn
 }
 

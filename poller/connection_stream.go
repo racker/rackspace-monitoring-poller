@@ -293,6 +293,7 @@ func (cs *EleConnectionStream) runHostConnection(addr string) {
 reconnect:
 	for {
 		conn := cs.connectionFactory(addr, cs.config.Guid, cs)
+		pendingAuth := conn.Authenticated()
 		err := conn.Connect(cs.ctx, cs.config, cs.buildTLSConfig(addr))
 		if err != nil {
 			goto conn_error
@@ -301,24 +302,31 @@ reconnect:
 		// Successful connection. reset backoff
 		b.Reset()
 
-		cs.registrations <- &connectionRegistration{
-			register: true,
-			qry:      addr,
-			conn:     conn,
-		}
+		for {
+			select {
+			case <-pendingAuth:
+				cs.registrations <- &connectionRegistration{
+					register: true,
+					qry:      addr,
+					conn:     conn,
+				}
+				// no need to proceed on this closed channel
+				pendingAuth = nil
 
-		select {
-		case <-cs.ctx.Done(): // external cancellation
-			conn.Close()
-			return
+			case <-cs.ctx.Done():
+				// external cancellation
+				conn.Close()
+				return
 
-		case <-conn.Done(): // connection closed
-			cs.registrations <- &connectionRegistration{
-				register: false,
-				qry:      addr,
-				conn:     conn,
+			case <-conn.Done():
+				// connection closed
+				cs.registrations <- &connectionRegistration{
+					register: false,
+					qry:      addr,
+					conn:     conn,
+				}
+				goto new_connection
 			}
-			goto new_connection
 		}
 
 	conn_error:
@@ -369,10 +377,12 @@ func (conns ConnectionsByHost) ChooseBest() Connection {
 	var best Connection
 
 	for _, conn := range conns {
-		latency := conn.GetLatency()
-		if latency < minLatency {
-			minLatency = latency
-			best = conn
+		if conn.HasLatencyMeasurements() {
+			latency := conn.GetLatency()
+			if latency < minLatency {
+				minLatency = latency
+				best = conn
+			}
 		}
 	}
 

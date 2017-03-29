@@ -131,6 +131,16 @@ func (_m *MockConnection) EXPECT() *_MockConnectionRecorder {
 	return _m.recorder
 }
 
+func (_m *MockConnection) Authenticated() <-chan struct{} {
+	ret := _m.ctrl.Call(_m, "Authenticated")
+	ret0, _ := ret[0].(<-chan struct{})
+	return ret0
+}
+
+func (_mr *_MockConnectionRecorder) Authenticated() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Authenticated")
+}
+
 func (_m *MockConnection) Close() {
 	_m.ctrl.Call(_m, "Close")
 }
@@ -229,6 +239,24 @@ func (_mr *_MockConnectionRecorder) GetSession() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetSession")
 }
 
+func (_m *MockConnection) HasLatencyMeasurements() bool {
+	ret := _m.ctrl.Call(_m, "HasLatencyMeasurements")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+func (_mr *_MockConnectionRecorder) HasLatencyMeasurements() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "HasLatencyMeasurements")
+}
+
+func (_m *MockConnection) SetAuthenticated() {
+	_m.ctrl.Call(_m, "SetAuthenticated")
+}
+
+func (_mr *_MockConnectionRecorder) SetAuthenticated() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "SetAuthenticated")
+}
+
 func (_m *MockConnection) SetReadDeadline(_param0 time.Time) {
 	_m.ctrl.Call(_m, "SetReadDeadline", _param0)
 }
@@ -318,6 +346,16 @@ func (_m *MockSession) GetLatency() int64 {
 
 func (_mr *_MockSessionRecorder) GetLatency() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetLatency")
+}
+
+func (_m *MockSession) HasLatencyMeasurements() bool {
+	ret := _m.ctrl.Call(_m, "HasLatencyMeasurements")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+func (_mr *_MockSessionRecorder) HasLatencyMeasurements() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "HasLatencyMeasurements")
 }
 
 func (_m *MockSession) RegisterEventConsumer(_param0 utils.EventConsumer) {

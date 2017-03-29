@@ -96,6 +96,7 @@ type EleSession struct {
 		expectedSeqID uint64
 		offset        int64
 		latency       int64
+		observations  uint64
 	}
 }
 
@@ -186,6 +187,7 @@ func (s *EleSession) handleResponse(resp *protocol.FrameMsg) error {
 			// just to be sure guard against multiple handshake starting multiple heartbeat routines
 			s.heartbeatInterval = time.Duration(resp.Result.HeartbeatInterval) * time.Millisecond
 			s.heartbeatsStarter.Do(s.goRunHeartbeats)
+			s.connection.SetAuthenticated()
 		case protocol.MethodHeartbeatPost:
 			resp := protocol.DecodeHeartbeatResponse(resp)
 			s.heartbeatResponses <- resp
@@ -521,6 +523,7 @@ func (s *EleSession) updateHeartbeatMeasurement(resp *protocol.HeartbeatResponse
 		}).Warn("Failed to compute skew")
 		return
 	}
+	s.heartbeatMeasurement.observations++
 	s.heartbeatMeasurement.offset = offset
 	s.heartbeatMeasurement.latency = latency
 	log.WithFields(log.Fields{
@@ -536,6 +539,10 @@ func (s *EleSession) GetClockOffset() int64 {
 
 func (s *EleSession) GetLatency() int64 {
 	return s.heartbeatMeasurement.latency
+}
+
+func (s *EleSession) HasLatencyMeasurements() bool {
+	return s.heartbeatMeasurement.observations > 0
 }
 
 func (s *EleSession) addCompletion(frame protocol.Frame) {
