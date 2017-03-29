@@ -70,7 +70,7 @@ func TestConnectionStream_Connect(t *testing.T) {
 
 			conn := NewMockConnection(ctrl)
 			conn.EXPECT().Connect(gomock.Any(), gomock.Any(), gomock.Any())
-			conn.EXPECT().Done().Return(done)
+			conn.EXPECT().Done().AnyTimes().Return(done)
 			conn.EXPECT().GetLogPrefix().AnyTimes().Return("1234")
 			conn.EXPECT().Close().AnyTimes().Do(func() {
 				t.Log("Mock conn is closing")
