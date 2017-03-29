@@ -78,10 +78,17 @@ type Connection interface {
 	GetFarendWriter() io.Writer
 	GetFarendReader() io.Reader
 	GetGUID() string
+
+	// SetAuthenticated should be invoked when a handshake response is successfully received
+	SetAuthenticated()
+	// Authenticated returns a channel that is closed when authenticated
+	Authenticated() <-chan struct{}
 }
 
 type ConnectionHealthProvider interface {
 	GetClockOffset() int64
+	// HasLatencyMeasurements indicates if the value returned by GetLatency is ready to be used
+	HasLatencyMeasurements() bool
 	GetLatency() int64
 }
 

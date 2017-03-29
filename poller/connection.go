@@ -39,6 +39,8 @@ type EleConnection struct {
 	guid    string
 
 	connectionTimeout time.Duration
+
+	authenticated chan struct{}
 }
 
 // NewConnection instantiates a new EleConnection
@@ -50,6 +52,7 @@ func NewConnection(address string, guid string, checksReconciler ChecksReconcile
 		guid:              guid,
 		checksReconciler:  checksReconciler,
 		connectionTimeout: time.Duration(10) * time.Second,
+		authenticated:     make(chan struct{}, 1),
 	}
 }
 
@@ -79,6 +82,10 @@ func (conn *EleConnection) GetClockOffset() int64 {
 
 func (conn *EleConnection) GetLatency() int64 {
 	return conn.session.GetLatency()
+}
+
+func (conn *EleConnection) HasLatencyMeasurements() bool {
+	return conn.session.HasLatencyMeasurements()
 }
 
 // SetReadDeadline sets up the read deadline for a socket.
@@ -142,4 +149,12 @@ func (conn *EleConnection) Close() {
 // Wait returns a channel that is populated when the connection is finished or closed.
 func (conn *EleConnection) Done() <-chan struct{} {
 	return conn.GetSession().Done()
+}
+
+func (conn *EleConnection) SetAuthenticated() {
+	close(conn.authenticated)
+}
+
+func (conn *EleConnection) Authenticated() <-chan struct{} {
+	return conn.authenticated
 }

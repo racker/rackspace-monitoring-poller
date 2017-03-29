@@ -98,8 +98,10 @@ func (ch *PingCheck) Run() (*ResultSet, error) {
 			"prefix": ch.GetLogPrefix(),
 		}).Debug("No ping packets were sent, likely due to lack of permission")
 		crs.SetStateUnavailable()
+		crs.SetStatus("No ping packets were sent")
 	} else {
 		crs.SetStateAvailable()
+		crs.SetStatusSuccess()
 	}
 
 	log.WithFields(log.Fields{
