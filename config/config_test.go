@@ -14,7 +14,7 @@ type configFields struct {
 	Addresses         []string
 	AgentId           string
 	AgentName         string
-	Features          []map[string]config.Feature
+	Features          []config.Feature
 	Guid              string
 	BundleVersion     string
 	ProcessVersion    string
@@ -37,7 +37,7 @@ func getConfigFields() configFields {
 		TimeoutWrite:      time.Duration(10 * time.Second),
 		TimeoutPrepareEnd: config.DefaultTimeoutPrepareEnd,
 		Token:             "",
-		Features:          make([]map[string]config.Feature, 0),
+		Features:          make([]config.Feature, 0),
 	}
 }
 
@@ -69,7 +69,7 @@ func TestNewConfig(t *testing.T) {
 				TimeoutPrepareEnd: config.DefaultTimeoutPrepareEnd,
 				TimeoutAuth:       config.DefaultTimeoutAuth,
 				Token:             "",
-				Features:          make([]map[string]config.Feature, 0),
+				Features:          make([]config.Feature, 0),
 			},
 		},
 		{
@@ -94,7 +94,7 @@ func TestNewConfig(t *testing.T) {
 				TimeoutPrepareEnd: config.DefaultTimeoutPrepareEnd,
 				TimeoutAuth:       config.DefaultTimeoutAuth,
 				Token:             "",
-				Features:          make([]map[string]config.Feature, 0),
+				Features:          make([]config.Feature, 0),
 			},
 		},
 	}
@@ -189,7 +189,7 @@ func TestConfig_ParseFields(t *testing.T) {
 				TimeoutRead:    time.Duration(10 * time.Second),
 				TimeoutWrite:   time.Duration(10 * time.Second),
 				Token:          "",
-				Features:       make([]map[string]config.Feature, 0),
+				Features:       make([]config.Feature, 0),
 			},
 			expectedErr: false,
 		},
@@ -209,7 +209,7 @@ func TestConfig_ParseFields(t *testing.T) {
 				TimeoutRead:    time.Duration(10 * time.Second),
 				TimeoutWrite:   time.Duration(10 * time.Second),
 				Token:          "",
-				Features:       make([]map[string]config.Feature, 0),
+				Features:       make([]config.Feature, 0),
 			},
 			expectedErr: true,
 		},
@@ -230,7 +230,7 @@ func TestConfig_ParseFields(t *testing.T) {
 				TimeoutRead:    time.Duration(10 * time.Second),
 				TimeoutWrite:   time.Duration(10 * time.Second),
 				Token:          "myawesometoken",
-				Features:       make([]map[string]config.Feature, 0),
+				Features:       make([]config.Feature, 0),
 			},
 			expectedErr: false,
 		},
@@ -250,7 +250,7 @@ func TestConfig_ParseFields(t *testing.T) {
 				TimeoutRead:    time.Duration(10 * time.Second),
 				TimeoutWrite:   time.Duration(10 * time.Second),
 				Token:          "",
-				Features:       make([]map[string]config.Feature, 0),
+				Features:       make([]config.Feature, 0),
 			},
 			expectedErr: true,
 		},
@@ -275,7 +275,7 @@ func TestConfig_ParseFields(t *testing.T) {
 					"127.0.0.1",
 					"0.0.0.0",
 				},
-				Features: make([]map[string]config.Feature, 0),
+				Features: make([]config.Feature, 0),
 			},
 			expectedErr: false,
 		},
@@ -295,7 +295,7 @@ func TestConfig_ParseFields(t *testing.T) {
 				TimeoutRead:    time.Duration(10 * time.Second),
 				TimeoutWrite:   time.Duration(10 * time.Second),
 				Token:          "",
-				Features:       make([]map[string]config.Feature, 0),
+				Features:       make([]config.Feature, 0),
 			},
 			expectedErr: true,
 		},
@@ -316,7 +316,7 @@ func TestConfig_ParseFields(t *testing.T) {
 				TimeoutRead:    time.Duration(10 * time.Second),
 				TimeoutWrite:   time.Duration(10 * time.Second),
 				Token:          "",
-				Features:       make([]map[string]config.Feature, 0),
+				Features:       make([]config.Feature, 0),
 			},
 			expectedErr: false,
 		},
@@ -336,7 +336,7 @@ func TestConfig_ParseFields(t *testing.T) {
 				TimeoutRead:    time.Duration(10 * time.Second),
 				TimeoutWrite:   time.Duration(10 * time.Second),
 				Token:          "",
-				Features:       make([]map[string]config.Feature, 0),
+				Features:       make([]config.Feature, 0),
 				SnetRegion:     "iad",
 			},
 			expectedErr: false,
@@ -357,7 +357,7 @@ func TestConfig_ParseFields(t *testing.T) {
 				TimeoutRead:    time.Duration(10 * time.Second),
 				TimeoutWrite:   time.Duration(10 * time.Second),
 				Token:          "",
-				Features:       make([]map[string]config.Feature, 0),
+				Features:       make([]config.Feature, 0),
 				SnetRegion:     "",
 			},
 			expectedErr: true,
@@ -416,7 +416,7 @@ func TestConfig_SetPrivateZones(t *testing.T) {
 				TimeoutRead:    time.Duration(10 * time.Second),
 				TimeoutWrite:   time.Duration(10 * time.Second),
 				Token:          "",
-				Features:       make([]map[string]config.Feature, 0),
+				Features:       make([]config.Feature, 0),
 				ZoneIds: []string{
 					"zone1",
 					"zone2",

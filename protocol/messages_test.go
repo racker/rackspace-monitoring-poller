@@ -18,6 +18,7 @@ package protocol_test
 
 import (
 	"encoding/json"
+	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/protocol"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -61,4 +62,22 @@ func TestParamsDecode_PollerPrepareBlockParams(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Len(t, params.Block, 10)
+}
+
+func TestHandshakeRequest_Encode(t *testing.T) {
+	features := []config.Feature{
+		{Name: "poller", Disabled: false},
+	}
+
+	cfg := config.NewConfig("1-2-3-4", false, features)
+
+	req := protocol.NewHandshakeRequest(cfg)
+	raw, err := req.Encode()
+	require.NoError(t, err)
+
+	assert.Equal(t, "{\"v\":\"1\",\"id\":0,\"target\":\"\",\"source\":\"\","+
+		"\"method\":\"handshake.hello\",\"params\":{\"token\":\"\","+
+		"\"agent_id\":\"-poller-\",\"agent_name\":\"remote_poller\",\"process_version\":\"dev\","+
+		"\"bundle_version\":\"dev\",\"zone_ids\":null,"+
+		"\"features\":[{\"name\":\"poller\",\"disabled\":false}]}}", string(raw))
 }
