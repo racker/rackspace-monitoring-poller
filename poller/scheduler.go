@@ -282,7 +282,7 @@ func (s *EleScheduler) Execute(ch check.Check) {
 		"id":     ch.GetID(),
 		"type":   ch.GetCheckType(),
 		"period": ch.GetPeriod(),
-	}).Info("Running check")
+	}).Debug("Running check")
 
 	crs, err := ch.Run()
 	if err != nil {
