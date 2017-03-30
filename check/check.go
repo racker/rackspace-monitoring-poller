@@ -67,7 +67,6 @@ import (
 
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	protocheck "github.com/racker/rackspace-monitoring-poller/protocol/check"
 	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	"github.com/racker/rackspace-monitoring-poller/utils"
@@ -362,28 +361,4 @@ func (ch *Base) readLimit(conn io.Reader, limit int64) ([]byte, error) {
 		return nil, err
 	}
 	return bytes[:count], nil
-}
-
-// PrintDefaults logs the check's default data.
-// (whatever is provided in the base)
-func (ch *Base) PrintDefaults() {
-	var targetAlias string
-	var targetHostname string
-	if ch.TargetAlias != nil {
-		targetAlias = *ch.TargetAlias
-	}
-	if ch.TargetHostname != nil {
-		targetHostname = *ch.TargetHostname
-	}
-	log.WithFields(log.Fields{
-		"type":            ch.CheckType,
-		"period":          ch.Period,
-		"timeout":         ch.Timeout,
-		"disabled":        ch.Disabled,
-		"ipaddresses":     ch.IpAddresses,
-		"target_alias":    targetAlias,
-		"target_hostname": targetHostname,
-		"target_resolver": ch.TargetResolver,
-		"details":         string(*ch.RawDetails),
-	}).Infof("New check %v", ch.GetID())
 }
