@@ -30,6 +30,7 @@ import (
 
 const (
 	checkPreparationBufferSize = 10
+	checkLoggerDuration        = 5 * time.Minute
 )
 
 // EleScheduler implements Scheduler interface.
@@ -112,6 +113,10 @@ func (s *EleScheduler) ReconcileChecks(cp ChecksPrepared) {
 }
 
 func (s *EleScheduler) runReconciler() {
+
+	logTicker := time.NewTicker(checkLoggerDuration)
+	defer logTicker.Stop()
+
 	for {
 		select {
 		case cp := <-s.preparations:
@@ -119,6 +124,19 @@ func (s *EleScheduler) runReconciler() {
 
 		case <-s.ctx.Done():
 			return
+
+		case <-logTicker.C:
+			if len(s.checks) > 0 {
+				typeCounts := log.Fields{}
+				for _, ch := range s.checks {
+					count, _ := typeCounts[ch.GetCheckType()].(int)
+					count++
+					typeCounts[ch.GetCheckType()] = count
+				}
+				log.WithFields(typeCounts).Info("Checks scheduled to run")
+			} else {
+				log.Info("No checks are scheduled to run")
+			}
 		}
 	}
 }
@@ -237,7 +255,7 @@ func (s *EleScheduler) runCheckTimerLoop(ch check.Check) {
 		"checkId":    ch.GetID(),
 		"jitterMs":   jitter,
 		"waitPeriod": ch.GetWaitPeriod(),
-	}).Info("Starting check")
+	}).Debug("Starting check")
 
 	time.Sleep(time.Duration(jitter) * time.Millisecond)
 	for {
@@ -254,6 +272,12 @@ func (s *EleScheduler) runCheckTimerLoop(ch check.Check) {
 
 // Execute perform the default CheckExecutor behavior by running the check and sending its results via SendMetrics.
 func (s *EleScheduler) Execute(ch check.Check) {
+	log.WithFields(log.Fields{
+		"id":     ch.GetID(),
+		"type":   ch.GetCheckType(),
+		"period": ch.GetPeriod(),
+	}).Info("Running check")
+
 	crs, err := ch.Run()
 	if err != nil {
 		log.Errorf("Error running check: %v", err)
