@@ -27,13 +27,13 @@ import (
 // Handshake
 
 type HandshakeParameters struct {
-	Token          string                      `json:"token"`
-	AgentId        string                      `json:"agent_id"`
-	AgentName      string                      `json:"agent_name"`
-	ProcessVersion string                      `json:"process_version"`
-	BundleVersion  string                      `json:"bundle_version"`
-	ZoneIds        []string                    `json:"zone_ids"`
-	Features       []map[string]config.Feature `json:"features"`
+	Token          string           `json:"token"`
+	AgentId        string           `json:"agent_id"`
+	AgentName      string           `json:"agent_name"`
+	ProcessVersion string           `json:"process_version"`
+	BundleVersion  string           `json:"bundle_version"`
+	ZoneIds        []string         `json:"zone_ids"`
+	Features       []config.Feature `json:"features"`
 }
 
 type HandshakeRequest struct {

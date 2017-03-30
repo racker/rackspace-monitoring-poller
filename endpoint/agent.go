@@ -63,7 +63,7 @@ type agent struct {
 	name             string
 	processVersion   string
 	bundleVersion    string
-	features         []map[string]config.Feature
+	features         []config.Feature
 	zones            []string
 	prepareBlockSize int
 

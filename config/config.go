@@ -62,7 +62,7 @@ type Config struct {
 	// Agent Info
 	AgentId        string
 	AgentName      string
-	Features       []map[string]Feature
+	Features       []Feature
 	Guid           string
 	BundleVersion  string
 	ProcessVersion string
@@ -89,12 +89,12 @@ type configEntry struct {
 	Sensitive bool
 }
 
-func NewConfig(guid string, useStaging bool, features []map[string]Feature) *Config {
+func NewConfig(guid string, useStaging bool, features []Feature) *Config {
 	cfg := &Config{}
 	if features != nil {
 		cfg.Features = features
 	} else {
-		cfg.Features = make([]map[string]Feature, 0)
+		cfg.Features = make([]Feature, 0)
 	}
 	cfg.Guid = guid
 	cfg.Token = os.Getenv("AGENT_TOKEN")
