@@ -54,7 +54,6 @@ func NewTCPCheck(base *Base) Check {
 		log.Error("Error unmarshalling TCPCheck")
 		return nil
 	}
-	check.PrintDefaults()
 	return check
 }
 
