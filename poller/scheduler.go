@@ -30,8 +30,7 @@ import (
 
 const (
 	checkPreparationBufferSize = 10
-	checkLoggerDuration        = 5 * time.Second
-	//checkLoggerDuration        = 5 * time.Minute
+	checkLoggerDuration        = 5 * time.Minute
 )
 
 // EleScheduler implements Scheduler interface.
