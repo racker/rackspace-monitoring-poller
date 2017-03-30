@@ -30,7 +30,8 @@ import (
 
 const (
 	checkPreparationBufferSize = 10
-	checkLoggerDuration        = 5 * time.Minute
+	checkLoggerDuration        = 5 * time.Second
+	//checkLoggerDuration        = 5 * time.Minute
 )
 
 // EleScheduler implements Scheduler interface.
@@ -121,23 +122,28 @@ func (s *EleScheduler) runReconciler() {
 		select {
 		case cp := <-s.preparations:
 			s.reconcile(cp)
+			s.logScheduledChecks()
 
 		case <-s.ctx.Done():
 			return
 
 		case <-logTicker.C:
-			if len(s.checks) > 0 {
-				typeCounts := log.Fields{}
-				for _, ch := range s.checks {
-					count, _ := typeCounts[ch.GetCheckType()].(int)
-					count++
-					typeCounts[ch.GetCheckType()] = count
-				}
-				log.WithFields(typeCounts).Info("Checks scheduled to run")
-			} else {
-				log.Info("No checks are scheduled to run")
-			}
+			s.logScheduledChecks()
 		}
+	}
+}
+
+func (s *EleScheduler) logScheduledChecks() {
+	if len(s.checks) > 0 {
+		typeCounts := log.Fields{}
+		for _, ch := range s.checks {
+			count, _ := typeCounts[ch.GetCheckType()].(int)
+			count++
+			typeCounts[ch.GetCheckType()] = count
+		}
+		log.WithFields(typeCounts).Info("Checks scheduled to run")
+	} else {
+		log.Info("No checks are scheduled to run")
 	}
 }
 
