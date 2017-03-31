@@ -44,8 +44,10 @@ func Run(configFilePath string, insecure bool) {
 	log.WithField("guid", guid).Info("Assigned unique identifier")
 
 	rootCAs := config.LoadRootCAs(insecure, useStaging)
+
 	signalNotify := utils.HandleInterrupts()
 	ctx, cancel := context.WithCancel(context.Background())
+	StartMetricsPusher(ctx, cfg)
 	for {
 		stream := NewConnectionStream(ctx, cfg, rootCAs)
 		stream.Connect()

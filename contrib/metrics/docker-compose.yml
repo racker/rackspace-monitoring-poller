@@ -1,0 +1,20 @@
+version: '2'
+
+services:
+  pushgateway:
+    image: prom/pushgateway
+    ports:
+      - '9091:9091'
+    restart: always
+
+  prometheus:
+    build:
+      context: ./
+      dockerfile: Dockerfile-prometheus
+    ports:
+      - '9090:9090'
+    volumes:
+      - 'prometheus:/prometheus'
+
+volumes:
+  prometheus:
