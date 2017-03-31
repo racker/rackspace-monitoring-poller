@@ -39,6 +39,9 @@ func StartMetricsPusher(ctx context.Context, cfg *config.Config) {
 }
 
 func runMetricsPusher(ctx context.Context, cfg *config.Config) {
+
+	metricsRegistry.MustRegister(prometheus.NewGoCollector())
+
 	log.Debug("Metrics pusher waiting to start...")
 	defer log.Debug("Metric pusher exiting")
 
