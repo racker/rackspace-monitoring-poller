@@ -140,6 +140,10 @@ func (conn *EleConnection) Connect(ctx context.Context, config *config.Config, t
 // Close closes the session
 func (conn *EleConnection) Close() {
 	if conn.conn != nil {
+		log.WithFields(log.Fields{
+			"prefix":         conn.GetLogPrefix(),
+			"remote_address": conn.address,
+		}).Info("Disconnected")
 		conn.conn.Close()
 		conn.conn = nil
 	}
