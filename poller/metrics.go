@@ -32,6 +32,7 @@ const (
 	defaultPrometheusPushGatewayPort = "9091"
 	prometheusService                = "prometheus"
 	prometheusProto                  = "tcp"
+	prometheusLogPrefix              = "prometheus"
 
 	metricLabelCheckType = "check_type"
 	metricLabelAddress   = "address"
@@ -64,12 +65,11 @@ func runPrometheusMetricsPusher(ctx context.Context, cfg *config.Config) {
 	gatewayUri, err := url.Parse(cfg.PrometheusUri)
 	if err != nil {
 		log.WithFields(log.Fields{
-			"err": err,
-			"uri": cfg.PrometheusUri,
+			"prefix": prometheusLogPrefix,
+			"err":    err,
+			"uri":    cfg.PrometheusUri,
 		}).Warn("Failed to parse Promtheus push gateway URI")
 	}
-
-	log.WithField("uri", gatewayUri).Info("Pushing metrics to Prometheus gateway")
 
 	var promPushGateway string
 	switch gatewayUri.Scheme {
@@ -77,15 +77,17 @@ func runPrometheusMetricsPusher(ctx context.Context, cfg *config.Config) {
 		_, addrs, err := net.LookupSRV(prometheusService, prometheusProto, gatewayUri.Hostname())
 		if err != nil {
 			log.WithFields(log.Fields{
-				"err": err,
-				"uri": gatewayUri,
+				"prefix": prometheusLogPrefix,
+				"err":    err,
+				"uri":    gatewayUri,
 			}).Warn("Failed to resolve Prometheus gateway service")
 			return // TODO, retry at a later time
 		}
 
 		if len(addrs) == 0 {
 			log.WithFields(log.Fields{
-				"uri": gatewayUri,
+				"prefix": prometheusLogPrefix,
+				"uri":    gatewayUri,
 			}).Warn("No addresses resolved for Prometheus gateway service")
 			return // TODO, retry at a later time
 		}
@@ -100,9 +102,18 @@ func runPrometheusMetricsPusher(ctx context.Context, cfg *config.Config) {
 		promPushGateway = net.JoinHostPort(gatewayUri.Hostname(), port)
 
 	default:
-		log.WithField("uri", gatewayUri).Warn("Unsupported Prometheus gateway URI scheme")
+		log.WithFields(log.Fields{
+			"prefix": prometheusLogPrefix,
+			"uri":    gatewayUri,
+		}).Warn("Unsupported Prometheus gateway URI scheme")
 		return
 	}
+
+	log.WithFields(log.Fields{
+		"prefix":  prometheusLogPrefix,
+		"uri":     gatewayUri,
+		"gateway": promPushGateway,
+	}).Info("Pushing metrics to Prometheus gateway")
 
 	metricsRegistry.MustRegister(prometheus.NewGoCollector())
 
@@ -113,13 +124,18 @@ func runPrometheusMetricsPusher(ctx context.Context, cfg *config.Config) {
 	if err == nil {
 		groupings["hostname"] = hostname
 	} else {
-		log.WithField("err", err).Debug("Failed to get our hostname")
+		log.WithFields(log.Fields{
+			"prefix": prometheusLogPrefix,
+			"err":    err,
+		}).Debug("Failed to get our hostname")
 	}
 	if cfg.AgentId != "" {
 		groupings["agentId"] = cfg.AgentId
 	}
 
-	log.Debug("Metrics pusher started")
+	log.WithFields(log.Fields{
+		"prefix": prometheusLogPrefix,
+	}).Debug("Metrics pusher started")
 	ticker := time.NewTicker(10 * time.Second)
 	for {
 		select {
@@ -136,6 +152,7 @@ func pushPrometheusMetrics(cfg *config.Config, promPushGateway string, groupings
 	err := push.FromGatherer(cfg.AgentName, groupings, promPushGateway, metricsRegistry)
 	if err != nil {
 		log.WithFields(log.Fields{
+			"prefix":  prometheusLogPrefix,
 			"err":     err,
 			"gateway": promPushGateway,
 		}).Warn("Failed to push metrics to Prometheus gateway")
