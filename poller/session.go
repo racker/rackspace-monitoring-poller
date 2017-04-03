@@ -224,7 +224,10 @@ func (s *EleSession) runFrameReading() {
 			f := new(protocol.FrameMsg)
 			s.connection.SetReadDeadline(s.computeReadDeadline())
 			if err := s.dec.Decode(f); err == io.EOF {
-				log.WithField("connection", s.connection).Info("Far end closed connection")
+				log.WithFields(log.Fields{
+					"prefix":     s.logPrefix,
+					"connection": s.connection,
+				}).Debug("Far end closed connection")
 				s.cancel()
 				return
 			} else if err != nil {
