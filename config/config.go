@@ -79,6 +79,12 @@ type Config struct {
 	// TimeoutPrepareEnd declares the max time to elapse between poller.prepare and poller.prepare.end, but
 	// is reset upon receipt of each poller.prepare.block.
 	TimeoutPrepareEnd time.Duration
+
+	// If configured, then metrics will be pushed to a Prometheus push gateway at the given URI.
+	// The URI may either have a scheme of "srv" or "tcp". A "srv" refers to a DNS SRV name and "tcp" conveys
+	// a host:port address, typically for local/onsite usage. The given service name will be qualified by the
+	// service "_prometheus" and proto "_tcp".
+	PrometheusUri string
 }
 
 type configEntry struct {
@@ -210,6 +216,10 @@ func (cfg *Config) DefineConfigEntries() []configEntry {
 			Name:     "monitoring_snet_region",
 			ValuePtr: &cfg.SnetRegion,
 			Allowed:  ValidSnetRegions,
+		},
+		{
+			Name:     "prometheus_uri",
+			ValuePtr: &cfg.PrometheusUri,
 		},
 	}
 }

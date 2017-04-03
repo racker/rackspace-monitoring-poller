@@ -22,11 +22,16 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/push"
 	"github.com/racker/rackspace-monitoring-poller/config"
+	"net"
+	"net/url"
+	"os"
 	"time"
 )
 
 const (
-	promPushGateway = "localhost:9091"
+	defaultPrometheusPushGatewayPort = "9091"
+	prometheusService                = "prometheus"
+	prometheusProto                  = "tcp"
 )
 
 var (
@@ -39,13 +44,76 @@ func StartMetricsPusher(ctx context.Context, cfg *config.Config) {
 }
 
 func runMetricsPusher(ctx context.Context, cfg *config.Config) {
-
-	metricsRegistry.MustRegister(prometheus.NewGoCollector())
-
 	log.Debug("Metrics pusher waiting to start...")
 	defer log.Debug("Metric pusher exiting")
 
 	time.Sleep(10 * time.Second)
+
+	if cfg.PrometheusUri != "" {
+		runPrometheusMetricsPusher(ctx, cfg)
+	}
+	// ...other metrics consumers can be added here
+}
+
+func runPrometheusMetricsPusher(ctx context.Context, cfg *config.Config) {
+
+	gatewayUri, err := url.Parse(cfg.PrometheusUri)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"err": err,
+			"uri": cfg.PrometheusUri,
+		}).Warn("Failed to parse Promtheus push gateway URI")
+	}
+
+	log.WithField("uri", gatewayUri).Info("Pushing metrics to Prometheus gateway")
+
+	var promPushGateway string
+	switch gatewayUri.Scheme {
+	case "srv":
+		_, addrs, err := net.LookupSRV(prometheusService, prometheusProto, gatewayUri.Hostname())
+		if err != nil {
+			log.WithFields(log.Fields{
+				"err": err,
+				"uri": gatewayUri,
+			}).Warn("Failed to resolve Prometheus gateway service")
+			return // TODO, retry at a later time
+		}
+
+		if len(addrs) == 0 {
+			log.WithFields(log.Fields{
+				"uri": gatewayUri,
+			}).Warn("No addresses resolved for Prometheus gateway service")
+			return // TODO, retry at a later time
+		}
+
+		promPushGateway = net.JoinHostPort(addrs[0].Target, string(addrs[0].Port))
+
+	case "tcp":
+		port := gatewayUri.Port()
+		if port == "" {
+			port = defaultPrometheusPushGatewayPort
+		}
+		promPushGateway = net.JoinHostPort(gatewayUri.Hostname(), port)
+
+	default:
+		log.WithField("uri", gatewayUri).Warn("Unsupported Prometheus gateway URI scheme")
+		return
+	}
+
+	metricsRegistry.MustRegister(prometheus.NewGoCollector())
+
+	groupings := map[string]string{
+		"instance": cfg.Guid,
+	}
+	hostname, err := os.Hostname()
+	if err == nil {
+		groupings["hostname"] = hostname
+	} else {
+		log.WithField("err", err).Debug("Failed to get our hostname")
+	}
+	if cfg.AgentName != "" {
+		groupings["agentName"] = cfg.AgentName
+	}
 
 	log.Debug("Metrics pusher started")
 	ticker := time.NewTicker(10 * time.Second)
@@ -55,11 +123,17 @@ func runMetricsPusher(ctx context.Context, cfg *config.Config) {
 			return
 
 		case <-ticker.C:
-			pushMetrics(cfg)
+			pushPrometheusMetrics(cfg, promPushGateway, groupings)
 		}
 	}
 }
 
-func pushMetrics(cfg *config.Config) {
-	push.FromGatherer(cfg.Guid, nil, promPushGateway, metricsRegistry)
+func pushPrometheusMetrics(cfg *config.Config, promPushGateway string, groupings map[string]string) {
+	err := push.FromGatherer("poller", groupings, promPushGateway, metricsRegistry)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"err":     err,
+			"gateway": promPushGateway,
+		}).Warn("Failed to push metrics to Prometheus gateway")
+	}
 }
