@@ -35,6 +35,7 @@ const (
 
 	metricLabelCheckType = "check_type"
 	metricLabelAddress   = "address"
+	metricLabelZone      = "zone"
 )
 
 var (
@@ -114,8 +115,8 @@ func runPrometheusMetricsPusher(ctx context.Context, cfg *config.Config) {
 	} else {
 		log.WithField("err", err).Debug("Failed to get our hostname")
 	}
-	if cfg.AgentName != "" {
-		groupings["agentName"] = cfg.AgentName
+	if cfg.AgentId != "" {
+		groupings["agentId"] = cfg.AgentId
 	}
 
 	log.Debug("Metrics pusher started")
@@ -132,7 +133,7 @@ func runPrometheusMetricsPusher(ctx context.Context, cfg *config.Config) {
 }
 
 func pushPrometheusMetrics(cfg *config.Config, promPushGateway string, groupings map[string]string) {
-	err := push.FromGatherer("poller", groupings, promPushGateway, metricsRegistry)
+	err := push.FromGatherer(cfg.AgentName, groupings, promPushGateway, metricsRegistry)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"err":     err,

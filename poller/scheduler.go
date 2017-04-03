@@ -43,6 +43,7 @@ var (
 			Help:      "Conveys the number of checks currently scheduled per type",
 		},
 		[]string{
+			metricLabelZone,
 			metricLabelCheckType,
 		},
 	)
@@ -211,7 +212,7 @@ func (s *EleScheduler) reconcile(cp ChecksPrepared) {
 				log.WithField("checkId", ac.Id).Warn("Reconciling was told to start a check, but it already existed.")
 				existingCheck.Cancel()
 			} else {
-				gauge, err := metricsSchedulerScheduled.GetMetricWithLabelValues(ac.CheckType)
+				gauge, err := metricsSchedulerScheduled.GetMetricWithLabelValues(s.zoneID, ac.CheckType)
 				if err == nil {
 					gauge.Inc()
 				} else {
@@ -250,7 +251,7 @@ func (s *EleScheduler) reconcile(cp ChecksPrepared) {
 		checkToRemove := s.checks[checkIdToRemoveStr]
 		delete(s.checks, checkIdToRemoveStr)
 		checkToRemove.Cancel()
-		gauge, err := metricsSchedulerScheduled.GetMetricWithLabelValues(checkToRemove.GetCheckType())
+		gauge, err := metricsSchedulerScheduled.GetMetricWithLabelValues(s.zoneID, checkToRemove.GetCheckType())
 		if err == nil {
 			gauge.Dec()
 		} else {
