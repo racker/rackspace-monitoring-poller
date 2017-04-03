@@ -43,7 +43,7 @@ var (
 			Help:      "Conveys the number of checks currently scheduled per type",
 		},
 		[]string{
-			"check_type",
+			metricLabelCheckType,
 		},
 	)
 )

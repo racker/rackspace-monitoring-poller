@@ -32,6 +32,9 @@ const (
 	defaultPrometheusPushGatewayPort = "9091"
 	prometheusService                = "prometheus"
 	prometheusProto                  = "tcp"
+
+	metricLabelCheckType = "check_type"
+	metricLabelAddress   = "address"
 )
 
 var (
