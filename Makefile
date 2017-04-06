@@ -73,7 +73,7 @@ ${GOPATH}/bin/go-callvis :
 
 package: package-deb
 
-package-repo-upload: package-deb package-upload-deb
+package-repo-upload: package-deb reprepro-deb package-upload-deb
 
 package-upload-deb:
 	rclone mkdir rackspace:${CLOUDFILES_REPO_NAME}/debian
