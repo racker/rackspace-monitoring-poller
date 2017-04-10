@@ -3,6 +3,51 @@
 [![Coverage Status](https://coveralls.io/repos/github/racker/rackspace-monitoring-poller/badge.svg?branch=master)](https://coveralls.io/github/racker/rackspace-monitoring-poller?branch=master)
 [![GitHub release](https://img.shields.io/github/release/racker/rackspace-monitoring-poller.svg)](https://github.com/racker/rackspace-monitoring-poller/releases)
 
+# Installing and Running a Poller Instance
+
+_NOTE: These instructions are only a brief, informal procedure. Details such as locating the `monitoring_token`
+will be described elsewhere._
+
+From [the latest release](https://github.com/racker/rackspace-monitoring-poller/releases/latest), 
+download either the "deb" package or one of the standalone binaries listed after the debian package.
+
+## DEB package
+
+Install the package with `dpkg -i rackspace-monitoring-poller_*.deb`. 
+
+Adjust these configuration files
+
+* `/etc/rackspace-monitoring-poller.cfg`
+  * Configure `monitoring_token` and `monitoring_private_zones`
+* `/etc/default/rackspace-monitoring-poller`
+  * Enable the service by setting `ENABLED=true`
+
+Start the poller service using:
+
+```bash
+sudo initctl start rackspace-monitoring-poller 
+```
+
+## Standalone Binary
+
+Use `chmod +x` to mark the binary executable. For convenience, you can rename it to `rackspace-monitoring-poller`,
+which is what the following instructions will reference.
+
+Using [this sample](contrib/remote.cfg) place the poller's configuration file in a location of your choosing or
+the default location of `/etc/rackspace-monitoring-poller.cfg`.
+
+Start the poller with the default configuration file location
+
+```bash
+./rackspace-monitoring-poller serve
+```
+
+or specify a custom confiuration file location:
+
+```bash
+./rackspace-monitoring-poller serve --config custom.cfg
+```
+
 # Development Notes
 
 ## Prepare your workspace
