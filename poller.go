@@ -110,5 +110,6 @@ func main() {
 	pollerCmd.AddCommand(versionCmd)
 	pollerCmd.AddCommand(commands.ServeCmd)
 	pollerCmd.AddCommand(commands.EndpointCmd)
+	pollerCmd.AddCommand(commands.VerifyCmd)
 	pollerCmd.Execute()
 }
