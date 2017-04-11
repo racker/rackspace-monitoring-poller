@@ -23,7 +23,7 @@ LICENSE := Apache v2
 PKG_DEB := ${BUILD_DIR}/${APP_NAME}_${GIT_TAG}-${TAG_DISTANCE}_${ARCH}.deb
 
 # TODO: should poller get its own specific file?
-APP_CFG := ${PKGDIR_ETC}/rackspace-monitoring-agent.cfg
+APP_CFG := ${PKGDIR_ETC}/rackspace-monitoring-poller.cfg
 UPSTART_CONF := ${PKGDIR_ETC}/init/${APP_NAME}.conf
 UPSTART_DEFAULT := ${PKGDIR_ETC}/default/${APP_NAME}
 LOGROTATE_CFG := ${PKGDIR_ETC}/logrotate.d/${APP_NAME}

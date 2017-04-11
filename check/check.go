@@ -67,9 +67,11 @@ import (
 
 	"time"
 
+	"encoding/json"
 	protocheck "github.com/racker/rackspace-monitoring-poller/protocol/check"
 	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	"github.com/racker/rackspace-monitoring-poller/utils"
+	"io/ioutil"
 )
 
 // Check is an interface required to be implemented by all checks.
@@ -361,4 +363,14 @@ func (ch *Base) readLimit(conn io.Reader, limit int64) ([]byte, error) {
 		return nil, err
 	}
 	return bytes[:count], nil
+}
+
+func ReadCheckFromFile(filename string) (Check, error) {
+	jsonContent, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx := context.Background()
+	return NewCheck(ctx, json.RawMessage(jsonContent))
 }

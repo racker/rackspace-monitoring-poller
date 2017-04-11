@@ -1,0 +1,22 @@
+{
+  "id": "chHttpMonRaxNet",
+  "zone_id": "pzA",
+  "entity_id": "enHTTPmrn",
+  "details": {
+    "body": "racker facing",
+    "follow_redirects": true,
+    "include_body": false,
+    "method": "GET",
+    "url": "http://monitoring.rackspace.net"
+  },
+  "type": "remote.http",
+  "timeout": 5,
+  "period": 15,
+  "ip_addresses": {
+    "default": "10.14.213.247"
+  },
+  "target_alias": "default",
+  "target_hostname": "monitoring.rackspace.net",
+  "target_resolver": 1,
+  "disabled": false
+}

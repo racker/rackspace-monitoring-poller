@@ -53,7 +53,7 @@ var (
 )
 
 const (
-	DefaultConfigPathLinux = "/etc/rackspace-monitoring-agent.cfg"
+	DefaultConfigPathLinux = "/etc/rackspace-monitoring-poller.cfg"
 
 	DefaultPort = "50041"
 

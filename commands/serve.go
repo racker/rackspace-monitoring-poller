@@ -35,7 +35,7 @@ var (
 )
 
 func init() {
-	ServeCmd.Flags().StringVar(&configFilePath, "config", "", "Path to a file containing the config, used in "+config.DefaultConfigPathLinux)
+	ServeCmd.Flags().StringVar(&configFilePath, "config", config.DefaultConfigPathLinux, "Path to a file containing the config")
 	ServeCmd.Flags().BoolVar(&insecure, "insecure", false, "Enabled ONLY during development and when connecting to a known farend")
 }
 

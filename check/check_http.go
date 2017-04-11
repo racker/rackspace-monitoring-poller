@@ -119,15 +119,10 @@ func (ch *HTTPCheck) Run() (*ResultSet, error) {
 	parsed.Host = net.JoinHostPort(ip, port)
 	url := parsed.String()
 
-	// Setup HTTP or HTTPS Client
 	var netClient *http.Client
-	if parsed.Scheme == "http" {
-		netClient = &http.Client{}
-	} else {
-		tlsConfig := &tls.Config{InsecureSkipVerify: true, ServerName: host}
-		transport := &http.Transport{TLSClientConfig: tlsConfig}
-		netClient = &http.Client{Transport: transport}
-	}
+	tlsConfig := &tls.Config{InsecureSkipVerify: true, ServerName: host}
+	transport := &http.Transport{TLSClientConfig: tlsConfig}
+	netClient = &http.Client{Transport: transport}
 
 	// Setup Redirects
 	if !ch.Details.FollowRedirects {
@@ -166,7 +161,7 @@ func (ch *HTTPCheck) Run() (*ResultSet, error) {
 	// Add Headers
 	req.Header.Add("Accept-Encoding", "gzip,deflate")
 	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Host", host)
+	req.Host = host
 	for key, value := range ch.Details.Headers {
 		req.Header.Add(key, value)
 	}
