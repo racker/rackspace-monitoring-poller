@@ -27,7 +27,7 @@ type HTTPCheckDetails struct {
 		IncludeBody     bool              `json:"include_body"`
 		Method          string            `json:"method"`
 		Url             string            `json:"url"`
-	}
+	} `json:"details"`
 }
 
 type HTTPCheckOut struct {
