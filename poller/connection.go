@@ -24,7 +24,44 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/racker/rackspace-monitoring-poller/config"
+)
+
+var (
+	metricsConnectionsAttempt = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "poller",
+			Subsystem: "connection",
+			Name:      "attempts",
+			Help:      "Conveys the number of connection attempts per remote address",
+		},
+		[]string{
+			metricLabelAddress,
+		},
+	)
+	metricsConnectionsConnected = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "poller",
+			Subsystem: "connection",
+			Name:      "connected",
+			Help:      "Conveys the number of successful connections per remote address",
+		},
+		[]string{
+			metricLabelAddress,
+		},
+	)
+	metricsConnectionsDisconnected = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "poller",
+			Subsystem: "connection",
+			Name:      "disconnected",
+			Help:      "Conveys the number of disconnects per remote address",
+		},
+		[]string{
+			metricLabelAddress,
+		},
+	)
 )
 
 // EleConnection implements Connection
@@ -41,6 +78,12 @@ type EleConnection struct {
 	connectionTimeout time.Duration
 
 	authenticated chan struct{}
+}
+
+func init() {
+	metricsRegistry.MustRegister(metricsConnectionsAttempt)
+	metricsRegistry.MustRegister(metricsConnectionsConnected)
+	metricsRegistry.MustRegister(metricsConnectionsDisconnected)
 }
 
 // NewConnection instantiates a new EleConnection
@@ -124,6 +167,14 @@ func (conn *EleConnection) Connect(ctx context.Context, config *config.Config, t
 		"timeout": conn.connectionTimeout,
 	}).Info("Connecting to agent/poller endpoint")
 	nd := net.Dialer{Timeout: conn.connectionTimeout}
+
+	counter, err := metricsConnectionsAttempt.GetMetricWithLabelValues(conn.address)
+	if err == nil {
+		counter.Inc()
+	} else {
+		log.WithField("err", err).Debug("Failed to get metricsConnectionsAttempt counter")
+	}
+
 	tlsConn, err := tls.DialWithDialer(&nd, "tcp", conn.address, tlsConfig)
 	if err != nil {
 		return err
@@ -134,6 +185,14 @@ func (conn *EleConnection) Connect(ctx context.Context, config *config.Config, t
 		"prefix":         conn.GetLogPrefix(),
 		"remote_address": tlsConn.RemoteAddr(),
 	}).Info("Connected")
+
+	counter, err = metricsConnectionsConnected.GetMetricWithLabelValues(conn.address)
+	if err == nil {
+		counter.Inc()
+	} else {
+		log.WithField("err", err).Debug("Failed to get metricsConnectionsConnected counter")
+	}
+
 	return nil
 }
 
@@ -144,6 +203,14 @@ func (conn *EleConnection) Close() {
 			"prefix":         conn.GetLogPrefix(),
 			"remote_address": conn.address,
 		}).Info("Disconnected")
+
+		counter, err := metricsConnectionsDisconnected.GetMetricWithLabelValues(conn.address)
+		if err == nil {
+			counter.Inc()
+		} else {
+			log.WithField("err", err).Debug("Failed to get metricsConnectionsDisconnected counter")
+		}
+
 		conn.conn.Close()
 		conn.conn = nil
 	}

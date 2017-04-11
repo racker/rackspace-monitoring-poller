@@ -1,0 +1,38 @@
+version: '2'
+
+services:
+  pushgateway:
+    image: prom/pushgateway
+    ports:
+      - '9091:9091'
+    restart: always
+
+  prometheus:
+    build:
+      context: ./
+      dockerfile: Dockerfile-prometheus
+    ports:
+      - '9090:9090'
+    volumes:
+      - 'prometheus:/prometheus'
+    restart: always
+
+  cadvisor:
+    image: google/cadvisor:latest
+    ports:
+      - '9092:8080'
+    volumes:
+      - /var/run:/var/run:rw
+      - /:/rootfs:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+    restart: always
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - '3000:3000'
+    restart: always
+
+volumes:
+  prometheus:

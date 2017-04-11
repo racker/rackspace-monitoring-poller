@@ -25,12 +25,28 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	set "github.com/deckarep/golang-set"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/racker/rackspace-monitoring-poller/check"
 )
 
 const (
 	checkPreparationBufferSize = 10
 	checkLoggerDuration        = 5 * time.Minute
+)
+
+var (
+	metricsSchedulerScheduled = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Namespace: "poller",
+			Subsystem: "scheduler",
+			Name:      "scheduled_checks",
+			Help:      "Conveys the number of checks currently scheduled per type",
+		},
+		[]string{
+			metricLabelZone,
+			metricLabelCheckType,
+		},
+	)
 )
 
 // EleScheduler implements Scheduler interface.
@@ -47,6 +63,10 @@ type EleScheduler struct {
 
 	scheduler CheckScheduler
 	executor  CheckExecutor
+}
+
+func init() {
+	metricsRegistry.MustRegister(metricsSchedulerScheduled)
 }
 
 // NewScheduler instantiates a new Scheduler with standard scheduling and executor behaviors.
@@ -191,6 +211,13 @@ func (s *EleScheduler) reconcile(cp ChecksPrepared) {
 			if exists {
 				log.WithField("checkId", ac.Id).Warn("Reconciling was told to start a check, but it already existed.")
 				existingCheck.Cancel()
+			} else {
+				gauge, err := metricsSchedulerScheduled.GetMetricWithLabelValues(s.zoneID, ac.CheckType)
+				if err == nil {
+					gauge.Inc()
+				} else {
+					log.WithField("err", err).Warn("Failed to get gauge")
+				}
 			}
 			err := s.initiateCheck(*ac)
 			if err != nil {
@@ -224,6 +251,12 @@ func (s *EleScheduler) reconcile(cp ChecksPrepared) {
 		checkToRemove := s.checks[checkIdToRemoveStr]
 		delete(s.checks, checkIdToRemoveStr)
 		checkToRemove.Cancel()
+		gauge, err := metricsSchedulerScheduled.GetMetricWithLabelValues(s.zoneID, checkToRemove.GetCheckType())
+		if err == nil {
+			gauge.Dec()
+		} else {
+			log.WithField("err", err).Warn("Failed to get gauge")
+		}
 	}
 
 	if log.GetLevel() >= log.DebugLevel {
