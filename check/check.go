@@ -356,7 +356,7 @@ func (ch *Base) AddTLSMetrics(cr *Result, state tls.ConnectionState) *TLSMetrics
 }
 
 func (ch *Base) readLimit(conn io.Reader, limit int64) ([]byte, error) {
-	body, err := ioutil.ReadAll(io.LimitReader(conn, limit))
+	body, err := ioutil.ReadAll(io.LimitReader(conn, limit+1))
 	if err != nil && err != io.EOF {
 		return nil, err
 	}
