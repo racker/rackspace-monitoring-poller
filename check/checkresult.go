@@ -46,8 +46,8 @@ var (
 
 // States used for check result.  Consist of State and Status
 type States struct {
-	State  string
-	Status string
+	State  string `json:"state"`
+	Status string `json:"status"`
 }
 
 // SetStateAvailable updates state to available
@@ -132,9 +132,9 @@ func (cr *Result) GetMetric(name string) *metric.Metric {
 // which contain a metric map (so a list of maps)
 type ResultSet struct {
 	States
-	Check     Check
-	Metrics   []*Result
-	Available bool
+	Check     Check     `json:"check"`
+	Metrics   []*Result `json:"metrics"`
+	Available bool      `json:"available"`
 }
 
 // NewResultSet creates a new ResultSet.
