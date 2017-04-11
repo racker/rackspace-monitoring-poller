@@ -159,7 +159,6 @@ func (ch *HTTPCheck) Run() (*ResultSet, error) {
 	req = req.WithContext(httptrace.WithClientTrace(ctx, trace))
 
 	// Add Headers
-	req.Header.Add("Accept-Encoding", "gzip,deflate")
 	req.Header.Add("User-Agent", UserAgent)
 	req.Host = host
 	for key, value := range ch.Details.Headers {
