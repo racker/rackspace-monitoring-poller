@@ -193,9 +193,9 @@ func (ch *HTTPCheck) Run() (*ResultSet, error) {
 			return crs, nil
 		}
 		if m := re.FindSubmatch(body); m != nil {
-			cr.AddMetric(metric.NewMetric("body_match", "", metric.MetricString, string(m[1]), ""))
+			cr.AddMetric(metric.NewMetric("body_match", "", metric.MetricString, string(m[0]), "string"))
 		} else {
-			cr.AddMetric(metric.NewMetric("body_match", "", metric.MetricString, "", ""))
+			cr.AddMetric(metric.NewMetric("body_match", "", metric.MetricString, "", "string"))
 		}
 	}
 

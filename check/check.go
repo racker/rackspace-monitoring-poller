@@ -356,13 +356,11 @@ func (ch *Base) AddTLSMetrics(cr *Result, state tls.ConnectionState) *TLSMetrics
 }
 
 func (ch *Base) readLimit(conn io.Reader, limit int64) ([]byte, error) {
-	bytes := make([]byte, limit)
-	bio := io.LimitReader(conn, limit)
-	count, err := bio.Read(bytes)
+	body, err := ioutil.ReadAll(io.LimitReader(conn, limit))
 	if err != nil && err != io.EOF {
 		return nil, err
 	}
-	return bytes[:count], nil
+	return body, nil
 }
 
 func ReadCheckFromFile(filename string) (Check, error) {
