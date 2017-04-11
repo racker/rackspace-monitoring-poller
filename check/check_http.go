@@ -213,13 +213,17 @@ func (ch *HTTPCheck) Run() (*ResultSet, error) {
 		}
 	}
 
-	truncated := resp.ContentLength - int64(len(body))
+	truncated := int64(0)
+	if int64(len(body)) > MaxHTTPResponseBodyLength {
+		truncated = int64(1)
+	}
+
 	codeStr := strconv.Itoa(resp.StatusCode)
 
 	cr.AddMetric(metric.NewMetric("code", "", metric.MetricString, codeStr, ""))
 	cr.AddMetric(metric.NewMetric("duration", "", metric.MetricNumber, endtime-starttime, "milliseconds"))
 	cr.AddMetric(metric.NewMetric("bytes", "", metric.MetricNumber, len(body), "bytes"))
-	cr.AddMetric(metric.NewMetric("truncated", "", metric.MetricNumber, truncated, "bytes"))
+	cr.AddMetric(metric.NewMetric("truncated", "", metric.MetricNumber, truncated, "bool"))
 
 	if ch.Details.IncludeBody {
 		cr.AddMetric(metric.NewMetric("body", "", metric.MetricString, string(body), ""))
