@@ -23,7 +23,7 @@ type TCPCheckDetails struct {
 		Port        uint64 `json:"port"`
 		SendBody    string `json:"send_body"`
 		UseSSL      bool   `json:"ssl"`
-	}
+	} `json:"details"`
 }
 
 type TCPCheckOut struct {
