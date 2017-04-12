@@ -11,9 +11,49 @@ will be described elsewhere._
 From [the latest release](https://github.com/racker/rackspace-monitoring-poller/releases/latest), 
 download either the "deb" package or one of the standalone binaries listed after the debian package.
 
-## DEB package
+## APT
+
+* Update your packages to latest
+
+```
+apt-get update
+```
+
+* Add public key
+
+```
+curl https://monitoring.api.rackspacecloud.com/pki/agent/linux.asc | sudo apt-key add -
+```
+
+* Add cloudmonitoring repo
+
+```
+echo "deb http://stable.poller.packages.cloudmonitoring.rackspace.com/debian cloudmonitoring main" > /etc/apt/sources.list.d/cloudmonitoring.list
+```
+
+* Update packages to include the new repo
+
+```
+apt-get update
+```
+
+* Install the poller
+
+```
+apt-get install rackspace-monitoring-poller -y
+```
+
+Proceed to configuring your poller.
+
+
+## DEB package installation directly
 
 Install the package with `dpkg -i rackspace-monitoring-poller_*.deb`. 
+
+Proceed to configuring your poller.
+
+
+## Configuration for debian install
 
 Adjust these configuration files
 
