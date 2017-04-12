@@ -28,7 +28,7 @@ curl https://monitoring.api.rackspacecloud.com/pki/agent/linux.asc | sudo apt-ke
 * Add cloudmonitoring repo
 
 ```
-echo "deb http://stable.poller.packages.cloudmonitoring.rackspace.com/debian cloudmonitoring main" > /etc/apt/sources.list.d/cloudmonitoring.list
+echo "deb [arch=amd64] http://stable.poller.packages.cloudmonitoring.rackspace.com/debian cloudmonitoring main" > /etc/apt/sources.list.d/cloudmonitoring.list
 ```
 
 * Update packages to include the new repo
