@@ -566,7 +566,6 @@ func (s *EleSession) runFrameSending() {
 			return
 		case frame := <-s.sendCh:
 			s.addCompletion(frame)
-			s.connection.SetWriteDeadline(s.computeWriteDeadline())
 			data, err := frame.Encode()
 			if err != nil {
 				s.exitError(err)
@@ -578,11 +577,13 @@ func (s *EleSession) runFrameSending() {
 					"data":   string(data),
 				}).Debug("socket send")
 			}
+			s.connection.SetWriteDeadline(s.computeWriteDeadline())
 			_, err = s.connection.GetFarendWriter().Write(data)
 			if err != nil {
 				s.exitError(err)
 				return
 			}
+			s.connection.SetWriteDeadline(s.computeWriteDeadline())
 			_, err = s.connection.GetFarendWriter().Write([]byte{'\r', '\n'})
 			if err != nil {
 				s.exitError(err)
