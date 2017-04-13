@@ -121,7 +121,10 @@ func (ch *HTTPCheck) Run() (*ResultSet, error) {
 
 	var netClient *http.Client
 	tlsConfig := &tls.Config{InsecureSkipVerify: true, ServerName: host}
-	transport := &http.Transport{TLSClientConfig: tlsConfig}
+	transport := &http.Transport{
+		TLSClientConfig: tlsConfig,
+		DialContext:     NewCustomDialContext(ch.TargetResolver),
+	}
 	netClient = &http.Client{Transport: transport}
 
 	// Setup Redirects

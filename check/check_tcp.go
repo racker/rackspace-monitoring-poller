@@ -151,12 +151,17 @@ func (ch *TCPCheck) Run() (*ResultSet, error) {
 		Timeout: timeout,
 	}
 
+	network := "tcp4"
+	if ch.TargetResolver == ResolverIPV6 {
+		network = "tcp6"
+	}
+
 	// Connection
 	if ch.Details.UseSSL {
 		TLSconfig := &tls.Config{InsecureSkipVerify: true}
-		conn, err = dialContextWithDialer(ctx, nd, "tcp", addr, TLSconfig)
+		conn, err = dialContextWithDialer(ctx, nd, network, addr, TLSconfig)
 	} else {
-		conn, err = dialContextWithDialer(ctx, nd, "tcp", addr, nil)
+		conn, err = dialContextWithDialer(ctx, nd, network, addr, nil)
 	}
 	if err != nil {
 		crs.SetStatus(err.Error())
