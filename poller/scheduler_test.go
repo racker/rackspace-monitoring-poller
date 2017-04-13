@@ -66,6 +66,7 @@ type checkIdMatcher struct {
 }
 
 func (c checkIdMatcher) Matches(x interface{}) bool {
+	fmt.Println("DEBUG checking", x, c)
 	ch, ok := x.(check.Check)
 	if !ok {
 		return false
@@ -107,7 +108,7 @@ func TestEleScheduler_ReconcileChecks_AllStart(t *testing.T) {
 
 	scheduler.ReconcileChecks(cp)
 
-	utils.Timebox(t, 10*time.Second, func(t *testing.T) {
+	utils.Timebox(t, 10*time.Millisecond, func(t *testing.T) {
 		wg.Wait()
 	})
 
@@ -115,6 +116,53 @@ func TestEleScheduler_ReconcileChecks_AllStart(t *testing.T) {
 	assert.Len(t, scheduled, 2)
 
 	// ...verifies expected function calls, above
+}
+
+func TestEleScheduler_Reset(t *testing.T) {
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	mockStream := NewMockConnectionStream(mockCtrl)
+	checkScheduler := NewMockCheckScheduler(mockCtrl)
+	checkExecutor := NewMockCheckExecutor(mockCtrl)
+
+	scheduler := poller.NewCustomScheduler("znA", mockStream, checkScheduler, checkExecutor)
+	defer scheduler.Close()
+
+	var wg sync.WaitGroup
+	done := func(ch check.Check) { wg.Done() }
+	checkScheduler.EXPECT().Schedule(checkIdMatcher{id: "ch1"}).Do(done)
+	wg.Add(1)
+	checkScheduler.EXPECT().Schedule(checkIdMatcher{id: "ch2"}).Do(done)
+	wg.Add(1)
+
+	cp := loadChecksPreparation(t,
+		checkLoadInfo{action: protocol.PrepareActionStart, checkType: "remote.tcp", name: "tcp_check", id: "ch1", entityId: "en1", zonedId: "znA"},
+		checkLoadInfo{action: protocol.PrepareActionStart, checkType: "remote.ping", name: "ping_check", id: "ch2", entityId: "en1", zonedId: "znA"},
+	)
+
+	err := scheduler.ValidateChecks(cp)
+	assert.NoError(t, err)
+
+	scheduler.ReconcileChecks(cp)
+
+	utils.Timebox(t, 10*time.Millisecond, func(t *testing.T) {
+		wg.Wait()
+	})
+
+	scheduled := scheduler.GetScheduledChecks()
+	assert.Len(t, scheduled, 2)
+
+	checkScheduler.EXPECT().CancelCheck(checkIdMatcher{id: "ch1"}).Do(done)
+	wg.Add(1)
+	checkScheduler.EXPECT().CancelCheck(checkIdMatcher{id: "ch2"}).Do(done)
+	wg.Add(1)
+
+	scheduler.Reset()
+	utils.Timebox(t, 10*time.Millisecond, func(t *testing.T) {
+		wg.Wait()
+	})
 }
 
 func TestEleScheduler_ReconcileChecks(t *testing.T) {
@@ -151,6 +199,7 @@ func TestEleScheduler_ReconcileChecks(t *testing.T) {
 
 			prepMockScheduler: func(checkScheduler *MockCheckScheduler) {
 				checkScheduler.EXPECT().Schedule(checkIdMatcher{id: "ch1"})
+				checkScheduler.EXPECT().CancelCheck(checkIdMatcher{id: "ch1"})
 			},
 
 			cp: loadChecksPreparation(t,
@@ -195,6 +244,11 @@ func TestEleScheduler_ReconcileChecks(t *testing.T) {
 		{
 			name: "stopOne",
 
+			prepMockScheduler: func(checkScheduler *MockCheckScheduler) {
+				checkScheduler.EXPECT().Schedule(checkIdMatcher{id: "ch1"})
+				checkScheduler.EXPECT().CancelCheck(checkIdMatcher{id: "ch2"})
+			},
+
 			cp: loadChecksPreparation(t,
 				checkLoadInfo{action: protocol.PrepareActionContinue, checkType: "remote.tcp", name: "tcp_check", id: "ch1", entityId: "en1", zonedId: "znA"},
 			),
@@ -229,11 +283,6 @@ func TestEleScheduler_ReconcileChecks(t *testing.T) {
 			checkScheduler.EXPECT().Schedule(checkIdMatcher{id: "ch2"}).Do(done)
 			wg.Add(1)
 
-			//origCP := loadChecksPreparation(t,
-			//	checkLoadInfo{action: protocol.PrepareActionStart, checkType: "remote.tcp", name:"tcp_check",id:"ch1", entityId:"en1", zonedId:"znA"},
-			//	checkLoadInfo{action: protocol.PrepareActionStart, checkType: "remote.ping", name:"ping_check",id:"ch2", entityId:"en1", zonedId:"znA"},
-			//)
-			//
 			err := scheduler.ValidateChecks(origCP)
 			assert.NoError(t, err)
 
@@ -286,6 +335,69 @@ func extractCheckIds(checks []check.Check) []string {
 	return ids
 }
 
+func TestEleScheduler_ValidateChecks_Success(t *testing.T) {
+
+	tests := []struct {
+		name       string
+		preCP      *poller.ChecksPreparation
+		validateCP *poller.ChecksPreparation
+	}{
+		{
+			name:  "startNew",
+			preCP: loadChecksPreparation(t),
+			validateCP: loadChecksPreparation(t,
+				checkLoadInfo{action: protocol.PrepareActionStart, checkType: "remote.tcp", name: "tcp_check", id: "ch1", entityId: "en1", zonedId: "znA"},
+			),
+		},
+		{
+			name: "restartExisting",
+			preCP: loadChecksPreparation(t,
+				checkLoadInfo{action: protocol.PrepareActionStart, checkType: "remote.tcp", name: "tcp_check", id: "ch1", entityId: "en1", zonedId: "znA"},
+			),
+			validateCP: loadChecksPreparation(t,
+				checkLoadInfo{action: protocol.PrepareActionRestart, checkType: "remote.tcp", name: "tcp_check", id: "ch1", entityId: "en1", zonedId: "znA"},
+			),
+		},
+		{
+			name: "implyRestart",
+			preCP: loadChecksPreparation(t,
+				checkLoadInfo{action: protocol.PrepareActionStart, checkType: "remote.tcp", name: "tcp_check", id: "ch1", entityId: "en1", zonedId: "znA"},
+			),
+			validateCP: loadChecksPreparation(t,
+				checkLoadInfo{action: protocol.PrepareActionStart, checkType: "remote.tcp", name: "tcp_check", id: "ch1", entityId: "en1", zonedId: "znA"},
+			),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+			defer mockCtrl.Finish()
+
+			mockStream := NewMockConnectionStream(mockCtrl)
+			checkScheduler := NewMockCheckScheduler(mockCtrl)
+			checkExecutor := NewMockCheckExecutor(mockCtrl)
+
+			scheduler := poller.NewCustomScheduler("znA", mockStream, checkScheduler, checkExecutor)
+			defer scheduler.Close()
+
+			var wg sync.WaitGroup
+			count := len(tt.preCP.GetActionableChecks())
+			wg.Add(count)
+			checkScheduler.EXPECT().Schedule(gomock.Any()).Times(count).Do(func(ch check.Check) { wg.Done() })
+
+			scheduler.ReconcileChecks(tt.preCP)
+			utils.Timebox(t, 10*time.Second, func(t *testing.T) {
+				wg.Wait()
+			})
+
+			err := scheduler.ValidateChecks(tt.validateCP)
+			assert.NoError(t, err)
+		})
+	}
+
+}
+
 func TestEleScheduler_ValidateChecks_Fails(t *testing.T) {
 
 	tests := []struct {
@@ -295,17 +407,6 @@ func TestEleScheduler_ValidateChecks_Fails(t *testing.T) {
 		expectedErrStr string
 		extra          func(t *testing.T)
 	}{
-		{
-			name: "startExisting",
-			preCP: loadChecksPreparation(t,
-				checkLoadInfo{action: protocol.PrepareActionStart, checkType: "remote.tcp", name: "tcp_check", id: "ch1", entityId: "en1", zonedId: "znA"},
-				checkLoadInfo{action: protocol.PrepareActionStart, checkType: "remote.ping", name: "ping_check", id: "ch2", entityId: "en1", zonedId: "znA"},
-			),
-			validateCP: loadChecksPreparation(t,
-				checkLoadInfo{action: protocol.PrepareActionStart, checkType: "remote.tcp", name: "tcp_check", id: "ch1", entityId: "en1", zonedId: "znA"},
-			),
-			expectedErrStr: "Reconciling was told to start a check, but it already existed: ch1",
-		},
 		{
 			name: "restartMissing",
 			validateCP: loadChecksPreparation(t,

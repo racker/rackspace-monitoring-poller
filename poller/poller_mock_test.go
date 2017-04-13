@@ -403,6 +403,14 @@ func (_m *MockCheckScheduler) EXPECT() *_MockCheckSchedulerRecorder {
 	return _m.recorder
 }
 
+func (_m *MockCheckScheduler) CancelCheck(_param0 check.Check) {
+	_m.ctrl.Call(_m, "CancelCheck", _param0)
+}
+
+func (_mr *_MockCheckSchedulerRecorder) CancelCheck(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "CancelCheck", arg0)
+}
+
 func (_m *MockCheckScheduler) Schedule(_param0 check.Check) {
 	_m.ctrl.Call(_m, "Schedule", _param0)
 }
@@ -506,6 +514,14 @@ func (_m *MockScheduler) ReconcileChecks(_param0 poller.ChecksPrepared) {
 
 func (_mr *_MockSchedulerRecorder) ReconcileChecks(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "ReconcileChecks", arg0)
+}
+
+func (_m *MockScheduler) Reset() {
+	_m.ctrl.Call(_m, "Reset")
+}
+
+func (_mr *_MockSchedulerRecorder) Reset() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Reset")
 }
 
 func (_m *MockScheduler) SendMetrics(_param0 *check.ResultSet) {
