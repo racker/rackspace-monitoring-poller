@@ -28,7 +28,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	protocol "github.com/racker/rackspace-monitoring-poller/protocol/check"
+	protocheck "github.com/racker/rackspace-monitoring-poller/protocol/check"
 	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	"github.com/racker/rackspace-monitoring-poller/utils"
 )
@@ -43,7 +43,7 @@ const (
 // TCPCheck conveys TCP checks
 type TCPCheck struct {
 	Base
-	protocol.TCPCheckDetails
+	protocheck.TCPCheckDetails
 }
 
 // NewTCPCheck - Constructor for an TCP Check
@@ -154,9 +154,9 @@ func (ch *TCPCheck) Run() (*ResultSet, error) {
 	// Setup Network
 	network := "tcp"
 	switch ch.TargetResolver {
-	case ResolverIPV4:
+	case protocheck.ResolverIPV4:
 		network = "tcp4"
-	case ResolverIPV6:
+	case protocheck.ResolverIPV6:
 		network = "tcp6"
 	}
 

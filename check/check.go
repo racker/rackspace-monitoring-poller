@@ -105,11 +105,6 @@ type Check interface {
 	GetCheckIn() *protocheck.CheckIn
 }
 
-const (
-	ResolverIPV4 = 1
-	ResolverIPV6 = 2
-)
-
 // The prototype for a dial context
 type DialContextFunc func(context.Context, string, string) (net.Conn, error)
 
@@ -385,9 +380,9 @@ func ReadCheckFromFile(filename string) (Check, error) {
 func NewCustomDialContext(rType uint64) DialContextFunc {
 	netType := "tcp"
 	switch rType {
-	case ResolverIPV4:
+	case protocheck.ResolverIPV4:
 		netType = "tcp4"
-	case ResolverIPV6:
+	case protocheck.ResolverIPV6:
 		netType = "tcp6"
 	default:
 	}

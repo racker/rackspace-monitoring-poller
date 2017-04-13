@@ -42,3 +42,8 @@ type CheckIn struct {
 
 	RawDetails *json.RawMessage `json:"details"`
 }
+
+const (
+	ResolverIPV4 = 1
+	ResolverIPV6 = 2
+)
