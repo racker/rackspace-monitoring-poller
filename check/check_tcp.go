@@ -28,7 +28,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	protocol "github.com/racker/rackspace-monitoring-poller/protocol/check"
+	protocheck "github.com/racker/rackspace-monitoring-poller/protocol/check"
 	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	"github.com/racker/rackspace-monitoring-poller/utils"
 )
@@ -43,7 +43,7 @@ const (
 // TCPCheck conveys TCP checks
 type TCPCheck struct {
 	Base
-	protocol.TCPCheckDetails
+	protocheck.TCPCheckDetails
 }
 
 // NewTCPCheck - Constructor for an TCP Check
@@ -151,12 +151,21 @@ func (ch *TCPCheck) Run() (*ResultSet, error) {
 		Timeout: timeout,
 	}
 
+	// Setup Network
+	network := "tcp"
+	switch ch.TargetResolver {
+	case protocheck.ResolverIPV4:
+		network = "tcp4"
+	case protocheck.ResolverIPV6:
+		network = "tcp6"
+	}
+
 	// Connection
 	if ch.Details.UseSSL {
 		TLSconfig := &tls.Config{InsecureSkipVerify: true}
-		conn, err = dialContextWithDialer(ctx, nd, "tcp", addr, TLSconfig)
+		conn, err = dialContextWithDialer(ctx, nd, network, addr, TLSconfig)
 	} else {
-		conn, err = dialContextWithDialer(ctx, nd, "tcp", addr, nil)
+		conn, err = dialContextWithDialer(ctx, nd, network, addr, nil)
 	}
 	if err != nil {
 		crs.SetStatus(err.Error())

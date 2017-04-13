@@ -63,6 +63,7 @@ import (
 
 	"fmt"
 	"io"
+	"net"
 	"strings"
 
 	"time"
@@ -103,6 +104,9 @@ type Check interface {
 	Run() (*ResultSet, error)
 	GetCheckIn() *protocheck.CheckIn
 }
+
+// The prototype for a dial context
+type DialContextFunc func(context.Context, string, string) (net.Conn, error)
 
 // WaitPeriodTimeMeasurement sets up the time measurement
 // for how long the check should wait before retrying.
@@ -371,4 +375,19 @@ func ReadCheckFromFile(filename string) (Check, error) {
 
 	ctx := context.Background()
 	return NewCheck(ctx, json.RawMessage(jsonContent))
+}
+
+func NewCustomDialContext(rType uint64) DialContextFunc {
+	netType := "tcp"
+	switch rType {
+	case protocheck.ResolverIPV4:
+		netType = "tcp4"
+	case protocheck.ResolverIPV6:
+		netType = "tcp6"
+	default:
+	}
+	return func(ctx context.Context, network string, address string) (net.Conn, error) {
+		var d net.Dialer
+		return d.DialContext(ctx, netType, address)
+	}
 }
