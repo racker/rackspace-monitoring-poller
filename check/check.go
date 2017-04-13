@@ -383,7 +383,7 @@ func ReadCheckFromFile(filename string) (Check, error) {
 }
 
 func NewCustomDialContext(rType uint64) DialContextFunc {
-	netType := "tcp4"
+	netType := "tcp"
 	switch rType {
 	case ResolverIPV4:
 		netType = "tcp4"

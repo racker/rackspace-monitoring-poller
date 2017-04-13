@@ -151,8 +151,12 @@ func (ch *TCPCheck) Run() (*ResultSet, error) {
 		Timeout: timeout,
 	}
 
-	network := "tcp4"
-	if ch.TargetResolver == ResolverIPV6 {
+	// Setup Network
+	network := "tcp"
+	switch ch.TargetResolver {
+	case ResolverIPV4:
+		network = "tcp4"
+	case ResolverIPV6:
 		network = "tcp6"
 	}
 
