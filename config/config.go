@@ -311,12 +311,12 @@ func (cfg *Config) SetPrivateZones(zones []string) {
 
 func (cfg *Config) ComputeReadDeadline(offset time.Duration) time.Time {
 	offset = offset + cfg.TimeoutRead
-	return time.Now().Add(time.Duration(offset * time.Second))
+	return time.Now().Add(offset)
 }
 
 func (cfg *Config) ComputeWriteDeadline(offset time.Duration) time.Time {
 	offset = offset + cfg.TimeoutWrite
-	return time.Now().Add(time.Duration(offset * time.Second))
+	return time.Now().Add(offset)
 }
 
 func IsUsingStaging() bool {
