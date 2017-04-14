@@ -153,6 +153,10 @@ func (conn *EleConnection) GetLogPrefix() string {
 	return conn.address
 }
 
+func (conn *EleConnection) String() string {
+	return conn.address
+}
+
 // Connect sets up a tcp connection with connection defined address
 // and passed in tlsConfig
 // If context is not set, ErrUndefinedContext is returned

@@ -157,20 +157,28 @@ func (cs *EleConnectionStream) registerConnection(qry string, conn Connection) {
 }
 
 func (cs *EleConnectionStream) deregisterConnection(qry string, conn Connection) {
-	hadConnections := len(cs.conns) > 0
-	delete(cs.conns, qry)
-	log.WithField("connections", cs.conns).
-		Debug("After deregistring, currently registered connections")
-	cs.EmitEvent(utils.NewEvent(EventTypeDeregister, conn))
-
-	if hadConnections && len(cs.conns) == 0 {
+	if _, exists := cs.conns[qry]; exists {
+		delete(cs.conns, qry)
 		log.WithFields(log.Fields{
-			"prefix": "scheduler",
-		}).Info("Lost all connections to endpoints")
+			"prefix":      cs.GetLogPrefix(),
+			"connections": cs.conns,
+		}).Debug("After deregistering, currently registered connections")
 
-		for _, scheduler := range cs.schedulers {
-			scheduler.Reset()
+		cs.EmitEvent(utils.NewEvent(EventTypeDeregister, conn))
+		if len(cs.conns) == 0 {
+			log.WithFields(log.Fields{
+				"prefix": "scheduler",
+			}).Info("Lost all connections to endpoints")
+
+			for _, scheduler := range cs.schedulers {
+				scheduler.Reset()
+			}
 		}
+	} else {
+		log.WithFields(log.Fields{
+			"prefix":     cs.GetLogPrefix(),
+			"connection": conn,
+		}).Debug("Saw deregistration, but connection wasn't fully ready.")
 	}
 }
 
