@@ -55,9 +55,11 @@ type EleScheduler struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	zoneID       string
+	zoneID string
+	// checks maps checkId to the check definition
 	checks       map[string]check.Check
 	preparations chan ChecksPrepared
+	resets       chan struct{}
 
 	stream ConnectionStream
 
@@ -81,6 +83,7 @@ func NewCustomScheduler(zoneID string, stream ConnectionStream, checkScheduler C
 	s := &EleScheduler{
 		checks:       make(map[string]check.Check),
 		preparations: make(chan ChecksPrepared, checkPreparationBufferSize),
+		resets:       make(chan struct{}, 1),
 		stream:       stream,
 		zoneID:       zoneID,
 		scheduler:    checkScheduler,
@@ -128,6 +131,22 @@ func (s *EleScheduler) GetScheduledChecks() []check.Check {
 	return checks
 }
 
+func (s *EleScheduler) Reset() {
+	s.resets <- struct{}{}
+}
+
+func (s *EleScheduler) reset() {
+	log.WithFields(log.Fields{
+		"prefix": "scheduler",
+		"checks": s.GetScheduledChecks(),
+	}).Info("Cancelling and de-scheduling checks due to reset")
+
+	for checkId, check := range s.checks {
+		delete(s.checks, checkId)
+		s.scheduler.CancelCheck(check)
+	}
+}
+
 func (s *EleScheduler) ReconcileChecks(cp ChecksPrepared) {
 	s.preparations <- cp
 }
@@ -142,6 +161,9 @@ func (s *EleScheduler) runReconciler() {
 		case cp := <-s.preparations:
 			s.reconcile(cp)
 			s.logScheduledChecks()
+
+		case <-s.resets:
+			s.reset()
 
 		case <-s.ctx.Done():
 			return
@@ -171,11 +193,6 @@ func (s *EleScheduler) ValidateChecks(cp ChecksPreparing) error {
 	for _, ac := range actionableChecks {
 
 		switch ac.Action {
-		case ActionTypeStart:
-			_, exists := s.checks[ac.Id]
-			if exists {
-				return errors.New(fmt.Sprintf("Reconciling was told to start a check, but it already existed: %v", ac.Id))
-			}
 		case ActionTypeRestart:
 			_, exists := s.checks[ac.Id]
 			if !exists {
@@ -209,8 +226,11 @@ func (s *EleScheduler) reconcile(cp ChecksPrepared) {
 		case ActionTypeStart:
 			existingCheck, exists := s.checks[ac.Id]
 			if exists {
-				log.WithField("checkId", ac.Id).Warn("Reconciling was told to start a check, but it already existed.")
-				existingCheck.Cancel()
+				log.WithFields(log.Fields{
+					"prefix":  "scheduler",
+					"checkId": ac.Id,
+				}).Warn("Reconciling was told to start a check, but it already existed.")
+				s.scheduler.CancelCheck(existingCheck)
 			} else {
 				gauge, err := metricsSchedulerScheduled.GetMetricWithLabelValues(s.zoneID, ac.CheckType)
 				if err == nil {
@@ -227,7 +247,7 @@ func (s *EleScheduler) reconcile(cp ChecksPrepared) {
 		case ActionTypeRestart:
 			existingCheck, exists := s.checks[ac.Id]
 			if exists {
-				existingCheck.Cancel()
+				s.scheduler.CancelCheck(existingCheck)
 			} else {
 				log.WithField("checkId", ac.Id).Warn("Reconciling was told to restart a check, but it does not exist.")
 			}
@@ -250,7 +270,8 @@ func (s *EleScheduler) reconcile(cp ChecksPrepared) {
 		checkIdToRemoveStr := checkIdToRemove.(string)
 		checkToRemove := s.checks[checkIdToRemoveStr]
 		delete(s.checks, checkIdToRemoveStr)
-		checkToRemove.Cancel()
+		s.scheduler.CancelCheck(checkToRemove)
+
 		gauge, err := metricsSchedulerScheduled.GetMetricWithLabelValues(s.zoneID, checkToRemove.GetCheckType())
 		if err == nil {
 			gauge.Dec()
@@ -283,6 +304,11 @@ func (s *EleScheduler) Schedule(ch check.Check) {
 	if !ch.IsDisabled() {
 		go s.runCheckTimerLoop(ch)
 	}
+}
+
+// CancelCheck is a default implementation that calls check.Cancel
+func (s *EleScheduler) CancelCheck(ch check.Check) {
+	ch.Cancel()
 }
 
 func (s *EleScheduler) runCheckTimerLoop(ch check.Check) {

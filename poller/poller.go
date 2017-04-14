@@ -109,6 +109,7 @@ type Session interface {
 // CheckScheduler arranges the periodic invocation of the given Check
 type CheckScheduler interface {
 	Schedule(ch check.Check)
+	CancelCheck(ch check.Check)
 }
 
 // CheckExecutor facilitates running a check and consuming the CheckResultSet
@@ -137,7 +138,11 @@ type ChecksReconciler interface {
 type Scheduler interface {
 	ChecksReconciler
 
+	// Reset will stop and de-schedule all checks, but leave this scheduler available for reconciling new checks.
+	Reset()
+	// Close is only used for isolated, such as unit test, use of the Scheduler in order to close out go routines
 	Close()
+
 	SendMetrics(crs *check.ResultSet)
 	GetZoneID() string
 	GetContext() (ctx context.Context, cancel context.CancelFunc)
