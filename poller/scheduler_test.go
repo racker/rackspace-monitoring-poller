@@ -66,7 +66,6 @@ type checkIdMatcher struct {
 }
 
 func (c checkIdMatcher) Matches(x interface{}) bool {
-	fmt.Println("DEBUG checking", x, c)
 	ch, ok := x.(check.Check)
 	if !ok {
 		return false
@@ -171,6 +170,10 @@ func TestEleScheduler_ReconcileChecks(t *testing.T) {
 		checkLoadInfo{action: protocol.PrepareActionStart, checkType: "remote.ping", name: "ping_check", id: "ch2", entityId: "en1", zonedId: "znA"},
 	)
 
+	checkCanceller := func(ch check.Check) {
+		ch.Cancel()
+	}
+
 	tests := []struct {
 		name              string
 		prepMockScheduler func(checkScheduler *MockCheckScheduler)
@@ -198,8 +201,8 @@ func TestEleScheduler_ReconcileChecks(t *testing.T) {
 			name: "restartOne",
 
 			prepMockScheduler: func(checkScheduler *MockCheckScheduler) {
+				checkScheduler.EXPECT().CancelCheck(checkIdMatcher{id: "ch1"}).Do(checkCanceller)
 				checkScheduler.EXPECT().Schedule(checkIdMatcher{id: "ch1"})
-				checkScheduler.EXPECT().CancelCheck(checkIdMatcher{id: "ch1"})
 			},
 
 			cp: loadChecksPreparation(t,
@@ -245,8 +248,7 @@ func TestEleScheduler_ReconcileChecks(t *testing.T) {
 			name: "stopOne",
 
 			prepMockScheduler: func(checkScheduler *MockCheckScheduler) {
-				checkScheduler.EXPECT().Schedule(checkIdMatcher{id: "ch1"})
-				checkScheduler.EXPECT().CancelCheck(checkIdMatcher{id: "ch2"})
+				checkScheduler.EXPECT().CancelCheck(checkIdMatcher{id: "ch2"}).Do(checkCanceller)
 			},
 
 			cp: loadChecksPreparation(t,
