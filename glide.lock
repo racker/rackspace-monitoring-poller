@@ -1,5 +1,5 @@
-hash: 55847d8b24308ffc396ed7976e9ac4e06d0ed27e5e958286a2d73a0825519f1d
-updated: 2017-03-31T09:35:31.032085502-05:00
+hash: 68e15231cf1d260e87b5caa152154c134c9f51a15283d4ff84a5e9e5669e38a2
+updated: 2017-04-14T09:57:41.548038-05:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -63,10 +63,12 @@ imports:
   version: a1dba9ce8baed984a2495b658c82687f8157b98f
   subpackages:
   - xfs
+- name: github.com/racker/logrus-prefixed-formatter
+  version: 70b83852bb4ea37dc46ae147af2b1096f7466fb1
 - name: github.com/satori/go.uuid
   version: 879c5887cd475cd7864858769793b2ceb0d44feb
 - name: github.com/shirou/gopsutil
-  version: d371ba1293cb48fedc6850526ea48b3846c54f2c
+  version: e49a95f3d5f824c3f9875ca49e54e4fef17f82cf
   subpackages:
   - cpu
   - disk
