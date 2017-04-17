@@ -111,7 +111,7 @@ func NewCustomScheduler(config *config.Config, zoneID string, stream ConnectionS
 
 	go s.runReconciler()
 
-	for i := 0; i < config.TestCheckConcurrency; i++ {
+	for i := 0; i < config.CheckTestConcurrency; i++ {
 		go s.runCheckTester()
 	}
 
