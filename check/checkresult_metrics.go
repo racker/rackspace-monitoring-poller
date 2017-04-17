@@ -20,7 +20,6 @@ import (
 	"fmt"
 
 	"github.com/racker/rackspace-monitoring-poller/protocol"
-	"github.com/racker/rackspace-monitoring-poller/utils"
 )
 
 // NewMetricsPostRequest function sets up a request with provided
@@ -30,21 +29,7 @@ func NewMetricsPostRequest(crs *ResultSet, clockOffset int64) *protocol.MetricsP
 	req := &protocol.MetricsPostRequest{}
 	req.Version = "1"
 	req.Method = "check_metrics.post_multi"
-	req.Params.EntityId = crs.Check.GetEntityID()
-	req.Params.CheckId = crs.Check.GetID()
-	req.Params.CheckType = crs.Check.GetCheckType()
-	req.Params.MinCheckPeriod = crs.Check.GetPeriod() * 1000
-	req.Params.State = crs.State
-	req.Params.Status = crs.Status
-	req.Params.Timestamp = utils.NowTimestampMillis() + clockOffset
-	if crs.Length() == 0 {
-		req.Params.Metrics = nil
-	} else {
-		req.Params.Metrics = make([]protocol.MetricWrap, crs.Length())
-		for i := 0; i < crs.Length(); i++ {
-			req.Params.Metrics[i] = ConvertToMetricResults(crs.Get(i))
-		}
-	}
+	crs.PopulateMetricsPostContent(clockOffset, &req.Params)
 	return req
 }
 

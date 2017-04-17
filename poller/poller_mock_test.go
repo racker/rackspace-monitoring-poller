@@ -68,6 +68,14 @@ func (_m *MockConnectionStream) EXPECT() *_MockConnectionStreamRecorder {
 	return _m.recorder
 }
 
+func (_m *MockConnectionStream) CheckTest(_param0 check.Check, _param1 poller.CheckResultHandler) {
+	_m.ctrl.Call(_m, "CheckTest", _param0, _param1)
+}
+
+func (_mr *_MockConnectionStreamRecorder) CheckTest(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "CheckTest", arg0, arg1)
+}
+
 func (_m *MockConnectionStream) Connect() {
 	_m.ctrl.Call(_m, "Connect")
 }
@@ -94,6 +102,14 @@ func (_mr *_MockConnectionStreamRecorder) Done() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "Done")
 }
 
+func (_m *MockConnectionStream) ReconcileChecks(_param0 poller.ChecksPrepared) {
+	_m.ctrl.Call(_m, "ReconcileChecks", _param0)
+}
+
+func (_mr *_MockConnectionStreamRecorder) ReconcileChecks(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "ReconcileChecks", arg0)
+}
+
 func (_m *MockConnectionStream) RegisterEventConsumer(_param0 utils.EventConsumer) {
 	_m.ctrl.Call(_m, "RegisterEventConsumer", _param0)
 }
@@ -108,6 +124,16 @@ func (_m *MockConnectionStream) SendMetrics(_param0 *check.ResultSet) {
 
 func (_mr *_MockConnectionStreamRecorder) SendMetrics(arg0 interface{}) *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "SendMetrics", arg0)
+}
+
+func (_m *MockConnectionStream) ValidateChecks(_param0 poller.ChecksPreparing) error {
+	ret := _m.ctrl.Call(_m, "ValidateChecks", _param0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+func (_mr *_MockConnectionStreamRecorder) ValidateChecks(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "ValidateChecks", arg0)
 }
 
 // Mock of Connection interface
@@ -469,6 +495,14 @@ func (_m *MockScheduler) EXPECT() *_MockSchedulerRecorder {
 	return _m.recorder
 }
 
+func (_m *MockScheduler) CheckTest(_param0 check.Check, _param1 poller.CheckResultHandler) {
+	_m.ctrl.Call(_m, "CheckTest", _param0, _param1)
+}
+
+func (_mr *_MockSchedulerRecorder) CheckTest(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "CheckTest", arg0, arg1)
+}
+
 func (_m *MockScheduler) Close() {
 	_m.ctrl.Call(_m, "Close")
 }
@@ -561,6 +595,14 @@ func NewMockChecksReconciler(ctrl *gomock.Controller) *MockChecksReconciler {
 
 func (_m *MockChecksReconciler) EXPECT() *_MockChecksReconcilerRecorder {
 	return _m.recorder
+}
+
+func (_m *MockChecksReconciler) CheckTest(_param0 check.Check, _param1 poller.CheckResultHandler) {
+	_m.ctrl.Call(_m, "CheckTest", _param0, _param1)
+}
+
+func (_mr *_MockChecksReconcilerRecorder) CheckTest(arg0, arg1 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "CheckTest", arg0, arg1)
 }
 
 func (_m *MockChecksReconciler) ReconcileChecks(_param0 poller.ChecksPrepared) {

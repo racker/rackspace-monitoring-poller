@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/golang/mock/gomock"
 	"github.com/racker/rackspace-monitoring-poller/check"
+	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/poller"
 	"github.com/racker/rackspace-monitoring-poller/protocol"
 	"github.com/racker/rackspace-monitoring-poller/utils"
@@ -32,7 +33,7 @@ func TestNewScheduler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := poller.NewScheduler(tt.zoneID, NewMockConnectionStream(ctrl))
+			got := poller.NewScheduler(&config.Config{}, tt.zoneID, NewMockConnectionStream(ctrl))
 			//assert that zoneID is the same
 			assert.Equal(t, tt.zoneID, got.GetZoneID())
 		})
@@ -43,7 +44,7 @@ func TestEleScheduler_Close(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	schedule := poller.NewScheduler("pzAwesome", NewMockConnectionStream(ctrl))
+	schedule := poller.NewScheduler(&config.Config{}, "pzAwesome", NewMockConnectionStream(ctrl))
 	ctx, _ := schedule.GetContext()
 	schedule.Close()
 	completed := utils.Timebox(t, 100*time.Millisecond, func(t *testing.T) {
@@ -56,7 +57,7 @@ func TestEleScheduler_SendMetrics(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockStream := NewMockConnectionStream(mockCtrl)
-	schedule := poller.NewScheduler("pzAwesome", mockStream)
+	schedule := poller.NewScheduler(&config.Config{}, "pzAwesome", mockStream)
 	mockStream.EXPECT().SendMetrics(gomock.Any()).Times(1)
 	schedule.SendMetrics(&check.ResultSet{})
 }
@@ -87,7 +88,7 @@ func TestEleScheduler_ReconcileChecks_AllStart(t *testing.T) {
 	checkScheduler := NewMockCheckScheduler(mockCtrl)
 	checkExecutor := NewMockCheckExecutor(mockCtrl)
 
-	scheduler := poller.NewCustomScheduler("znA", mockStream, checkScheduler, checkExecutor)
+	scheduler := poller.NewCustomScheduler(&config.Config{}, "znA", mockStream, checkScheduler, checkExecutor)
 	defer scheduler.Close()
 
 	var wg sync.WaitGroup
@@ -126,7 +127,7 @@ func TestEleScheduler_Reset(t *testing.T) {
 	checkScheduler := NewMockCheckScheduler(mockCtrl)
 	checkExecutor := NewMockCheckExecutor(mockCtrl)
 
-	scheduler := poller.NewCustomScheduler("znA", mockStream, checkScheduler, checkExecutor)
+	scheduler := poller.NewCustomScheduler(&config.Config{}, "znA", mockStream, checkScheduler, checkExecutor)
 	defer scheduler.Close()
 
 	var wg sync.WaitGroup
@@ -275,7 +276,7 @@ func TestEleScheduler_ReconcileChecks(t *testing.T) {
 			checkScheduler := NewMockCheckScheduler(mockCtrl)
 			checkExecutor := NewMockCheckExecutor(mockCtrl)
 
-			scheduler := poller.NewCustomScheduler("znA", mockStream, checkScheduler, checkExecutor)
+			scheduler := poller.NewCustomScheduler(&config.Config{}, "znA", mockStream, checkScheduler, checkExecutor)
 			defer scheduler.Close()
 
 			var wg sync.WaitGroup
@@ -380,7 +381,7 @@ func TestEleScheduler_ValidateChecks_Success(t *testing.T) {
 			checkScheduler := NewMockCheckScheduler(mockCtrl)
 			checkExecutor := NewMockCheckExecutor(mockCtrl)
 
-			scheduler := poller.NewCustomScheduler("znA", mockStream, checkScheduler, checkExecutor)
+			scheduler := poller.NewCustomScheduler(&config.Config{}, "znA", mockStream, checkScheduler, checkExecutor)
 			defer scheduler.Close()
 
 			var wg sync.WaitGroup
@@ -434,7 +435,7 @@ func TestEleScheduler_ValidateChecks_Fails(t *testing.T) {
 			checkScheduler := NewMockCheckScheduler(mockCtrl)
 			checkExecutor := NewMockCheckExecutor(mockCtrl)
 
-			scheduler := poller.NewCustomScheduler("znA", mockStream, checkScheduler, checkExecutor)
+			scheduler := poller.NewCustomScheduler(&config.Config{}, "znA", mockStream, checkScheduler, checkExecutor)
 			defer scheduler.Close()
 
 			if tt.preCP != nil {
@@ -467,7 +468,7 @@ func TestEleScheduler_Schedule_DisabledChecks(t *testing.T) {
 	mockStream := NewMockConnectionStream(mockCtrl)
 	checkExecutor := NewMockCheckExecutor(mockCtrl)
 
-	scheduler := poller.NewCustomScheduler("znA", mockStream,
+	scheduler := poller.NewCustomScheduler(&config.Config{}, "znA", mockStream,
 		nil, // use default scheduler, since that's what we're testing
 		checkExecutor)
 	defer scheduler.Close()

@@ -40,11 +40,11 @@ const (
 
 type metricsToStore struct {
 	agent  *agent
-	params *protocol.MetricsPostRequestParams
+	params *protocol.MetricsPostContent
 }
 
 type metricsPost struct {
-	params *protocol.MetricsPostRequestParams
+	params *protocol.MetricsPostContent
 	frame  protocol.Frame
 }
 

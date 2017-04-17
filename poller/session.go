@@ -26,6 +26,7 @@ import (
 
 	"fmt"
 	log "github.com/Sirupsen/logrus"
+	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/hostinfo"
 	"github.com/racker/rackspace-monitoring-poller/protocol"
@@ -290,6 +291,8 @@ func (s *EleSession) handleFrame(f *protocol.FrameMsg) error {
 		s.handlePollerPrepareEnd(f)
 	case protocol.MethodPollerCommit:
 		s.handlePollerCommit(f)
+	case protocol.MethodCheckTest:
+		s.handleCheckTest(f)
 	default:
 		log.WithFields(log.Fields{
 			"prefix": s.logPrefix,
@@ -438,6 +441,32 @@ func (s *EleSession) handlePollerCommit(f *protocol.FrameMsg) {
 	}
 	s.respondCommitResult(f, req, protocol.PrepareResultStatusCommitted, "")
 	s.prepDetails.commit()
+}
+
+func (s *EleSession) handleCheckTest(f *protocol.FrameMsg) {
+	req := protocol.DecodePollerCheckTestRequest(f)
+
+	newCheck, err := check.NewCheckParsed(s.ctx, *req.Params)
+	if err != nil {
+		resp := protocol.NewErrorResponse(f, 1, "Unable to interpret the given check for testing")
+		s.Respond(resp)
+		return
+	}
+
+	s.prepDetails.reconciler.CheckTest(newCheck, func(crs *check.ResultSet, err error) {
+		if err != nil {
+			resp := protocol.NewErrorResponse(f, 2, err.Error())
+			s.Respond(resp)
+			return
+		}
+
+		var content protocol.MetricsPostContent
+		crs.PopulateMetricsPostContent(0, &content)
+
+		resp := protocol.NewPollerCheckTestResponse(f, &content)
+		s.Respond(resp)
+	})
+
 }
 
 func (s *EleSession) respondCommitResult(f *protocol.FrameMsg, req *protocol.PollerCommitRequest,

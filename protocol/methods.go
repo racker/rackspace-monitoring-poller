@@ -22,4 +22,6 @@ const (
 	MethodPollerPrepareEnd = "poller.prepare.end"
 	// MethodPollerCommit is RECV FROM <--- endpoint server
 	MethodPollerCommit = "poller.commit"
+	// MethodTestCheck is RECV FROM <--- endpoint server
+	MethodCheckTest = "check.test"
 )

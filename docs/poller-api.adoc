@@ -75,6 +75,28 @@ __optional__|<<_checkmetricspostmulti,CheckMetricsPostMulti>>
 |===
 
 
+[[_poller_check-test_post]]
+=== POST /poller/check-test
+
+==== Parameters
+
+[options="header", cols=".^2,.^3,.^4"]
+|===
+|Type|Name|Schema
+|**Body**|**body** +
+__optional__|<<_pollerchecktest,PollerCheckTest>>
+|===
+
+
+==== Responses
+
+[options="header", cols=".^2,.^14,.^4"]
+|===
+|HTTP Code|Description|Schema
+|**200**|OK|<<_pollerchecktestresponse,PollerCheckTestResponse>>
+|===
+
+
 [[_poller_commit_post]]
 === POST /poller/commit
 
@@ -218,33 +240,13 @@ __required__|integer(int64)
 |**method** +
 __optional__|enum (poller.prepare, poller.prepare.block, poller.prepare.end, poller.commit, check_metrics.post_multi)
 |**params** +
-__optional__|<<_checkmetricspostmulti_params,params>>
+__optional__|<<_metricspost,MetricsPost>>
 |**source** +
 __required__|string
 |**target** +
 __required__|string
 |**v** +
 __required__|string
-|===
-
-[[_checkmetricspostmulti_params]]
-**params**
-
-[options="header", cols=".^3,.^11,.^4"]
-|===
-|Name|Description|Schema
-|**check_id** +
-__required__||string
-|**check_type** +
-__required__|**Length** : `1 - 64`|string
-|**entity_id** +
-__required__||string
-|**metrics** +
-__required__||< < object > array > array
-|**state** +
-__required__||enum (available, unavailable)
-|**status** +
-__required__|**Length** : `0 - 256`|string
 |===
 
 
@@ -282,9 +284,90 @@ __required__|string
 |===
 
 
+[[_metricspost]]
+=== MetricsPost
+
+[options="header", cols=".^3,.^11,.^4"]
+|===
+|Name|Description|Schema
+|**check_id** +
+__required__||string
+|**check_type** +
+__required__|**Length** : `1 - 64`|string
+|**entity_id** +
+__required__||string
+|**metrics** +
+__required__||< < object > array > array
+|**state** +
+__required__||enum (available, unavailable)
+|**status** +
+__required__|**Length** : `0 - 256`|string
+|**timestamp** +
+__required__||integer
+|===
+
+
 [[_partitionversion]]
 === PartitionVersion
 __Type__ : integer(int64)
+
+
+[[_pollerchecktest]]
+=== PollerCheckTest
+check.test
+
+[%hardbreaks]
+__Polymorphism__ : Inheritance
+__Discriminator__ : method
+
+
+[options="header", cols=".^3,.^4"]
+|===
+|Name|Schema
+|**error** +
+__optional__|<<_error,Error>>
+|**id** +
+__required__|integer(int64)
+|**method** +
+__optional__|enum (poller.prepare, poller.prepare.block, poller.prepare.end, poller.commit, check_metrics.post_multi)
+|**params** +
+__optional__|<<_check,Check>>
+|**source** +
+__required__|string
+|**target** +
+__required__|string
+|**v** +
+__required__|string
+|===
+
+
+[[_pollerchecktestresponse]]
+=== PollerCheckTestResponse
+test.check
+
+[%hardbreaks]
+__Polymorphism__ : Inheritance
+__Discriminator__ : method
+
+
+[options="header", cols=".^3,.^4"]
+|===
+|Name|Schema
+|**error** +
+__optional__|<<_error,Error>>
+|**id** +
+__required__|integer(int64)
+|**method** +
+__optional__|enum (poller.prepare, poller.prepare.block, poller.prepare.end, poller.commit, check_metrics.post_multi)
+|**result** +
+__optional__|<<_metricspost,MetricsPost>>
+|**source** +
+__required__|string
+|**target** +
+__required__|string
+|**v** +
+__required__|string
+|===
 
 
 [[_pollercommit]]

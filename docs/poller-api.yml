@@ -67,6 +67,18 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/PollerCommitResponse'
+  /poller/check-test:
+    post:
+      parameters:
+        - in: body
+          name: body
+          schema:
+            $ref: '#/definitions/PollerCheckTest'
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/PollerCheckTestResponse'
   /metrics:
     post:
       parameters:
@@ -134,95 +146,72 @@ definitions:
     format: int64
   ZoneId:
     type: string
-  PollerPrepare:
-    description: poller.prepare
-    allOf:
-      - $ref: '#/definitions/Frame'
-      - type: object
-        properties:
-          params:
-            type: object
-            properties:
-              zone_id:
-                $ref: '#/definitions/ZoneId'
-              version:
-                $ref: '#/definitions/PartitionVersion'
-              manifest:
-                type: array
-                items:
-                  $ref: '#/definitions/PollerPrepareManifest'
-  CheckMetricsPostMulti:
-    description: check_metrics.post_multi
-    allOf:
-      - $ref: '#/definitions/Frame'
-      - type: object
-        properties:
-          params:
-            type: object
-            required:
-              - entity_id
-              - check_id
-              - check_type
-              - metrics
-              - state
-              - status
-              - timestamp
-            properties:
-              entity_id:
-                type: string
-              check_id:
-                type: string
-              check_type:
-                type: string
-                minLength: 1
-                maxLength: 64
-              metrics:
-                type: array
-                minItems: 1
-                items:
-                  type: array
-                  description: resource
-                  minItems: 2
-                  maxItems: 2
-                  items:
-                    - type: string
-                      description: resource name
-                    - type: object
-                      description: resource metrics
-                      minProperties: 1
-                      additionalProperties:
-                        type: object
-                        description: metric tuple
-                        properties:
-                          t:
-                            type: string
-                            enum:
-                              - string
-                              - gauge
-                              - int32
-                              - uint32
-                              - int64
-                              - uint64
-                              - double
-                          v:
-                            type: string
-                            minLength: 1
-                          u:
-                            type: string
-                        required:
-                          - t
-                          - v
-              state:
-                type: string
-                enum:
-                  - available
-                  - unavailable
-              status:
-                type: string
-                minLength: 0
-                maxLength: 256
-              timestamp:
-                type: integer
+  MetricsPost:
+    type: object
+    required:
+      - entity_id
+      - check_id
+      - check_type
+      - metrics
+      - state
+      - status
+      - timestamp
+    properties:
+      entity_id:
+        type: string
+      check_id:
+        type: string
+      check_type:
+        type: string
+        minLength: 1
+        maxLength: 64
+      metrics:
+        type: array
+        minItems: 1
+        items:
+          type: array
+          description: resource
+          minItems: 2
+          maxItems: 2
+          items:
+            - type: string
+              description: resource name
+            - type: object
+              description: resource metrics
+              minProperties: 1
+              additionalProperties:
+                type: object
+                description: metric tuple
+                properties:
+                  t:
+                    type: string
+                    enum:
+                      - string
+                      - gauge
+                      - int32
+                      - uint32
+                      - int64
+                      - uint64
+                      - double
+                  v:
+                    type: string
+                    minLength: 1
+                  u:
+                    type: string
+                required:
+                  - t
+                  - v
+      state:
+        type: string
+        enum:
+          - available
+          - unavailable
+      status:
+        type: string
+        minLength: 0
+        maxLength: 256
+      timestamp:
+        type: integer
   Check:
     type: object
     properties:
@@ -259,6 +248,47 @@ definitions:
       - timeout
       - entity_id
       - zone_id
+  PollerPrepare:
+    description: poller.prepare
+    allOf:
+      - $ref: '#/definitions/Frame'
+      - type: object
+        properties:
+          params:
+            type: object
+            properties:
+              zone_id:
+                $ref: '#/definitions/ZoneId'
+              version:
+                $ref: '#/definitions/PartitionVersion'
+              manifest:
+                type: array
+                items:
+                  $ref: '#/definitions/PollerPrepareManifest'
+  CheckMetricsPostMulti:
+    description: check_metrics.post_multi
+    allOf:
+      - $ref: '#/definitions/Frame'
+      - type: object
+        properties:
+          params:
+            $ref: '#/definitions/MetricsPost'
+  PollerCheckTest:
+    description: check.test
+    allOf:
+      - $ref: '#/definitions/Frame'
+      - type: object
+        properties:
+          params:
+            $ref: '#/definitions/Check'
+  PollerCheckTestResponse:
+    description: test.check
+    allOf:
+      - $ref: '#/definitions/Frame'
+      - type: object
+        properties:
+          result:
+            $ref: '#/definitions/MetricsPost'
   PollerPrepareBlock:
     description: poller.prepare.block
     allOf:
