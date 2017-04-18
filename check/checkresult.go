@@ -17,7 +17,9 @@
 package check
 
 import (
+	"fmt"
 	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
+	"strings"
 )
 
 const (
@@ -94,6 +96,14 @@ type Result struct {
 	Metrics map[string]*metric.Metric
 }
 
+func (r *Result) String() string {
+	metricStrings := make(map[string]string, len(r.Metrics))
+	for key, entry := range r.Metrics {
+		metricStrings[key] = fmt.Sprintf("%v", entry)
+	}
+	return fmt.Sprintf("%v", metricStrings)
+}
+
 // NewResult creates a CheckResult object and adds passed
 // in metrics.  Returns that check result
 func NewResult(metrics ...*metric.Metric) *Result {
@@ -135,6 +145,16 @@ type ResultSet struct {
 	Check     Check     `json:"check"`
 	Metrics   []*Result `json:"metrics"`
 	Available bool      `json:"available"`
+}
+
+func (rs *ResultSet) String() string {
+	metricStrings := make([]string, len(rs.Metrics))
+	for i, result := range rs.Metrics {
+		metricStrings[i] = fmt.Sprintf("%v", result)
+	}
+
+	return fmt.Sprintf("{states=%v, check=%v, metrics=[%v], available=%v}",
+		rs.States, rs.Check, strings.Join(metricStrings, ","), rs.Available)
 }
 
 // NewResultSet creates a new ResultSet.
