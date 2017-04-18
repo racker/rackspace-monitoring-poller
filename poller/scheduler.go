@@ -27,13 +27,11 @@ import (
 	set "github.com/deckarep/golang-set"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/racker/rackspace-monitoring-poller/check"
-	"github.com/racker/rackspace-monitoring-poller/config"
 )
 
 const (
 	checkPreparationBufferSize = 10
 	checkLoggerDuration        = 5 * time.Minute
-	checkTesterBufferSize      = 100
 )
 
 var (
@@ -51,11 +49,6 @@ var (
 	)
 )
 
-type checkTest struct {
-	ch      check.Check
-	handler CheckResultHandler
-}
-
 // EleScheduler implements Scheduler interface.
 // See Scheduler for more information.
 type EleScheduler struct {
@@ -67,7 +60,6 @@ type EleScheduler struct {
 	checks       map[string]check.Check
 	preparations chan ChecksPrepared
 	resets       chan struct{}
-	checksToTest chan *checkTest
 
 	stream ConnectionStream
 
@@ -81,18 +73,17 @@ func init() {
 
 // NewScheduler instantiates a new Scheduler with standard scheduling and executor behaviors.
 // It sets up checks, context, and passed in zoneid
-func NewScheduler(config *config.Config, zoneID string, stream ConnectionStream) Scheduler {
-	return NewCustomScheduler(config, zoneID, stream, nil, nil)
+func NewScheduler(zoneID string, stream ConnectionStream) Scheduler {
+	return NewCustomScheduler(zoneID, stream, nil, nil)
 }
 
 // NewCustomScheduler instantiates a new Scheduler using NewScheduler but allows for more customization.
 // Nil can be passed to either checkScheduler and/or checkExecutor to enable the default behavior.
-func NewCustomScheduler(config *config.Config, zoneID string, stream ConnectionStream, checkScheduler CheckScheduler, checkExecutor CheckExecutor) Scheduler {
+func NewCustomScheduler(zoneID string, stream ConnectionStream, checkScheduler CheckScheduler, checkExecutor CheckExecutor) Scheduler {
 	s := &EleScheduler{
 		checks:       make(map[string]check.Check),
 		preparations: make(chan ChecksPrepared, checkPreparationBufferSize),
 		resets:       make(chan struct{}, 1),
-		checksToTest: make(chan *checkTest, checkTesterBufferSize),
 		stream:       stream,
 		zoneID:       zoneID,
 		scheduler:    checkScheduler,
@@ -110,10 +101,6 @@ func NewCustomScheduler(config *config.Config, zoneID string, stream ConnectionS
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 
 	go s.runReconciler()
-
-	for i := 0; i < config.CheckTestConcurrency; i++ {
-		go s.runCheckTester()
-	}
 
 	return s
 
@@ -316,26 +303,6 @@ func (s *EleScheduler) initiateCheck(ac ActionableCheck) error {
 func (s *EleScheduler) Schedule(ch check.Check) {
 	if !ch.IsDisabled() {
 		go s.runCheckTimerLoop(ch)
-	}
-}
-
-func (s *EleScheduler) CheckTest(ch check.Check, responder CheckResultHandler) {
-	s.checksToTest <- &checkTest{
-		ch:      ch,
-		handler: responder,
-	}
-}
-
-func (s *EleScheduler) runCheckTester() {
-	for {
-		select {
-		case <-s.ctx.Done():
-			return
-
-		case test := <-s.checksToTest:
-			rs, error := test.ch.Run()
-			test.handler(rs, error)
-		}
 	}
 }
 

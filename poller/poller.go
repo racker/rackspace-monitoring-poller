@@ -118,8 +118,6 @@ type CheckExecutor interface {
 	Execute(ch check.Check)
 }
 
-type CheckResultHandler func(*check.ResultSet, error)
-
 // ChecksReconciler is implemented by receivers that can either reconcile prepared checks during a commit or
 // pre-validate the checks prior to committing.
 type ChecksReconciler interface {
@@ -134,8 +132,6 @@ type ChecksReconciler interface {
 	// instances.
 	// Returns an error upon finding the first entry that is not valid.
 	ValidateChecks(cp ChecksPreparing) error
-
-	CheckTest(ch check.Check, responder CheckResultHandler)
 }
 
 // Scheduler interface wraps the methods that schedule

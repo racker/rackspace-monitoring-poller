@@ -573,11 +573,13 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 			origTimestamper := installDeterministicTimestamper(1000, 2000)
 			defer utils.InstallAlternateTimestampFunc(origTimestamper)
 
-			cfg := config.NewConfig("1-2-3", false, nil)
+			cfg := config.NewConfig(tt.name, false, nil)
 			es := poller.NewSession(context.Background(), eleConn, reconciler, cfg)
+			defer func() { time.Sleep(5 * time.Millisecond) }()
 			defer es.Close()
 
 			decoder := handshake(t, writesHere, readsHere, 50000)
+			<-eleConn.Authenticated()
 			time.Sleep(5 * time.Millisecond)
 
 			if tt.expectValidate {
@@ -595,7 +597,8 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 
 				for _, expected := range tt.expectedPrepResponses {
 					var resp protocol.PollerPrepareResponse
-					decoder.Decode(&resp)
+					err := decoder.Decode(&resp)
+					require.NoError(t, err)
 					t.Log("Received prepare response", resp)
 
 					assert.Equal(t, expected.Version, resp.Result.Version)

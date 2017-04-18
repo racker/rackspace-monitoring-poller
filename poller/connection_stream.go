@@ -30,7 +30,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/jpillora/backoff"
 
-	"errors"
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/utils"
@@ -104,7 +103,7 @@ func NewCustomConnectionStream(ctx context.Context, config *config.Config, rootC
 	stream.ctx, stream.cancel = context.WithCancel(ctx)
 	stream.conns = make(ConnectionsByHost)
 	for _, pz := range config.ZoneIds {
-		stream.schedulers[pz] = NewScheduler(config, pz, stream)
+		stream.schedulers[pz] = NewScheduler(pz, stream)
 	}
 
 	go stream.runRegistrationMetricsCoordinator()
@@ -205,18 +204,6 @@ func (cs *EleConnectionStream) ValidateChecks(cp ChecksPreparing) error {
 	}
 
 	return nil
-}
-
-func (cs *EleConnectionStream) CheckTest(ch check.Check, responder CheckResultHandler) {
-	if len(cs.schedulers) == 0 {
-		responder(nil, errors.New("No schedulers available"))
-	}
-
-	// just pick the first scheduler available...future logic may perform zone-matching
-	for _, sched := range cs.schedulers {
-		sched.CheckTest(ch, responder)
-		return
-	}
 }
 
 // SendMetrics sends a CheckResultSet via the first connection it can

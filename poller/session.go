@@ -292,7 +292,7 @@ func (s *EleSession) handleFrame(f *protocol.FrameMsg) error {
 	case protocol.MethodPollerCommit:
 		s.handlePollerCommit(f)
 	case protocol.MethodCheckTest:
-		s.handleCheckTest(f)
+		go s.handleCheckTest(f)
 	default:
 		log.WithFields(log.Fields{
 			"prefix": s.logPrefix,
@@ -443,6 +443,7 @@ func (s *EleSession) handlePollerCommit(f *protocol.FrameMsg) {
 	s.prepDetails.commit()
 }
 
+// handleCheckTest runs within a go routine
 func (s *EleSession) handleCheckTest(f *protocol.FrameMsg) {
 	req := protocol.DecodePollerCheckTestRequest(f)
 
@@ -453,19 +454,19 @@ func (s *EleSession) handleCheckTest(f *protocol.FrameMsg) {
 		return
 	}
 
-	s.prepDetails.reconciler.CheckTest(newCheck, func(crs *check.ResultSet, err error) {
-		if err != nil {
-			resp := protocol.NewErrorResponse(f, 2, err.Error())
-			s.Respond(resp)
-			return
-		}
+	crs, err := newCheck.Run()
 
-		var content protocol.MetricsPostContent
-		crs.PopulateMetricsPostContent(0, &content)
-
-		resp := protocol.NewPollerCheckTestResponse(f, &content)
+	if err != nil {
+		resp := protocol.NewErrorResponse(f, 2, err.Error())
 		s.Respond(resp)
-	})
+		return
+	}
+
+	var content protocol.MetricsPostContent
+	crs.PopulateMetricsPostContent(0, &content)
+
+	resp := protocol.NewPollerCheckTestResponse(f, &content)
+	s.Respond(resp)
 
 }
 

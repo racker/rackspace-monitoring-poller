@@ -40,12 +40,11 @@ var (
 )
 
 const (
-	DefaultTimeoutRead          = 10 * time.Second
-	DefaultTimeoutWrite         = 10 * time.Second
-	DefaultTimeoutPrepareEnd    = 60 * time.Second
-	DefaultTimeoutAuth          = 10 * time.Second
-	DefaultAgentId              = "-poller-"
-	DefaultCheckTestConcurrency = 3
+	DefaultTimeoutRead       = 10 * time.Second
+	DefaultTimeoutWrite      = 10 * time.Second
+	DefaultTimeoutPrepareEnd = 60 * time.Second
+	DefaultTimeoutAuth       = 10 * time.Second
+	DefaultAgentId           = "-poller-"
 )
 
 type Feature struct {
@@ -81,8 +80,6 @@ type Config struct {
 	// is reset upon receipt of each poller.prepare.block.
 	TimeoutPrepareEnd time.Duration
 
-	CheckTestConcurrency int
-
 	// If configured, then metrics will be pushed to a Prometheus push gateway at the given URI.
 	// The URI may either have a scheme of "srv" or "tcp". A "srv" refers to a DNS SRV name and "tcp" conveys
 	// a host:port address, typically for local/onsite usage. The given service name will be qualified by the
@@ -115,7 +112,6 @@ func NewConfig(guid string, useStaging bool, features []Feature) *Config {
 	cfg.TimeoutWrite = DefaultTimeoutWrite
 	cfg.TimeoutPrepareEnd = DefaultTimeoutPrepareEnd
 	cfg.TimeoutAuth = DefaultTimeoutAuth
-	cfg.CheckTestConcurrency = DefaultCheckTestConcurrency
 	cfg.UseStaging = useStaging
 	if useStaging {
 		cfg.SrvQueries = DefaultStagingSrvEndpoints
@@ -224,10 +220,6 @@ func (cfg *Config) DefineConfigEntries() []configEntry {
 		{
 			Name:     "prometheus_uri",
 			ValuePtr: &cfg.PrometheusUri,
-		},
-		{
-			Name:     "check_test_concurrency",
-			ValuePtr: &cfg.CheckTestConcurrency,
 		},
 	}
 }
