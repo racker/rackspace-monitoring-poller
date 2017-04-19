@@ -78,9 +78,11 @@ func (ch *PingCheck) Run() (*ResultSet, error) {
 
 	count := int(ch.Details.Count)
 	interPingDelay := utils.MinOfDurations(1*time.Second, timeoutDuration/time.Duration(count))
+	perPingDuration := time.Duration(ch.Timeout/uint64(count)) * time.Millisecond
 
 	rtts := make([]time.Duration, 0)
 
+packetLoop:
 	for i := 0; i < count; i++ {
 		seq := i + 1
 
@@ -103,7 +105,7 @@ func (ch *PingCheck) Run() (*ResultSet, error) {
 			}
 			time.Sleep(interPingDelay)
 
-		case <-time.After(time.Duration(ch.Timeout/uint64(count)) * time.Millisecond):
+		case <-time.After(perPingDuration):
 			log.WithFields(log.Fields{
 				"targetIP": targetIP,
 				"seq":      seq,
@@ -114,7 +116,7 @@ func (ch *PingCheck) Run() (*ResultSet, error) {
 				"targetIP": targetIP,
 			}).Debug("Reached overall timeout")
 
-			break
+			break packetLoop
 		}
 
 	}
