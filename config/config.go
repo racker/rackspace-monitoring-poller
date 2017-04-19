@@ -144,6 +144,9 @@ func (cfg *Config) LoadFromFile(filepath string) error {
 		if regexComment.MatchString(line) {
 			continue
 		}
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
 		fields := strings.Fields(line)
 		if err := cfg.ParseFields(configEntries, fields); err != nil {
 			return err
