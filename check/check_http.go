@@ -21,6 +21,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net"
 	"net/http"
 	"net/http/httptrace"
@@ -221,7 +222,31 @@ func (ch *HTTPCheck) Run() (*ResultSet, error) {
 		truncated = int64(1)
 	}
 
+	// Status Code Numeral
+	var code100 int
+	var code200 int
+	var code300 int
+	var code400 int
+	var code500 int
 	codeStr := strconv.Itoa(resp.StatusCode)
+	codeFamily := int(math.Floor(float64(resp.StatusCode) / 100.0))
+	switch codeFamily {
+	case 1:
+		code100 = 1
+	case 2:
+		code200 = 1
+	case 3:
+		code300 = 1
+	case 4:
+		code400 = 1
+	case 5:
+		code500 = 1
+	}
+	cr.AddMetric(metric.NewMetric("code_100", "", metric.MetricNumber, code100, ""))
+	cr.AddMetric(metric.NewMetric("code_200", "", metric.MetricNumber, code200, ""))
+	cr.AddMetric(metric.NewMetric("code_300", "", metric.MetricNumber, code300, ""))
+	cr.AddMetric(metric.NewMetric("code_400", "", metric.MetricNumber, code400, ""))
+	cr.AddMetric(metric.NewMetric("code_500", "", metric.MetricNumber, code500, ""))
 
 	cr.AddMetric(metric.NewMetric("code", "", metric.MetricString, codeStr, ""))
 	cr.AddMetric(metric.NewMetric("duration", "", metric.MetricNumber, endtime-starttime, "milliseconds"))
