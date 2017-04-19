@@ -1,5 +1,5 @@
-hash: 4c781915ca760123a170a5b6def3123a4c9c73976fad21fb53f5bafb67215884
-updated: 2017-04-18T14:41:26.780826382-05:00
+hash: d0f5cb35bfdbd3b88202b790b8b3f7ed93dd18e185724715a7380c5c842187c7
+updated: 2017-04-19T17:34:16.525989392-05:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -62,7 +62,7 @@ imports:
   - internal/bitbucket.org/ww/goautoneg
   - model
 - name: github.com/prometheus/procfs
-  version: a1dba9ce8baed984a2495b658c82687f8157b98f
+  version: 1e2146578273cef808354faa16a1922e0b5d6b2f
   subpackages:
   - xfs
 - name: github.com/racker/logrus-prefixed-formatter
@@ -83,8 +83,6 @@ imports:
   version: bb4de0191aa41b5507caa14b0650cdbddcd9280b
 - name: github.com/Sirupsen/logrus
   version: 0208149b40d863d2c1a2f8fe5753096a9cf2cc8b
-- name: github.com/sparrc/go-ping
-  version: 416e72114cd1edce2f287648f935a60dfe6cf40e
 - name: github.com/spf13/cobra
   version: fcd0c5a1df88f5d6784cb4feead962c3f3d0b66c
 - name: github.com/spf13/pflag
