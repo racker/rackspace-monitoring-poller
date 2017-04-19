@@ -144,7 +144,7 @@ func (ch *HTTPCheck) Run() (*ResultSet, error) {
 	// Setup Request
 	req, err := http.NewRequest(method, url, nil)
 	if err != nil {
-		crs.SetStatus(err.Error())
+		crs.SetStatusFromError(err)
 		crs.SetStateUnavailable()
 		return crs, nil
 	}
@@ -180,7 +180,7 @@ func (ch *HTTPCheck) Run() (*ResultSet, error) {
 	// Read Body
 	body, err := ch.readLimit(resp.Body, MaxHTTPResponseBodyLength)
 	if err != nil {
-		crs.SetStatus(err.Error())
+		crs.SetStatusFromError(err)
 		crs.SetStateUnavailable()
 		return crs, nil
 	}
@@ -190,7 +190,7 @@ func (ch *HTTPCheck) Run() (*ResultSet, error) {
 	if len(ch.Details.Body) > 0 {
 		re, err := regexp.Compile(ch.Details.Body)
 		if err != nil {
-			crs.SetStatus(err.Error())
+			crs.SetStatusFromError(err)
 			crs.SetStateUnavailable()
 			return crs, nil
 		}
@@ -205,7 +205,7 @@ func (ch *HTTPCheck) Run() (*ResultSet, error) {
 	for key, regex := range ch.Details.BodyMatches {
 		re, err := regexp.Compile(regex)
 		if err != nil {
-			crs.SetStatus(err.Error())
+			crs.SetStatusFromError(err)
 			crs.SetStateUnavailable()
 			return crs, nil
 		}

@@ -24,11 +24,10 @@ import (
 	protocol "github.com/racker/rackspace-monitoring-poller/protocol/check"
 	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	"github.com/racker/rackspace-monitoring-poller/utils"
-	"sync"
 )
 
-var (
-	pingReceiverOnce sync.Once
+const (
+	defaultPingCount = 5
 )
 
 // PingCheck conveys Ping checks
@@ -62,7 +61,7 @@ func (ch *PingCheck) Run() (*ResultSet, error) {
 	switch ch.TargetResolver {
 	case protocol.ResolverIPV6:
 		ipVersion = "v6"
-	default:
+	case protocol.ResolverIPV4:
 		ipVersion = "v4"
 	}
 
@@ -77,10 +76,14 @@ func (ch *PingCheck) Run() (*ResultSet, error) {
 	overallTimeout := time.After(timeoutDuration)
 
 	count := int(ch.Details.Count)
+	if count <= 0 {
+		count = defaultPingCount
+	}
 	interPingDelay := utils.MinOfDurations(1*time.Second, timeoutDuration/time.Duration(count))
 	perPingDuration := time.Duration(ch.Timeout/uint64(count)) * time.Millisecond
 
 	rtts := make([]time.Duration, 0)
+	var pingErr error
 
 packetLoop:
 	for i := 0; i < count; i++ {
@@ -94,7 +97,8 @@ packetLoop:
 			}).Debug("Got ping response")
 
 			if resp.Err != nil {
-				return nil, resp.Err
+				pingErr = resp.Err
+				break packetLoop
 			}
 			if resp.Seq != seq {
 				log.WithFields(log.Fields{
@@ -160,6 +164,17 @@ packetLoop:
 		metric.NewMetric("minimum", "", metric.MetricFloat, utils.ScaleFractionalDuration(minRTT, time.Second), metric.UnitSeconds),
 	)
 	crs := NewResultSet(ch, cr)
+
+	if pingErr == nil && recv > 0 {
+		crs.SetStatusSuccess()
+		crs.SetStateAvailable()
+	} else if pingErr == nil && recv == 0 {
+		crs.SetStateUnavailable()
+		crs.SetStatus("No responses received")
+	} else {
+		crs.SetStateUnavailable()
+		crs.SetStatusFromError(pingErr)
+	}
 
 	return crs, nil
 }

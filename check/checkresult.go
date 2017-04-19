@@ -52,6 +52,10 @@ type States struct {
 	Status string `json:"status"`
 }
 
+func (s States) String() string {
+	return fmt.Sprintf("{state=%v, status=%v}", s.State, s.Status)
+}
+
 // SetStateAvailable updates state to available
 func (st *States) SetStateAvailable() {
 	st.State = StateAvailable
@@ -88,6 +92,21 @@ func (st *States) SetStatus(status string) {
 		status = status[:DefaultStatusLimit]
 	}
 	st.Status = status
+}
+
+func (st *States) SetStatusFromError(err error) {
+	str := err.Error()
+	/*
+		Networking golang errors tend to be of the form
+			write ip6 ::->2001:4800:7902:1:0:a:4323:44: sendto: no route to host
+		so it's the last part after the colon that's meaningful and concise for check status.
+	*/
+	pos := strings.LastIndex(str, ":")
+	if pos >= 0 {
+		str = strings.TrimSpace(str[pos+1:])
+	}
+
+	st.Status = str
 }
 
 // Result wraps the metrics map

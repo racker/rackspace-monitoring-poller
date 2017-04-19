@@ -168,7 +168,7 @@ func (ch *TCPCheck) Run() (*ResultSet, error) {
 		conn, err = dialContextWithDialer(ctx, nd, network, addr, nil)
 	}
 	if err != nil {
-		crs.SetStatus(err.Error())
+		crs.SetStatusFromError(err)
 		crs.SetStateUnavailable()
 		return crs, nil
 	}
@@ -187,7 +187,7 @@ func (ch *TCPCheck) Run() (*ResultSet, error) {
 		// and return HTTP 500?
 		_, err := io.WriteString(conn, ch.Details.SendBody)
 		if err != nil {
-			crs.SetStatus(err.Error())
+			crs.SetStatusFromError(err)
 			crs.SetStateUnavailable()
 			return crs, nil
 		}
@@ -197,7 +197,7 @@ func (ch *TCPCheck) Run() (*ResultSet, error) {
 	if len(ch.Details.BannerMatch) > 0 {
 		line, err := ch.readLine(conn)
 		if err != nil {
-			crs.SetStatus(err.Error())
+			crs.SetStatusFromError(err)
 			crs.SetStateUnavailable()
 			return crs, nil
 		}
@@ -220,7 +220,7 @@ func (ch *TCPCheck) Run() (*ResultSet, error) {
 	if len(ch.Details.BodyMatch) > 0 {
 		body, err := ch.readLimit(conn, MaxTCPBodyLength)
 		if err != nil {
-			crs.SetStatus(err.Error())
+			crs.SetStatusFromError(err)
 			crs.SetStateUnavailable()
 			return crs, nil
 		}
