@@ -137,11 +137,14 @@ func (cfg *Config) LoadFromFile(filepath string) error {
 	configEntries := cfg.DefineConfigEntries()
 
 	regexComment, _ := regexp.Compile("^#")
+	regexBlankLine, _ := regexp.Compile("^\\s*?$")
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := scanner.Text()
-
 		if regexComment.MatchString(line) {
+			continue
+		}
+		if regexBlankLine.MatchString(line) {
 			continue
 		}
 		fields := strings.Fields(line)
