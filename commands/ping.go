@@ -55,7 +55,7 @@ func pingCmdInstance(host string, checkId string, wg *sync.WaitGroup) {
 		var alias string = "main"
 		ch.TargetAlias = &alias
 		ch.TargetHostname = &host
-		ch.Timeout = pingCmdConfig.timeout
+		ch.Timeout = pingCmdConfig.timeout * 1000
 
 		log.WithFields(log.Fields{
 			"checkId": checkId,
@@ -63,7 +63,10 @@ func pingCmdInstance(host string, checkId string, wg *sync.WaitGroup) {
 		}).Info("Running")
 		crs, err := ch.Run()
 		if err != nil {
-			log.Fatal("Ping check failed", checkId, err)
+			log.WithFields(log.Fields{
+				"checkId": checkId,
+				"err":     err,
+			}).Fatal("Ping check failed")
 			return
 		}
 

@@ -1,5 +1,5 @@
-hash: 68e15231cf1d260e87b5caa152154c134c9f51a15283d4ff84a5e9e5669e38a2
-updated: 2017-04-14T09:57:41.548038-05:00
+hash: 4c781915ca760123a170a5b6def3123a4c9c73976fad21fb53f5bafb67215884
+updated: 2017-04-18T14:41:26.780826382-05:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -40,6 +40,8 @@ imports:
   - pbutil
 - name: github.com/mgutz/ansi
   version: 9520e82c474b0a04dd04f8a40959027271bab992
+- name: github.com/pkg/errors
+  version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/pmezard/go-difflib
   version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
   subpackages:
@@ -54,7 +56,7 @@ imports:
   subpackages:
   - go
 - name: github.com/prometheus/common
-  version: 49fee292b27bfff7f354ee0f64e1bc4850462edf
+  version: 9e0844febd9e2856f839c9cb974fbd676d1755a8
   subpackages:
   - expfmt
   - internal/bitbucket.org/ww/goautoneg
@@ -94,8 +96,6 @@ imports:
   subpackages:
   - assert
   - require
-- name: github.com/x-cray/logrus-prefixed-formatter
-  version: 9cd0cf058806896bf8ca66f9a957d36bd9e4ce0f
 - name: golang.org/x/net
   version: 906cda9512f77671ab44f8c8563b13a8e707b230
   subpackages:

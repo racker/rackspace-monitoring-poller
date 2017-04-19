@@ -18,6 +18,7 @@ package utils
 
 import (
 	"errors"
+	"math"
 	"time"
 )
 
@@ -90,4 +91,9 @@ func ChannelOfTimer(timer *time.Timer) <-chan time.Time {
 	} else {
 		return timer.C
 	}
+}
+
+func MinOfDurations(a, b time.Duration) time.Duration {
+	return time.Duration(math.Min(float64(a), float64(b)))
+
 }
