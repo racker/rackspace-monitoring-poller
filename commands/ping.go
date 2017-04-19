@@ -4,7 +4,9 @@ import (
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/check"
+	protocheck "github.com/racker/rackspace-monitoring-poller/protocol/check"
 	"github.com/spf13/cobra"
+	"strings"
 	"sync"
 )
 
@@ -14,6 +16,7 @@ var (
 		count   uint8
 		rounds  int
 		timeout uint64
+		ipType  string
 	}{}
 	PingCmd = &cobra.Command{
 		Use:   "ping",
@@ -40,6 +43,7 @@ func init() {
 	PingCmd.Flags().Uint8Var(&pingCmdConfig.count, "count", 5, "The number of pings per check")
 	PingCmd.Flags().IntVar(&pingCmdConfig.rounds, "rounds", 1, "The number of check rounds")
 	PingCmd.Flags().Uint64Var(&pingCmdConfig.timeout, "timeout", 60, "The ping check timeout in seconds")
+	PingCmd.Flags().StringVar(&pingCmdConfig.ipType, "ip-type", "", "The IP address/resolver type as 'ipv4' or 'ipv6'")
 }
 
 func pingCmdInstance(host string, checkId string, wg *sync.WaitGroup) {
@@ -56,6 +60,13 @@ func pingCmdInstance(host string, checkId string, wg *sync.WaitGroup) {
 		ch.TargetAlias = &alias
 		ch.TargetHostname = &host
 		ch.Timeout = pingCmdConfig.timeout * 1000
+
+		switch strings.ToLower(pingCmdConfig.ipType) {
+		case "ipv4":
+			ch.TargetResolver = protocheck.ResolverIPV4
+		case "ipv6":
+			ch.TargetResolver = protocheck.ResolverIPV6
+		}
 
 		log.WithFields(log.Fields{
 			"checkId": checkId,
