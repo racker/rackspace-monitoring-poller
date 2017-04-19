@@ -47,7 +47,7 @@ default: clean package
 generate-mocks:
 	mockgen -package=poller_test -destination=poller/poller_mock_test.go github.com/racker/rackspace-monitoring-poller/poller ${MOCK_POLLER}
 	mockgen -source=utils/events.go -package=utils -destination=utils/events_mock_test.go
-	mockgen -destination check/pinger_mock_test.go -package=check github.com/racker/rackspace-monitoring-poller/check Pinger
+	mockgen -destination check/pinger_mock_test.go -package=check_test github.com/racker/rackspace-monitoring-poller/check Pinger
 	sed -i '' s,$(PROJECT_VENDOR)/,, check/pinger_mock_test.go
 	mockgen -destination mock_golang/mock_conn.go -package mock_golang net Conn
 
