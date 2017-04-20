@@ -86,7 +86,7 @@ func (ch *PingCheck) Run() (*ResultSet, error) {
 		count = defaultPingCount
 	}
 	interPingDelay := utils.MinOfDurations(1*time.Second, timeoutDuration/time.Duration(count))
-	perPingDuration := time.Duration(ch.Timeout/uint64(count)) * time.Millisecond
+	perPingDuration := time.Duration((ch.Timeout*1000)/uint64(count)) * time.Millisecond
 
 	rtts := make([]time.Duration, 0)
 	var pingErr error
