@@ -178,7 +178,12 @@ func (ch *TCPCheck) Run() (*ResultSet, error) {
 	cr.AddMetric(metric.NewMetric("tt_connect", "", metric.MetricNumber, connectEndTime-starttime, metric.UnitMilliseconds))
 
 	// Set read/write timeout
-	conn.SetDeadline(time.Now().Add(time.Duration(ch.GetTimeout()) * time.Millisecond))
+	deadline := time.Duration(ch.GetTimeout()) * time.Second
+	log.WithFields(log.Fields{
+		"prefix":   ch.GetLogPrefix(),
+		"deadline": deadline,
+	}).Debug("Setting deadline")
+	conn.SetDeadline(time.Now().Add(deadline))
 
 	// Send Body
 	if len(ch.Details.SendBody) > 0 {
@@ -208,7 +213,7 @@ func (ch *TCPCheck) Run() (*ResultSet, error) {
 		}
 		if re, err := regexp.Compile(ch.Details.BannerMatch); err == nil {
 			if m := re.FindSubmatch(line); m != nil {
-				cr.AddMetric(metric.NewMetric("banner_match", "", metric.MetricString, string(m[1]), ""))
+				cr.AddMetric(metric.NewMetric("banner_match", "", metric.MetricString, string(m[0]), ""))
 			} else {
 				cr.AddMetric(metric.NewMetric("banner_match", "", metric.MetricString, "", ""))
 			}

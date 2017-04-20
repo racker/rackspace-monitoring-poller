@@ -78,7 +78,7 @@ func (ch *PingCheck) Run() (*ResultSet, error) {
 	}
 	defer pinger.Close()
 
-	timeoutDuration := time.Duration(ch.Timeout) * time.Millisecond
+	timeoutDuration := time.Duration(ch.Timeout) * time.Second
 	overallTimeout := time.After(timeoutDuration)
 
 	count := int(ch.Details.Count)

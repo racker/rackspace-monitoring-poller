@@ -59,7 +59,7 @@ func pingCmdInstance(host string, checkId string, wg *sync.WaitGroup) {
 		var alias string = "main"
 		ch.TargetAlias = &alias
 		ch.TargetHostname = &host
-		ch.Timeout = pingCmdConfig.timeout * 1000
+		ch.Timeout = pingCmdConfig.timeout
 
 		switch strings.ToLower(pingCmdConfig.ipType) {
 		case "ipv4":
