@@ -54,7 +54,7 @@ type HTTPCheck struct {
 }
 
 // NewHTTPCheck - Constructor for an HTTP Check
-func NewHTTPCheck(base *Base) Check {
+func NewHTTPCheck(base *Base) (Check, error) {
 	check := &HTTPCheck{Base: *base}
 	err := json.Unmarshal(*base.RawDetails, &check.Details)
 	if err != nil {
@@ -63,9 +63,9 @@ func NewHTTPCheck(base *Base) Check {
 			"err":     err,
 			"details": string(*base.RawDetails),
 		}).Error("Unable to unmarshal check details")
-		return nil
+		return nil, err
 	}
-	return check
+	return check, nil
 }
 
 func disableRedirects(req *http.Request, via []*http.Request) error {

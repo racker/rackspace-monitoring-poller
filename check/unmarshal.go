@@ -56,18 +56,11 @@ func NewCheckParsed(parentContext context.Context, checkIn check.CheckIn) (Check
 func resolveCheckType(checkBase *Base) (Check, error) {
 	switch checkBase.CheckType {
 	case "remote.tcp":
-		return ensureNonNilCheck(NewTCPCheck(checkBase))
+		return NewTCPCheck(checkBase)
 	case "remote.http":
-		return ensureNonNilCheck(NewHTTPCheck(checkBase))
+		return NewHTTPCheck(checkBase)
 	case "remote.ping":
-		return ensureNonNilCheck(NewPingCheck(checkBase))
+		return NewPingCheck(checkBase)
 	}
 	return nil, errors.New(fmt.Sprintf("Invalid check type: %v", checkBase.CheckType))
-}
-
-func ensureNonNilCheck(ch Check) (Check, error) {
-	if ch == nil {
-		return nil, errors.New("Unable to instantiate check from given details")
-	}
-	return ch, nil
 }

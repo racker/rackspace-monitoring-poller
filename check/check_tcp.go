@@ -47,7 +47,7 @@ type TCPCheck struct {
 }
 
 // NewTCPCheck - Constructor for an TCP Check
-func NewTCPCheck(base *Base) Check {
+func NewTCPCheck(base *Base) (Check, error) {
 	check := &TCPCheck{Base: *base}
 	err := json.Unmarshal(*base.RawDetails, &check.Details)
 	if err != nil {
@@ -56,9 +56,9 @@ func NewTCPCheck(base *Base) Check {
 			"err":     err,
 			"details": string(*base.RawDetails),
 		}).Error("Unable to unmarshal check details")
-		return nil
+		return nil, err
 	}
-	return check
+	return check, nil
 }
 
 // GenerateAddress function creates an address

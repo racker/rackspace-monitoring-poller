@@ -37,7 +37,7 @@ type PingCheck struct {
 }
 
 // NewPingCheck - Constructor for an Ping Check
-func NewPingCheck(base *Base) Check {
+func NewPingCheck(base *Base) (Check, error) {
 	check := &PingCheck{Base: *base}
 	err := json.Unmarshal(*base.RawDetails, &check.Details)
 	if err != nil {
@@ -46,9 +46,9 @@ func NewPingCheck(base *Base) Check {
 			"err":     err,
 			"details": string(*base.RawDetails),
 		}).Error("Unable to unmarshal check details")
-		return nil
+		return nil, err
 	}
-	return check
+	return check, nil
 }
 
 // Run method implements Check.Run method for Ping
