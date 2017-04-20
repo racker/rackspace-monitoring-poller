@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"bytes"
-	"encoding/gob"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/pkg/errors"
@@ -172,6 +171,7 @@ func (pr *pingRouter) getPacketConn(network string, bindAddr string) (*icmp.Pack
 	return packetConn, nil
 }
 
+// receive runs in a go routine and processes responses from requests initiated in pingerBase.ping
 func (pr *pingRouter) receive(network string, packetConn *icmp.PacketConn) {
 	log.WithFields(log.Fields{"network": network}).Debug("Starting ICMP receiver")
 	defer log.WithFields(log.Fields{"network": network}).Debug("Stopping ICMP receiver")
@@ -226,9 +226,30 @@ recvLoop:
 			id := pkt.ID
 			seq := pkt.Seq
 			rbuf := bytes.NewBuffer(pkt.Data)
-			dec := gob.NewDecoder(rbuf)
-			var payload echoPayload
-			err := dec.Decode(&payload)
+
+			identifier, err := rbuf.ReadString(0)
+			if err != nil {
+				log.WithFields(log.Fields{
+					"id":   id,
+					"seq":  seq,
+					"data": pkt.Data,
+				}).Warn("Failed to decode identifier from echo reply payload")
+				continue recvLoop
+			}
+			// trim off the delimiter
+			identifier = identifier[:len(identifier)-1]
+
+			var sent time.Time
+			err = sent.UnmarshalBinary(rbuf.Bytes())
+			if err != nil {
+				log.WithFields(log.Fields{
+					"id":   id,
+					"seq":  seq,
+					"data": pkt.Data,
+				}).Warn("Failed to decode sent time from echo reply payload")
+				continue recvLoop
+			}
+
 			if err != nil {
 				log.WithFields(log.Fields{
 					"id":   id,
@@ -240,10 +261,10 @@ recvLoop:
 
 			pingResponse := &PingResponse{
 				Seq: seq,
-				Rtt: time.Since(payload.Sent),
+				Rtt: time.Since(sent),
 			}
 
-			pr.routeResponse(payload.Identifier, id, seq, pkt.Data, pingResponse)
+			pr.routeResponse(identifier, id, seq, pkt.Data, pingResponse)
 
 		case *icmp.DstUnreach:
 			log.WithFields(log.Fields{
@@ -399,24 +420,17 @@ func resolvePingAddr(addrNetwork string, icmpNetwork string, remoteAddr string) 
 	return pingAddr, nil
 }
 
-type echoPayload struct {
-	Identifier string
-	Sent       time.Time
-}
-
 func (p *pingerBase) ping(seq int, messageType icmp.Type) <-chan *PingResponse {
-	payload := echoPayload{
-		Identifier: p.identifier,
-		Sent:       time.Now(),
-	}
-	var buffer bytes.Buffer
-
-	enc := gob.NewEncoder(&buffer)
-	err := enc.Encode(payload)
+	// google.com truncates any ping bodies greater than 64 bytes, so hand-encoding our two fields
+	nowBytes, err := time.Now().MarshalBinary()
 	if err != nil {
 		p.responses <- &PingResponse{Err: err}
 		return p.responses
 	}
+	var buffer bytes.Buffer
+	buffer.WriteString(p.identifier)
+	buffer.WriteByte(0)
+	buffer.Write(nowBytes)
 
 	wm := icmp.Message{
 		Type: messageType,
