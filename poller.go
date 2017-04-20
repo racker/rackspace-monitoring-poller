@@ -83,6 +83,7 @@ func initEnv() {
 		log.SetFormatter(&prefixed.TextFormatter{
 			TimestampFormat: time.RFC1123,
 			ForceFormatting: true,
+			FullTimestamp:   true,
 		})
 	}
 	if globalFlags.LogfileName != "" {
