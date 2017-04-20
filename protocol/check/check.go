@@ -22,9 +22,10 @@ import (
 )
 
 type CheckHeader struct {
-	Id             string            `json:"check_id"`
-	CheckType      string            `json:"type"`
-	Period         uint64            `json:"period"`
+	Id        string `json:"check_id"`
+	CheckType string `json:"type"`
+	Period    uint64 `json:"period"`
+	// Timeout is the overall check's bounded timeout in milliseconds
 	Timeout        uint64            `json:"timeout"`
 	EntityId       string            `json:"entity_id"`
 	ZoneId         string            `json:"zone_id"`

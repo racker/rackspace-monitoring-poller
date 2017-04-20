@@ -30,7 +30,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	prefixed "github.com/racker/logrus-prefixed-formatter"
+	prefixed "github.com/x-cray/logrus-prefixed-formatter"
 
 	"github.com/racker/rackspace-monitoring-poller/commands"
 	"github.com/racker/rackspace-monitoring-poller/version"
@@ -83,6 +83,7 @@ func initEnv() {
 		log.SetFormatter(&prefixed.TextFormatter{
 			TimestampFormat: time.RFC1123,
 			ForceFormatting: true,
+			FullTimestamp:   true,
 		})
 	}
 	if globalFlags.LogfileName != "" {
@@ -112,5 +113,6 @@ func main() {
 	pollerCmd.AddCommand(commands.ServeCmd)
 	pollerCmd.AddCommand(commands.EndpointCmd)
 	pollerCmd.AddCommand(commands.VerifyCmd)
+	pollerCmd.AddCommand(commands.PingCmd)
 	pollerCmd.Execute()
 }

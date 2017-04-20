@@ -24,7 +24,10 @@ import (
 	protocol "github.com/racker/rackspace-monitoring-poller/protocol/check"
 	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	"github.com/racker/rackspace-monitoring-poller/utils"
-	ping "github.com/sparrc/go-ping"
+)
+
+const (
+	defaultPingCount = 5
 )
 
 // PingCheck conveys Ping checks
@@ -54,61 +57,125 @@ func (ch *PingCheck) Run() (*ResultSet, error) {
 		return nil, err
 	}
 
-	pinger, err := PingerFactory(targetIP)
+	var ipVersion string
+	switch ch.TargetResolver {
+	case protocol.ResolverIPV6:
+		ipVersion = "v6"
+	case protocol.ResolverIPV4:
+		ipVersion = "v4"
+	}
+
+	pinger, err := PingerFactory(ch.GetID(), targetIP, ipVersion)
 	if err != nil {
 		log.WithField("targetIP", targetIP).
 			Error("Failed to create pinger")
 		return nil, err
 	}
+	defer pinger.Close()
 
-	pinger.SetCount(int(ch.Details.Count))
-	pinger.SetTimeout(ch.GetTimeoutDuration())
+	timeoutDuration := time.Duration(ch.Timeout) * time.Millisecond
+	overallTimeout := time.After(timeoutDuration)
 
-	pinger.SetOnRecv(func(pkt *ping.Packet) {
-		log.WithFields(log.Fields{
-			"prefix": ch.GetLogPrefix(),
-			"bytes":  pkt.Nbytes,
-			"seq":    pkt.Seq,
-			"rtt":    pkt.Rtt,
-		}).Debug("Received ping packet")
-	})
+	count := int(ch.Details.Count)
+	if count <= 0 {
+		count = defaultPingCount
+	}
+	interPingDelay := utils.MinOfDurations(1*time.Second, timeoutDuration/time.Duration(count))
+	perPingDuration := time.Duration(ch.Timeout/uint64(count)) * time.Millisecond
 
-	log.WithFields(log.Fields{
-		"prefix":     ch.GetLogPrefix(),
-		"count":      pinger.Count(),
-		"timeoutSec": ch.Timeout,
-		"timeoutDur": pinger.Timeout(),
-	}).Debug("Starting pinger")
+	rtts := make([]time.Duration, 0)
+	var pingErr error
 
-	// blocking
-	pinger.Run()
+packetLoop:
+	for i := 0; i < count; i++ {
+		seq := i + 1
 
-	stats := pinger.Statistics()
+		select {
+		case resp := <-pinger.Ping(seq):
+			log.WithFields(log.Fields{
+				"resp":    resp,
+				"checkId": ch.Id,
+			}).Debug("Got ping response")
 
-	cr := NewResult(
-		metric.NewPercentMetricFromInt("available", "", stats.PacketsRecv, stats.PacketsSent),
-		metric.NewMetric("average", "", metric.MetricFloat, utils.ScaleFractionalDuration(stats.AvgRtt, time.Second), metric.UnitSeconds),
-		metric.NewMetric("count", "", metric.MetricNumber, stats.PacketsSent, ""),
-		metric.NewMetric("maximum", "", metric.MetricFloat, utils.ScaleFractionalDuration(stats.MaxRtt, time.Second), metric.UnitSeconds),
-		metric.NewMetric("minimum", "", metric.MetricFloat, utils.ScaleFractionalDuration(stats.MinRtt, time.Second), metric.UnitSeconds),
-	)
-	crs := NewResultSet(ch, cr)
-	if stats.PacketsSent == 0 {
-		log.WithFields(log.Fields{
-			"prefix": ch.GetLogPrefix(),
-		}).Debug("No ping packets were sent, likely due to lack of permission")
-		crs.SetStateUnavailable()
-		crs.SetStatus("No ping packets were sent")
-	} else {
-		crs.SetStateAvailable()
-		crs.SetStatusSuccess()
+			if resp.Err != nil {
+				pingErr = resp.Err
+				break packetLoop
+			}
+			if resp.Seq != seq {
+				log.WithFields(log.Fields{
+					"seq": resp.Seq,
+				}).Debug("Incorrect packet seq received")
+			} else {
+				rtts = append(rtts, resp.Rtt)
+			}
+			time.Sleep(interPingDelay)
+
+		case <-time.After(perPingDuration):
+			log.WithFields(log.Fields{
+				"targetIP": targetIP,
+				"seq":      seq,
+			}).Debug("Timed out getting response")
+
+		case <-overallTimeout:
+			log.WithFields(log.Fields{
+				"targetIP": targetIP,
+			}).Debug("Reached overall timeout")
+
+			break packetLoop
+		}
+
 	}
 
+	sent := count
+	recv := len(rtts)
+	var minRTT time.Duration
+	var maxRTT time.Duration
+	var avgRTT time.Duration
+
+	if recv > 0 {
+		minRTT = rtts[0]
+		maxRTT = rtts[0]
+		var totalRTT time.Duration
+		for _, rtt := range rtts {
+			totalRTT += rtt
+			if rtt > maxRTT {
+				maxRTT = rtt
+			}
+			if rtt < minRTT {
+				minRTT = rtt
+			}
+		}
+		avgRTT = totalRTT / time.Duration(recv)
+	}
 	log.WithFields(log.Fields{
-		"prefix": ch.GetLogPrefix(),
-		"stats":  stats,
-		"result": cr,
-	}).Debug("Finished remote.ping check")
+		"checkId":  ch.Id,
+		"targetIP": targetIP,
+		"sent":     sent,
+		"recv":     recv,
+		"minRTT":   minRTT,
+		"maxRTT":   maxRTT,
+		"avgRTT":   avgRTT,
+	}).Debug("Computed overall ping results")
+
+	cr := NewResult(
+		metric.NewMetric("count", "", metric.MetricNumber, sent, ""),
+		metric.NewPercentMetricFromInt("available", "", recv, sent),
+		metric.NewMetric("average", "", metric.MetricFloat, utils.ScaleFractionalDuration(avgRTT, time.Second), metric.UnitSeconds),
+		metric.NewMetric("maximum", "", metric.MetricFloat, utils.ScaleFractionalDuration(maxRTT, time.Second), metric.UnitSeconds),
+		metric.NewMetric("minimum", "", metric.MetricFloat, utils.ScaleFractionalDuration(minRTT, time.Second), metric.UnitSeconds),
+	)
+	crs := NewResultSet(ch, cr)
+
+	if pingErr == nil && recv > 0 {
+		crs.SetStatusSuccess()
+		crs.SetStateAvailable()
+	} else if pingErr == nil && recv == 0 {
+		crs.SetStateUnavailable()
+		crs.SetStatus("No responses received")
+	} else {
+		crs.SetStateUnavailable()
+		crs.SetStatusFromError(pingErr)
+	}
 
 	return crs, nil
 }

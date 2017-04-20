@@ -1,5 +1,5 @@
-hash: 68e15231cf1d260e87b5caa152154c134c9f51a15283d4ff84a5e9e5669e38a2
-updated: 2017-04-14T09:57:41.548038-05:00
+hash: c85a88923357d85c7fc98370d3700d0a4d6d6e0826d849ebe4f471d361c69cb4
+updated: 2017-04-20T08:35:08.620676482-05:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -40,6 +40,8 @@ imports:
   - pbutil
 - name: github.com/mgutz/ansi
   version: 9520e82c474b0a04dd04f8a40959027271bab992
+- name: github.com/pkg/errors
+  version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/pmezard/go-difflib
   version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
   subpackages:
@@ -54,17 +56,15 @@ imports:
   subpackages:
   - go
 - name: github.com/prometheus/common
-  version: 49fee292b27bfff7f354ee0f64e1bc4850462edf
+  version: 9e0844febd9e2856f839c9cb974fbd676d1755a8
   subpackages:
   - expfmt
   - internal/bitbucket.org/ww/goautoneg
   - model
 - name: github.com/prometheus/procfs
-  version: a1dba9ce8baed984a2495b658c82687f8157b98f
+  version: 1e2146578273cef808354faa16a1922e0b5d6b2f
   subpackages:
   - xfs
-- name: github.com/racker/logrus-prefixed-formatter
-  version: 70b83852bb4ea37dc46ae147af2b1096f7466fb1
 - name: github.com/satori/go.uuid
   version: 879c5887cd475cd7864858769793b2ceb0d44feb
 - name: github.com/shirou/gopsutil
@@ -81,8 +81,6 @@ imports:
   version: bb4de0191aa41b5507caa14b0650cdbddcd9280b
 - name: github.com/Sirupsen/logrus
   version: 0208149b40d863d2c1a2f8fe5753096a9cf2cc8b
-- name: github.com/sparrc/go-ping
-  version: 416e72114cd1edce2f287648f935a60dfe6cf40e
 - name: github.com/spf13/cobra
   version: fcd0c5a1df88f5d6784cb4feead962c3f3d0b66c
 - name: github.com/spf13/pflag
@@ -95,7 +93,7 @@ imports:
   - assert
   - require
 - name: github.com/x-cray/logrus-prefixed-formatter
-  version: 9cd0cf058806896bf8ca66f9a957d36bd9e4ce0f
+  version: 54b7cd10b359d569484cc6b6ffd21d4649dcd148
 - name: golang.org/x/net
   version: 906cda9512f77671ab44f8c8563b13a8e707b230
   subpackages:

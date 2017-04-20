@@ -18,6 +18,7 @@ package check_test
 
 import (
 	"context"
+	"errors"
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	"github.com/racker/rackspace-monitoring-poller/utils"
@@ -81,4 +82,24 @@ func TestNewMetricsPostRequest(t *testing.T) {
 		"],"+
 		"\"min_check_period\":30000,\"state\":\"unavailable\",\"status\":\"unknown error\",\"timestamp\":5200}"+
 		"}", string(raw))
+}
+
+func TestStates_SetStatusFromError(t *testing.T) {
+	tests := []struct {
+		name     string
+		in       string
+		expected string
+	}{
+		{name: "with", in: "write ip6 ::->2001:4800:7902:1:0:a:4323:44: sendto: no route to host", expected: "no route to host"},
+		{name: "without", in: "operation not permitted", expected: "operation not permitted"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var states check.States
+
+			states.SetStatusFromError(errors.New(tt.in))
+			assert.Equal(t, tt.expected, states.Status)
+		})
+	}
 }
