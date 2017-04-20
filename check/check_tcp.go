@@ -55,7 +55,7 @@ func NewTCPCheck(base *Base) Check {
 			"prefix":  "check_tcp",
 			"err":     err,
 			"details": string(*base.RawDetails),
-		}).Warn("Unable to unmarshal check details")
+		}).Error("Unable to unmarshal check details")
 		return nil
 	}
 	return check
