@@ -178,7 +178,12 @@ func (ch *TCPCheck) Run() (*ResultSet, error) {
 	cr.AddMetric(metric.NewMetric("tt_connect", "", metric.MetricNumber, connectEndTime-starttime, metric.UnitMilliseconds))
 
 	// Set read/write timeout
-	conn.SetDeadline(time.Now().Add(time.Duration(ch.GetTimeout()) * time.Millisecond))
+	deadline := time.Duration(ch.GetTimeout()) * time.Second
+	log.WithFields(log.Fields{
+		"prefix":   ch.GetLogPrefix(),
+		"deadline": deadline,
+	}).Debug("Setting deadline")
+	conn.SetDeadline(time.Now().Add(deadline))
 
 	// Send Body
 	if len(ch.Details.SendBody) > 0 {
