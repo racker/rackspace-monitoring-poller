@@ -1,5 +1,5 @@
-hash: d0f5cb35bfdbd3b88202b790b8b3f7ed93dd18e185724715a7380c5c842187c7
-updated: 2017-04-19T17:34:16.525989392-05:00
+hash: c85a88923357d85c7fc98370d3700d0a4d6d6e0826d849ebe4f471d361c69cb4
+updated: 2017-04-20T08:35:08.620676482-05:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -65,8 +65,6 @@ imports:
   version: 1e2146578273cef808354faa16a1922e0b5d6b2f
   subpackages:
   - xfs
-- name: github.com/racker/logrus-prefixed-formatter
-  version: 70b83852bb4ea37dc46ae147af2b1096f7466fb1
 - name: github.com/satori/go.uuid
   version: 879c5887cd475cd7864858769793b2ceb0d44feb
 - name: github.com/shirou/gopsutil
@@ -94,6 +92,8 @@ imports:
   subpackages:
   - assert
   - require
+- name: github.com/x-cray/logrus-prefixed-formatter
+  version: 54b7cd10b359d569484cc6b6ffd21d4649dcd148
 - name: golang.org/x/net
   version: 906cda9512f77671ab44f8c8563b13a8e707b230
   subpackages:

@@ -30,7 +30,7 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	prefixed "github.com/racker/logrus-prefixed-formatter"
+	prefixed "github.com/x-cray/logrus-prefixed-formatter"
 
 	"github.com/racker/rackspace-monitoring-poller/commands"
 	"github.com/racker/rackspace-monitoring-poller/version"
