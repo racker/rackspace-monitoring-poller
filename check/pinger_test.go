@@ -20,11 +20,15 @@ import (
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"runtime"
 	"testing"
 	"time"
 )
 
 func TestPinger_ValidLocalhost(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("Only runs without extra config on MacOS")
+	}
 	pinger, err := check.NewPinger("test1", check.IcmpNetUDP4, "127.0.0.1")
 	require.NoError(t, err)
 	require.NotNil(t, pinger)
@@ -42,6 +46,9 @@ func TestPinger_ValidLocalhost(t *testing.T) {
 }
 
 func TestPinger_Invalid127(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("Only runs without extra config on MacOS")
+	}
 	pinger, err := check.NewPinger("test1", check.IcmpNetUDP4, "127.0.0.2")
 	require.NoError(t, err)
 	require.NotNil(t, pinger)
@@ -57,6 +64,9 @@ func TestPinger_Invalid127(t *testing.T) {
 }
 
 func TestPinger_ValidLocalhostIPv6(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("Only runs without extra config on MacOS")
+	}
 	pinger, err := check.NewPinger("test1", check.IcmpNetUDP6, "::1")
 	require.NoError(t, err)
 	require.NotNil(t, pinger)
