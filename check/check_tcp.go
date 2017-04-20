@@ -208,7 +208,7 @@ func (ch *TCPCheck) Run() (*ResultSet, error) {
 		}
 		if re, err := regexp.Compile(ch.Details.BannerMatch); err == nil {
 			if m := re.FindSubmatch(line); m != nil {
-				cr.AddMetric(metric.NewMetric("banner_match", "", metric.MetricString, string(m[1]), ""))
+				cr.AddMetric(metric.NewMetric("banner_match", "", metric.MetricString, string(m[0]), ""))
 			} else {
 				cr.AddMetric(metric.NewMetric("banner_match", "", metric.MetricString, "", ""))
 			}
