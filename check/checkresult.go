@@ -17,7 +17,9 @@
 package check
 
 import (
+	"fmt"
 	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
+	"strings"
 )
 
 const (
@@ -48,6 +50,10 @@ var (
 type States struct {
 	State  string `json:"state"`
 	Status string `json:"status"`
+}
+
+func (s States) String() string {
+	return fmt.Sprintf("{state=%v, status=%v}", s.State, s.Status)
 }
 
 // SetStateAvailable updates state to available
@@ -88,10 +94,33 @@ func (st *States) SetStatus(status string) {
 	st.Status = status
 }
 
+func (st *States) SetStatusFromError(err error) {
+	str := err.Error()
+	/*
+		Networking golang errors tend to be of the form
+			write ip6 ::->2001:4800:7902:1:0:a:4323:44: sendto: no route to host
+		so it's the last part after the colon that's meaningful and concise for check status.
+	*/
+	pos := strings.LastIndex(str, ":")
+	if pos >= 0 {
+		str = strings.TrimSpace(str[pos+1:])
+	}
+
+	st.Status = str
+}
+
 // Result wraps the metrics map
 // metric name is used as key
 type Result struct {
 	Metrics map[string]*metric.Metric
+}
+
+func (r *Result) String() string {
+	metricStrings := make(map[string]string, len(r.Metrics))
+	for key, entry := range r.Metrics {
+		metricStrings[key] = fmt.Sprintf("%v", entry)
+	}
+	return fmt.Sprintf("%v", metricStrings)
 }
 
 // NewResult creates a CheckResult object and adds passed
@@ -135,6 +164,16 @@ type ResultSet struct {
 	Check     Check     `json:"check"`
 	Metrics   []*Result `json:"metrics"`
 	Available bool      `json:"available"`
+}
+
+func (rs *ResultSet) String() string {
+	metricStrings := make([]string, len(rs.Metrics))
+	for i, result := range rs.Metrics {
+		metricStrings[i] = fmt.Sprintf("%v", result)
+	}
+
+	return fmt.Sprintf("{states=%v, check=%v, metrics=[%v], available=%v}",
+		rs.States, rs.Check, strings.Join(metricStrings, ","), rs.Available)
 }
 
 // NewResultSet creates a new ResultSet.

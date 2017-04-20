@@ -19,15 +19,13 @@ package check_test
 import (
 	"context"
 	"fmt"
-	"testing"
-	"time"
-
 	"github.com/golang/mock/gomock"
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
-	"github.com/sparrc/go-ping"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"testing"
+	"time"
 )
 
 const checkDataTemplate = `{
@@ -45,9 +43,9 @@ const checkDataTemplate = `{
 	  "disabled":false
 	  }`
 
-func setup(ctrl *gomock.Controller) *check.MockPinger {
-	mockPinger := check.NewMockPinger(ctrl)
-	check.PingerFactory = func(addr string) (check.Pinger, error) {
+func setup(ctrl *gomock.Controller) *MockPinger {
+	mockPinger := NewMockPinger(ctrl)
+	check.PingerFactory = func(identifier string, remoteAddr string, ipVersion string) (check.Pinger, error) {
 		return mockPinger, nil
 	}
 	return mockPinger
@@ -64,55 +62,23 @@ func TestPingCheck_ConfirmType(t *testing.T) {
 	assert.IsType(t, &check.PingCheck{}, c)
 }
 
-func TestPingCheck_PingerConfigured(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-	mock := setup(ctrl)
-
-	const count = 5
-	const timeout = 15
-
-	mock.EXPECT().SetCount(count)
-	mock.EXPECT().Count().Return(count)
-	mock.EXPECT().SetTimeout(timeout * time.Second)
-	mock.EXPECT().Timeout().Return(timeout * time.Second)
-	mock.EXPECT().SetOnRecv(gomock.Any())
-	mock.EXPECT().Run()
-	statistics := &ping.Statistics{}
-	mock.EXPECT().Statistics().Return(statistics)
-
-	checkData := fmt.Sprintf(checkDataTemplate, count, timeout)
-	c, err := check.NewCheck(context.Background(), []byte(checkData))
-	require.NoError(t, err)
-
-	// Run check since need to induce pinger usage
-	crs, err := c.Run()
-	assert.NotNil(t, crs)
-	assert.NoError(t, err)
-}
-
 func TestPingCheck_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	mock := setup(ctrl)
 
+	responses := make(chan *check.PingResponse, 5)
+	responses <- &check.PingResponse{Seq: 1, Rtt: 1 * time.Millisecond}
+	responses <- &check.PingResponse{Seq: 2, Rtt: 10 * time.Millisecond}
+	responses <- &check.PingResponse{Seq: 3, Rtt: 5 * time.Millisecond}
+	responses <- &check.PingResponse{Seq: 4, Rtt: 5 * time.Millisecond}
+	responses <- &check.PingResponse{Seq: 5, Rtt: 5 * time.Millisecond}
+
+	mock.EXPECT().Ping(gomock.Any()).AnyTimes().Return(responses)
+	mock.EXPECT().Close()
+
 	const count = 5
 	const timeout = 15
-
-	mock.EXPECT().SetCount(count)
-	mock.EXPECT().Count().Return(count)
-	mock.EXPECT().SetTimeout(timeout * time.Second)
-	mock.EXPECT().Timeout().Return(timeout * time.Second)
-	mock.EXPECT().SetOnRecv(gomock.Any())
-	mock.EXPECT().Run()
-	statistics := &ping.Statistics{
-		PacketsSent: count,
-		PacketsRecv: count,
-		MinRtt:      1 * time.Millisecond,
-		AvgRtt:      5 * time.Millisecond,
-		MaxRtt:      10 * time.Millisecond,
-	}
-	mock.EXPECT().Statistics().Return(statistics)
 
 	checkData := fmt.Sprintf(checkDataTemplate, count, timeout)
 	c, err := check.NewCheck(context.Background(), []byte(checkData))
@@ -123,7 +89,7 @@ func TestPingCheck_Success(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := []*ExpectedMetric{
-		ExpectMetric("average", "", metric.MetricFloat, 0.005, metric.UnitSeconds),
+		ExpectMetric("average", "", metric.MetricFloat, 0.0052, metric.UnitSeconds),
 		ExpectMetric("maximum", "", metric.MetricFloat, 0.010, metric.UnitSeconds),
 		ExpectMetric("minimum", "", metric.MetricFloat, 0.001, metric.UnitSeconds),
 		ExpectMetric("available", "", metric.MetricFloat, 100.0, metric.UnitPercent),
@@ -133,82 +99,4 @@ func TestPingCheck_Success(t *testing.T) {
 	assert.Equal(t, 1, crs.Length())
 	AssertMetrics(t, expected, crs.Get(0).Metrics)
 	assert.True(t, crs.Available)
-}
-
-func TestPingCheck_Drops(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-	mock := setup(ctrl)
-
-	const count = 5
-	const timeout = 15
-
-	mock.EXPECT().SetCount(count)
-	mock.EXPECT().Count().Return(count)
-	mock.EXPECT().SetTimeout(timeout * time.Second)
-	mock.EXPECT().Timeout().Return(timeout * time.Second)
-	mock.EXPECT().SetOnRecv(gomock.Any())
-	mock.EXPECT().Run()
-	statistics := &ping.Statistics{
-		PacketsSent: 2, // pretend a few trickled through, but timed out
-		PacketsRecv: 0, // ...and none came back
-		// leave others at defaults
-	}
-	mock.EXPECT().Statistics().Return(statistics)
-
-	checkData := fmt.Sprintf(checkDataTemplate, count, timeout)
-	c, err := check.NewCheck(context.Background(), []byte(checkData))
-	require.NoError(t, err)
-
-	assert.IsType(t, &check.PingCheck{}, c)
-
-	// Run check
-	crs, err := c.Run()
-	require.NoError(t, err)
-
-	expected := []*ExpectedMetric{
-		ExpectMetric("average", "", metric.MetricFloat, 0.0, metric.UnitSeconds),
-		ExpectMetric("maximum", "", metric.MetricFloat, 0.0, metric.UnitSeconds),
-		ExpectMetric("minimum", "", metric.MetricFloat, 0.0, metric.UnitSeconds),
-		ExpectMetric("available", "", metric.MetricFloat, 0.0, metric.UnitPercent),
-		ExpectMetric("count", "", metric.MetricNumber, 2, ""),
-	}
-
-	assert.Equal(t, 1, crs.Length())
-	AssertMetrics(t, expected, crs.Get(0).Metrics)
-	assert.True(t, crs.Available)
-}
-
-func TestPingCheck_NoPermissionToPing(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-	mock := setup(ctrl)
-
-	const count = 5
-	const timeout = 15
-
-	mock.EXPECT().SetCount(count)
-	mock.EXPECT().Count().Return(count)
-	mock.EXPECT().SetTimeout(timeout * time.Second)
-	mock.EXPECT().Timeout().Return(timeout * time.Second)
-	mock.EXPECT().SetOnRecv(gomock.Any())
-	mock.EXPECT().Run()
-	statistics := &ping.Statistics{
-		PacketsSent: 0, // go-ping doesn't emit any error, just logs it
-		// leave others at defaults
-	}
-	mock.EXPECT().Statistics().Return(statistics)
-
-	checkData := fmt.Sprintf(checkDataTemplate, count, timeout)
-	c, err := check.NewCheck(context.Background(), []byte(checkData))
-	require.NoError(t, err)
-
-	assert.IsType(t, &check.PingCheck{}, c)
-
-	// Run check
-	crs, err := c.Run()
-	require.NoError(t, err)
-
-	assert.Equal(t, 0, crs.Length())
-	assert.False(t, crs.Available)
 }

@@ -17,7 +17,10 @@
 // Package metric provides the messaging structures specific to metric reporting
 package metric
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 type Metric struct {
 	Type       int         `json:"-"` // does not export to json
@@ -26,6 +29,11 @@ type Metric struct {
 	Name       string      `json:"name"`
 	Unit       string      `json:"unit"`
 	Value      interface{} `json:"value"`
+}
+
+func (m *Metric) String() string {
+	return fmt.Sprintf("{type=%v, dimension=%v, name=%v, unit=%v, value=%v}",
+		m.TypeString, m.Dimension, m.Name, m.Unit, m.Value)
 }
 
 func UnitToString(unit int) string {
