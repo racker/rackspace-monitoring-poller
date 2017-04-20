@@ -71,8 +71,10 @@ func (ch *PingCheck) Run() (*ResultSet, error) {
 
 	pinger, err := PingerFactory(ch.GetID(), targetIP, ipVersion)
 	if err != nil {
-		log.WithField("targetIP", targetIP).
-			Error("Failed to create pinger")
+		log.WithFields(log.Fields{
+			"prefix":   ch.GetLogPrefix(),
+			"targetIP": targetIP,
+		}).Error("Failed to create pinger")
 		return nil, err
 	}
 	defer pinger.Close()
@@ -97,6 +99,7 @@ packetLoop:
 		select {
 		case resp := <-pinger.Ping(seq):
 			log.WithFields(log.Fields{
+				"prefix":  ch.GetLogPrefix(),
 				"resp":    resp,
 				"checkId": ch.Id,
 			}).Debug("Got ping response")
@@ -107,7 +110,8 @@ packetLoop:
 			}
 			if resp.Seq != seq {
 				log.WithFields(log.Fields{
-					"seq": resp.Seq,
+					"prefix": ch.GetLogPrefix(),
+					"seq":    resp.Seq,
 				}).Debug("Incorrect packet seq received")
 			} else {
 				rtts = append(rtts, resp.Rtt)
@@ -116,12 +120,14 @@ packetLoop:
 
 		case <-time.After(perPingDuration):
 			log.WithFields(log.Fields{
+				"prefix":   ch.GetLogPrefix(),
 				"targetIP": targetIP,
 				"seq":      seq,
 			}).Debug("Timed out getting response")
 
 		case <-overallTimeout:
 			log.WithFields(log.Fields{
+				"prefix":   ch.GetLogPrefix(),
 				"targetIP": targetIP,
 			}).Debug("Reached overall timeout")
 
@@ -152,6 +158,7 @@ packetLoop:
 		avgRTT = totalRTT / time.Duration(recv)
 	}
 	log.WithFields(log.Fields{
+		"prefix":   ch.GetLogPrefix(),
 		"checkId":  ch.Id,
 		"targetIP": targetIP,
 		"sent":     sent,
