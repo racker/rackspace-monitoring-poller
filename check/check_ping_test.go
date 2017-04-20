@@ -62,25 +62,6 @@ func TestPingCheck_ConfirmType(t *testing.T) {
 	assert.IsType(t, &check.PingCheck{}, c)
 }
 
-func TestPingCheck_PingerConfigured(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-	mock := setup(ctrl)
-	mock.EXPECT().Ping(gomock.Any()).AnyTimes()
-
-	const count = 5
-	const timeout = 15
-
-	checkData := fmt.Sprintf(checkDataTemplate, count, timeout)
-	c, err := check.NewCheck(context.Background(), []byte(checkData))
-	require.NoError(t, err)
-
-	// Run check since need to induce pinger usage
-	crs, err := c.Run()
-	assert.NotNil(t, crs)
-	assert.NoError(t, err)
-}
-
 func TestPingCheck_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -94,6 +75,7 @@ func TestPingCheck_Success(t *testing.T) {
 	responses <- &check.PingResponse{Seq: 5, Rtt: 5 * time.Millisecond}
 
 	mock.EXPECT().Ping(gomock.Any()).AnyTimes().Return(responses)
+	mock.EXPECT().Close()
 
 	const count = 5
 	const timeout = 15

@@ -71,6 +71,7 @@ func (ch *PingCheck) Run() (*ResultSet, error) {
 			Error("Failed to create pinger")
 		return nil, err
 	}
+	defer pinger.Close()
 
 	timeoutDuration := time.Duration(ch.Timeout) * time.Millisecond
 	overallTimeout := time.After(timeoutDuration)

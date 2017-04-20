@@ -36,13 +36,24 @@ import (
 )
 
 const (
-	ProtocolICMP     = 1
-	ProtocolIPv6ICMP = 58
+	ProtocolICMP              = 1
+	ProtocolIPv6ICMP          = 58
+	pingWriteDeadlineDuration = 1 * time.Minute
+	pingReadDeadlineDuration  = 3 * time.Minute
+
+	PingerIPv4 = "v4"
+	PingerIPv6 = "v6"
+
+	IcmpNetIP4  = "ip4:icmp"
+	IcmpNetUDP4 = "udp4"
+	IcmpNetIP6  = "ip6:ipv6-icmp"
+	IcmpNetUDP6 = "udp6"
 )
 
 // Pinger represents the facility to send out a single ping packet and provides the response via the returned channel.
 type Pinger interface {
 	Ping(seq int) <-chan *PingResponse
+	Close()
 }
 
 // PingerFactorySpec specifies function specification to use
@@ -75,7 +86,7 @@ var PingerFactory PingerFactorySpec = func(identifier string, remoteAddr string,
 	if !privileged {
 		switch runtime.GOOS {
 		case "darwin", "linux":
-			// good
+			// supported
 		default:
 			return nil, fmt.Errorf("Non-privileged ping is not supported on %v", runtime.GOOS)
 		}
@@ -88,22 +99,22 @@ var PingerFactory PingerFactorySpec = func(identifier string, remoteAddr string,
 		}
 
 		if ipAddr.IP.To4() != nil {
-			ipVersion = "v4"
+			ipVersion = PingerIPv4
 		} else {
-			ipVersion = "v6"
+			ipVersion = PingerIPv6
 		}
 	}
 
 	var network string
 	switch {
-	case privileged && ipVersion == "v4":
-		network = "ip4:icmp"
-	case privileged && ipVersion == "v6":
-		network = "ip6:ipv6-icmp"
-	case !privileged && ipVersion == "v4":
-		network = "udp4"
-	case !privileged && ipVersion == "v6":
-		network = "udp6"
+	case privileged && ipVersion == PingerIPv4:
+		network = IcmpNetIP4
+	case privileged && ipVersion == PingerIPv6:
+		network = IcmpNetIP6
+	case !privileged && ipVersion == PingerIPv4:
+		network = IcmpNetUDP4
+	case !privileged && ipVersion == PingerIPv6:
+		network = IcmpNetUDP6
 	}
 
 	log.WithFields(log.Fields{
@@ -120,10 +131,10 @@ var PingerFactory PingerFactorySpec = func(identifier string, remoteAddr string,
 var (
 	defaultPingRouter  *pingRouter
 	pingNetworkToProto = map[string]int{
-		"udp4":          ProtocolICMP,
-		"udp6":          ProtocolIPv6ICMP,
-		"ip4:icmp":      ProtocolICMP,
-		"ip6:ipv6-icmp": ProtocolIPv6ICMP,
+		IcmpNetUDP4: ProtocolICMP,
+		IcmpNetUDP6: ProtocolIPv6ICMP,
+		IcmpNetIP4:  ProtocolICMP,
+		IcmpNetIP6:  ProtocolIPv6ICMP,
 	}
 )
 
@@ -168,8 +179,15 @@ func (pr *pingRouter) receive(network string, packetConn *icmp.PacketConn) {
 
 recvLoop:
 	for {
+		packetConn.SetReadDeadline(time.Now().Add(pingReadDeadlineDuration))
 		n, peerAddr, err := packetConn.ReadFrom(buffer)
 		if err != nil {
+			if netErr, ok := err.(net.Error); ok {
+				if netErr.Timeout() {
+					continue recvLoop
+				}
+			}
+
 			log.WithFields(log.Fields{"err": err, "network": network}).Warn("Reading from ICMP connection")
 
 			pr.mu.Lock()
@@ -311,6 +329,10 @@ func newPingerBase(identifier string, packetConn *icmp.PacketConn, remoteAddr ne
 	}
 }
 
+func (p *pingerBase) Close() {
+	defaultPingRouter.deregister(p.identifier, p.id)
+}
+
 type pingerV4 struct {
 	pingerBase
 }
@@ -319,36 +341,38 @@ type pingerV6 struct {
 	pingerBase
 }
 
-func NewPinger(identifier string, network string, remoteAddr string) (Pinger, error) {
+// NewPinger directly creates a new instance with the given details.
+// icmpNetwork should be one of IcmpNetIP4, IcmpNetUDP4, IcmpNetIP6, IcmpNetUDP6
+func NewPinger(identifier string, icmpNetwork string, remoteAddr string) (Pinger, error) {
 	log.WithFields(log.Fields{
 		"identifier": identifier,
-		"network":    network,
+		"network":    icmpNetwork,
 		"remoteAddr": remoteAddr,
 	}).Debug("Creating new pinger")
 
 	var bindAddr string
-	switch network {
-	case "ip4:icmp", "udp4":
+	switch icmpNetwork {
+	case IcmpNetIP4, IcmpNetUDP4:
 		bindAddr = "0.0.0.0"
-		packetConn, err := defaultPingRouter.getPacketConn(network, bindAddr)
+		packetConn, err := defaultPingRouter.getPacketConn(icmpNetwork, bindAddr)
 		if err != nil {
 			return nil, err
 		}
 
-		addr, err := resolvePingAddr("ip4", network, remoteAddr)
+		addr, err := resolvePingAddr("ip4", icmpNetwork, remoteAddr)
 		if err != nil {
 			return nil, errors.Wrapf(err, "Trying to resolve %v", remoteAddr)
 		}
 
 		return &pingerV4{pingerBase: *newPingerBase(identifier, packetConn, addr)}, nil
-	case "ip6:ipv6-icmp", "udp6":
+	case IcmpNetIP6, IcmpNetUDP6:
 		bindAddr = "::"
-		packetConn, err := defaultPingRouter.getPacketConn(network, bindAddr)
+		packetConn, err := defaultPingRouter.getPacketConn(icmpNetwork, bindAddr)
 		if err != nil {
 			return nil, err
 		}
 
-		addr, err := resolvePingAddr("ip6", network, remoteAddr)
+		addr, err := resolvePingAddr("ip6", icmpNetwork, remoteAddr)
 		if err != nil {
 			return nil, errors.Wrapf(err, "Trying to resolve %v", remoteAddr)
 		}
@@ -356,7 +380,7 @@ func NewPinger(identifier string, network string, remoteAddr string) (Pinger, er
 		return &pingerV6{pingerBase: *newPingerBase(identifier, packetConn, addr)}, nil
 	}
 
-	return nil, fmt.Errorf("Unsupported network type: %v", network)
+	return nil, fmt.Errorf("Unsupported network type: %v", icmpNetwork)
 }
 
 func resolvePingAddr(addrNetwork string, icmpNetwork string, remoteAddr string) (net.Addr, error) {
@@ -416,6 +440,8 @@ func (p *pingerBase) ping(seq int, messageType icmp.Type) <-chan *PingResponse {
 		"seq":        seq,
 		"remoteAddr": p.remoteAddr,
 	}).Debug("Sending ping packet")
+
+	p.packetConn.SetWriteDeadline(time.Now().Add(pingWriteDeadlineDuration))
 	if _, err = p.packetConn.WriteTo(wb, p.remoteAddr); err != nil {
 		p.responses <- &PingResponse{Err: err}
 		return p.responses

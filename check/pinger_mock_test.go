@@ -29,6 +29,14 @@ func (_m *MockPinger) EXPECT() *_MockPingerRecorder {
 	return _m.recorder
 }
 
+func (_m *MockPinger) Close() {
+	_m.ctrl.Call(_m, "Close")
+}
+
+func (_mr *_MockPingerRecorder) Close() *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "Close")
+}
+
 func (_m *MockPinger) Ping(_param0 int) <-chan *check.PingResponse {
 	ret := _m.ctrl.Call(_m, "Ping", _param0)
 	ret0, _ := ret[0].(<-chan *check.PingResponse)

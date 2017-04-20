@@ -77,7 +77,7 @@ func pingCmdInstance(host string, checkId string, wg *sync.WaitGroup) {
 			log.WithFields(log.Fields{
 				"checkId": checkId,
 				"err":     err,
-			}).Fatal("Ping check failed")
+			}).Warn("Ping check failed")
 			return
 		}
 
