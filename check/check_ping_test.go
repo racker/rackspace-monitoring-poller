@@ -62,6 +62,26 @@ func TestPingCheck_ConfirmType(t *testing.T) {
 	assert.IsType(t, &check.PingCheck{}, c)
 }
 
+func TestPingCheck_StringyCount(t *testing.T) {
+	checkData := `{
+	  "id":"chPzATCP",
+	  "zone_id":"pzA",
+	  "entity_id":"enAAAAIPV4",
+	  "details":{"count":"5"},
+	  "type":"remote.ping",
+	  "timeout":%d,
+	  "period":30,
+	  "ip_addresses":{"default":"127.0.0.1"},
+	  "target_alias":"default",
+	  "target_hostname":"",
+	  "target_resolver":1,
+	  "disabled":false
+	  }`
+
+	_, err := check.NewCheck(context.Background(), []byte(checkData))
+	require.Error(t, err)
+}
+
 func TestPingCheck_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()

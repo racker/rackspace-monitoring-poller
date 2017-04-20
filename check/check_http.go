@@ -58,7 +58,11 @@ func NewHTTPCheck(base *Base) Check {
 	check := &HTTPCheck{Base: *base}
 	err := json.Unmarshal(*base.RawDetails, &check.Details)
 	if err != nil {
-		log.Error("Error unmarshalling base")
+		log.WithFields(log.Fields{
+			"prefix":  "check_http",
+			"err":     err,
+			"details": string(*base.RawDetails),
+		}).Warn("Unable to unmarshal check details")
 		return nil
 	}
 	return check

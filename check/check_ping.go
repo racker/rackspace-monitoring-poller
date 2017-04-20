@@ -41,7 +41,11 @@ func NewPingCheck(base *Base) Check {
 	check := &PingCheck{Base: *base}
 	err := json.Unmarshal(*base.RawDetails, &check.Details)
 	if err != nil {
-		log.Errorf("Error unmarshalling ping details: %v", err)
+		log.WithFields(log.Fields{
+			"prefix":  "check_ping",
+			"err":     err,
+			"details": string(*base.RawDetails),
+		}).Warn("Unable to unmarshal check details")
 		return nil
 	}
 	return check

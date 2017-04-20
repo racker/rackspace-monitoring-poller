@@ -51,7 +51,11 @@ func NewTCPCheck(base *Base) Check {
 	check := &TCPCheck{Base: *base}
 	err := json.Unmarshal(*base.RawDetails, &check.Details)
 	if err != nil {
-		log.Error("Error unmarshalling TCPCheck")
+		log.WithFields(log.Fields{
+			"prefix":  "check_tcp",
+			"err":     err,
+			"details": string(*base.RawDetails),
+		}).Warn("Unable to unmarshal check details")
 		return nil
 	}
 	return check
