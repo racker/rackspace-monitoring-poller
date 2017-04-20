@@ -18,6 +18,7 @@ package protocol
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/protocol/check"
 	"github.com/racker/rackspace-monitoring-poller/utils"
@@ -170,6 +171,10 @@ type MetricTVU struct {
 	Type  string `json:"t"`
 	Value string `json:"v"`
 	Unit  string `json:"u"`
+}
+
+func (m *MetricTVU) String() string {
+	return fmt.Sprintf("{t=%v, v=%v, u=%v}", m.Type, m.Value, m.Unit)
 }
 
 type MetricsPostContent struct {
@@ -399,9 +404,13 @@ type PollerCommitResponse struct {
 	Result PollerCommitResult `json:"result"`
 }
 
+type PollerCheckTestParams struct {
+	CheckParams *check.CheckIn `json:"checkParams"`
+}
+
 type PollerCheckTestRequest struct {
 	FrameMsg
-	Params *check.CheckIn `json:"params"`
+	Params PollerCheckTestParams `json:"params"`
 }
 
 func DecodePollerCheckTestRequest(frame *FrameMsg) *PollerCheckTestRequest {

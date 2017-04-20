@@ -331,13 +331,23 @@ __required__|integer(int64)
 |**method** +
 __optional__|enum (poller.prepare, poller.prepare.block, poller.prepare.end, poller.commit, check_metrics.post_multi)
 |**params** +
-__optional__|<<_check,Check>>
+__optional__|<<_pollerchecktest_params,params>>
 |**source** +
 __required__|string
 |**target** +
 __required__|string
 |**v** +
 __required__|string
+|===
+
+[[_pollerchecktest_params]]
+**params**
+
+[options="header", cols=".^3,.^4"]
+|===
+|Name|Schema
+|**checkParams** +
+__optional__|<<_check,Check>>
 |===
 
 

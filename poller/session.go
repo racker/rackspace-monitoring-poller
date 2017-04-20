@@ -31,6 +31,7 @@ import (
 	"github.com/racker/rackspace-monitoring-poller/hostinfo"
 	"github.com/racker/rackspace-monitoring-poller/protocol"
 	"github.com/racker/rackspace-monitoring-poller/utils"
+	"math/rand"
 )
 
 // CompletionFrame is a pointer to a request with a specified
@@ -447,13 +448,17 @@ func (s *EleSession) handlePollerCommit(f *protocol.FrameMsg) {
 func (s *EleSession) handleCheckTest(f *protocol.FrameMsg) {
 	req := protocol.DecodePollerCheckTestRequest(f)
 
-	newCheck, err := check.NewCheckParsed(s.ctx, *req.Params)
+	newCheck, err := check.NewCheckParsed(s.ctx, *req.Params.CheckParams)
 	if err != nil {
 		resp := protocol.NewErrorResponse(f, 1, "Unable to interpret the given check for testing")
 		s.Respond(resp)
 		return
 	}
 
+	// Ensure the check has an ID or create a temp one if it's a "test new check"
+	if newCheck.GetID() == "" {
+		newCheck.SetID(fmt.Sprintf("tch%06d", rand.Intn(999999)))
+	}
 	crs, err := newCheck.Run()
 
 	if err != nil {

@@ -280,7 +280,10 @@ definitions:
       - type: object
         properties:
           params:
-            $ref: '#/definitions/Check'
+            type: object
+            properties:
+              checkParams:
+                $ref: '#/definitions/Check'
   PollerCheckTestResponse:
     description: test.check
     allOf:
