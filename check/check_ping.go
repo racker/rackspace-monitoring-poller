@@ -41,7 +41,10 @@ func NewPingCheck(base *Base) Check {
 	check := &PingCheck{Base: *base}
 	err := json.Unmarshal(*base.RawDetails, &check.Details)
 	if err != nil {
-		log.Printf("Error unmarshalling check details")
+		log.WithFields(log.Fields{
+			"err":  err,
+			"base": base,
+		}).Warn("Unable to unmarshal check details")
 		return nil
 	}
 	return check
@@ -67,13 +70,15 @@ func (ch *PingCheck) Run() (*ResultSet, error) {
 
 	pinger, err := PingerFactory(ch.GetID(), targetIP, ipVersion)
 	if err != nil {
-		log.WithField("targetIP", targetIP).
-			Error("Failed to create pinger")
+		log.WithFields(log.Fields{
+			"prefix":   ch.GetLogPrefix(),
+			"targetIP": targetIP,
+		}).Error("Failed to create pinger")
 		return nil, err
 	}
 	defer pinger.Close()
 
-	timeoutDuration := time.Duration(ch.Timeout) * time.Millisecond
+	timeoutDuration := time.Duration(ch.Timeout) * time.Second
 	overallTimeout := time.After(timeoutDuration)
 
 	count := int(ch.Details.Count)
@@ -93,6 +98,7 @@ packetLoop:
 		select {
 		case resp := <-pinger.Ping(seq):
 			log.WithFields(log.Fields{
+				"prefix":  ch.GetLogPrefix(),
 				"resp":    resp,
 				"checkId": ch.Id,
 			}).Debug("Got ping response")
@@ -103,7 +109,8 @@ packetLoop:
 			}
 			if resp.Seq != seq {
 				log.WithFields(log.Fields{
-					"seq": resp.Seq,
+					"prefix": ch.GetLogPrefix(),
+					"seq":    resp.Seq,
 				}).Debug("Incorrect packet seq received")
 			} else {
 				rtts = append(rtts, resp.Rtt)
@@ -112,12 +119,14 @@ packetLoop:
 
 		case <-time.After(perPingDuration):
 			log.WithFields(log.Fields{
+				"prefix":   ch.GetLogPrefix(),
 				"targetIP": targetIP,
 				"seq":      seq,
 			}).Debug("Timed out getting response")
 
 		case <-overallTimeout:
 			log.WithFields(log.Fields{
+				"prefix":   ch.GetLogPrefix(),
 				"targetIP": targetIP,
 			}).Debug("Reached overall timeout")
 
@@ -148,6 +157,7 @@ packetLoop:
 		avgRTT = totalRTT / time.Duration(recv)
 	}
 	log.WithFields(log.Fields{
+		"prefix":   ch.GetLogPrefix(),
 		"checkId":  ch.Id,
 		"targetIP": targetIP,
 		"sent":     sent,

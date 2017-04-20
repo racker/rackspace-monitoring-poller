@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"bytes"
-	"encoding/gob"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/pkg/errors"
@@ -48,6 +47,8 @@ const (
 	IcmpNetUDP4 = "udp4"
 	IcmpNetIP6  = "ip6:ipv6-icmp"
 	IcmpNetUDP6 = "udp6"
+
+	pingLogPrefix = "pinger"
 )
 
 // Pinger represents the facility to send out a single ping packet and provides the response via the returned channel.
@@ -118,6 +119,7 @@ var PingerFactory PingerFactorySpec = func(identifier string, remoteAddr string,
 	}
 
 	log.WithFields(log.Fields{
+		"prefix":     pingLogPrefix,
 		"identifier": identifier,
 		"remoteAddr": remoteAddr,
 		"ipVersion":  ipVersion,
@@ -157,6 +159,7 @@ func (pr *pingRouter) getPacketConn(network string, bindAddr string) (*icmp.Pack
 	}
 
 	log.WithFields(log.Fields{
+		"prefix":   pingLogPrefix,
 		"network":  network,
 		"bindAddr": bindAddr,
 	}).Debug("Creating ICMP packet connection")
@@ -172,9 +175,17 @@ func (pr *pingRouter) getPacketConn(network string, bindAddr string) (*icmp.Pack
 	return packetConn, nil
 }
 
+// receive runs in a go routine and processes responses from requests initiated in pingerBase.ping
 func (pr *pingRouter) receive(network string, packetConn *icmp.PacketConn) {
-	log.WithFields(log.Fields{"network": network}).Debug("Starting ICMP receiver")
-	defer log.WithFields(log.Fields{"network": network}).Debug("Stopping ICMP receiver")
+	log.WithFields(log.Fields{
+		"prefix":  pingLogPrefix,
+		"network": network,
+	}).Debug("Starting ICMP receiver")
+	defer log.WithFields(log.Fields{
+		"prefix":  pingLogPrefix,
+		"network": network,
+	}).Debug("Stopping ICMP receiver")
+
 	buffer := make([]byte, 1500)
 
 recvLoop:
@@ -188,7 +199,11 @@ recvLoop:
 				}
 			}
 
-			log.WithFields(log.Fields{"err": err, "network": network}).Warn("Reading from ICMP connection")
+			log.WithFields(log.Fields{
+				"prefix":  pingLogPrefix,
+				"err":     err,
+				"network": network,
+			}).Warn("Reading from ICMP connection")
 
 			pr.mu.Lock()
 			packetConn.Close()
@@ -201,6 +216,7 @@ recvLoop:
 		m, err := icmp.ParseMessage(proto, buffer[:n])
 		if err != nil {
 			log.WithFields(log.Fields{
+				"prefix":   pingLogPrefix,
 				"err":      err,
 				"network":  network,
 				"peerAddr": peerAddr,
@@ -215,6 +231,7 @@ recvLoop:
 		case ipv6.ICMPTypeDestinationUnreachable:
 		default:
 			log.WithFields(log.Fields{
+				"prefix":   pingLogPrefix,
 				"type":     m.Type,
 				"peerAddr": peerAddr,
 			}).Warn("Received non echo reply")
@@ -226,27 +243,52 @@ recvLoop:
 			id := pkt.ID
 			seq := pkt.Seq
 			rbuf := bytes.NewBuffer(pkt.Data)
-			dec := gob.NewDecoder(rbuf)
-			var payload echoPayload
-			err := dec.Decode(&payload)
+
+			identifier, err := rbuf.ReadString(0)
 			if err != nil {
 				log.WithFields(log.Fields{
-					"id":   id,
-					"seq":  seq,
-					"data": pkt.Data,
+					"prefix": pingLogPrefix,
+					"id":     id,
+					"seq":    seq,
+					"data":   pkt.Data,
+				}).Warn("Failed to decode identifier from echo reply payload")
+				continue recvLoop
+			}
+			// trim off the delimiter
+			identifier = identifier[:len(identifier)-1]
+
+			var sent time.Time
+			err = sent.UnmarshalBinary(rbuf.Bytes())
+			if err != nil {
+				log.WithFields(log.Fields{
+					"prefix": pingLogPrefix,
+					"id":     id,
+					"seq":    seq,
+					"data":   pkt.Data,
+				}).Warn("Failed to decode sent time from echo reply payload")
+				continue recvLoop
+			}
+
+			if err != nil {
+				log.WithFields(log.Fields{
+					"prefix": pingLogPrefix,
+					"id":     id,
+					"seq":    seq,
+					"data":   pkt.Data,
 				}).Warn("Failed to decode echo reply payload")
 				continue recvLoop
 			}
 
 			pingResponse := &PingResponse{
 				Seq: seq,
-				Rtt: time.Since(payload.Sent),
+				Rtt: time.Since(sent),
 			}
 
-			pr.routeResponse(payload.Identifier, id, seq, pkt.Data, pingResponse)
+			pr.routeResponse(identifier, id, seq, pkt.Data, pingResponse)
 
 		case *icmp.DstUnreach:
 			log.WithFields(log.Fields{
+				"prefix":     pingLogPrefix,
 				"peerAddr":   peerAddr,
 				"data":       pkt.Data,
 				"extensions": pkt.Extensions,
@@ -262,6 +304,7 @@ recvLoop:
 
 		default:
 			log.WithFields(log.Fields{
+				"prefix":   pingLogPrefix,
 				"body":     m.Body,
 				"peerAddr": peerAddr,
 			}).Warn("Received non echo body")
@@ -277,6 +320,7 @@ func (pr *pingRouter) routeResponse(identifier string, id int, seq int, data []b
 	ch, ok := pr.consumers[pingRoutingKey{identifier: identifier, id: id}]
 	if !ok {
 		log.WithFields(log.Fields{
+			"prefix":     pingLogPrefix,
 			"identifier": identifier,
 			"id":         id,
 			"seq":        seq,
@@ -345,6 +389,7 @@ type pingerV6 struct {
 // icmpNetwork should be one of IcmpNetIP4, IcmpNetUDP4, IcmpNetIP6, IcmpNetUDP6
 func NewPinger(identifier string, icmpNetwork string, remoteAddr string) (Pinger, error) {
 	log.WithFields(log.Fields{
+		"prefix":     pingLogPrefix,
 		"identifier": identifier,
 		"network":    icmpNetwork,
 		"remoteAddr": remoteAddr,
@@ -399,24 +444,17 @@ func resolvePingAddr(addrNetwork string, icmpNetwork string, remoteAddr string) 
 	return pingAddr, nil
 }
 
-type echoPayload struct {
-	Identifier string
-	Sent       time.Time
-}
-
 func (p *pingerBase) ping(seq int, messageType icmp.Type) <-chan *PingResponse {
-	payload := echoPayload{
-		Identifier: p.identifier,
-		Sent:       time.Now(),
-	}
-	var buffer bytes.Buffer
-
-	enc := gob.NewEncoder(&buffer)
-	err := enc.Encode(payload)
+	// google.com truncates any ping bodies greater than 64 bytes, so hand-encoding our two fields
+	nowBytes, err := time.Now().MarshalBinary()
 	if err != nil {
 		p.responses <- &PingResponse{Err: err}
 		return p.responses
 	}
+	var buffer bytes.Buffer
+	buffer.WriteString(p.identifier)
+	buffer.WriteByte(0)
+	buffer.Write(nowBytes)
 
 	wm := icmp.Message{
 		Type: messageType,
@@ -435,6 +473,7 @@ func (p *pingerBase) ping(seq int, messageType icmp.Type) <-chan *PingResponse {
 	}
 
 	log.WithFields(log.Fields{
+		"prefix":     pingLogPrefix,
 		"identifier": p.identifier,
 		"id":         p.id,
 		"seq":        seq,
