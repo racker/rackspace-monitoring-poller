@@ -41,7 +41,7 @@ func NewPingCheck(base *Base) Check {
 	check := &PingCheck{Base: *base}
 	err := json.Unmarshal(*base.RawDetails, &check.Details)
 	if err != nil {
-		log.Printf("Error unmarshalling check details")
+		log.Errorf("Error unmarshalling ping details: %v", err)
 		return nil
 	}
 	return check
@@ -50,7 +50,7 @@ func NewPingCheck(base *Base) Check {
 // Run method implements Check.Run method for Ping
 // please see Check interface for more information
 func (ch *PingCheck) Run() (*ResultSet, error) {
-	log.Printf("Running PING Check: %v", ch.GetID())
+	log.Debugf("Running PING Check: %v", ch.GetID())
 
 	targetIP, err := ch.GetTargetIP()
 	if err != nil {
