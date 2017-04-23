@@ -105,12 +105,12 @@ func (conn *EleConnection) GetGUID() string {
 }
 
 // GetFarendWriter gets a writer directed towards the endpoint server
-func (conn *EleConnection) GetFarendWriter() io.Writer {
+func (conn *EleConnection) GetFarendWriter() io.WriteCloser {
 	return conn.conn
 }
 
 // GetFarendReader gets a reader to consume from the endpoint server
-func (conn *EleConnection) GetFarendReader() io.Reader {
+func (conn *EleConnection) GetFarendReader() io.ReadCloser {
 	return conn.conn
 }
 

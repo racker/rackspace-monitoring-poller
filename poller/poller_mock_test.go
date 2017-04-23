@@ -179,9 +179,9 @@ func (_mr *_MockConnectionRecorder) GetClockOffset() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetClockOffset")
 }
 
-func (_m *MockConnection) GetFarendReader() io.Reader {
+func (_m *MockConnection) GetFarendReader() io.ReadCloser {
 	ret := _m.ctrl.Call(_m, "GetFarendReader")
-	ret0, _ := ret[0].(io.Reader)
+	ret0, _ := ret[0].(io.ReadCloser)
 	return ret0
 }
 
@@ -189,9 +189,9 @@ func (_mr *_MockConnectionRecorder) GetFarendReader() *gomock.Call {
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "GetFarendReader")
 }
 
-func (_m *MockConnection) GetFarendWriter() io.Writer {
+func (_m *MockConnection) GetFarendWriter() io.WriteCloser {
 	ret := _m.ctrl.Call(_m, "GetFarendWriter")
-	ret0, _ := ret[0].(io.Writer)
+	ret0, _ := ret[0].(io.WriteCloser)
 	return ret0
 }
 

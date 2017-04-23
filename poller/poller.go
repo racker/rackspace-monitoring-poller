@@ -75,8 +75,8 @@ type Connection interface {
 	Close()
 	// Done returns a channel that is closed when the connection is finished or closed.
 	Done() <-chan struct{}
-	GetFarendWriter() io.Writer
-	GetFarendReader() io.Reader
+	GetFarendWriter() io.WriteCloser
+	GetFarendReader() io.ReadCloser
 	GetGUID() string
 
 	// SetAuthenticated should be invoked when a handshake response is successfully received
