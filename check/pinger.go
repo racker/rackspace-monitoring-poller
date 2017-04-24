@@ -49,6 +49,8 @@ const (
 	IcmpNetUDP6 = "udp6"
 
 	pingLogPrefix = "pinger"
+
+	GooglePingLimit = 64
 )
 
 // Pinger represents the facility to send out a single ping packet and provides the response via the returned channel.
@@ -234,7 +236,7 @@ recvLoop:
 				"prefix":   pingLogPrefix,
 				"type":     m.Type,
 				"peerAddr": peerAddr,
-			}).Warn("Received non echo reply")
+			}).Debug("Received non echo reply")
 			continue recvLoop
 		}
 
@@ -243,6 +245,10 @@ recvLoop:
 			id := pkt.ID
 			seq := pkt.Seq
 			rbuf := bytes.NewBuffer(pkt.Data)
+			// This could be a cross-chatter echo reply, so need to constrain the amount of string reading below
+			if rbuf.Len() > GooglePingLimit {
+				rbuf.Truncate(GooglePingLimit)
+			}
 
 			identifier, err := rbuf.ReadString(0)
 			if err != nil {
@@ -251,7 +257,7 @@ recvLoop:
 					"id":     id,
 					"seq":    seq,
 					"data":   pkt.Data,
-				}).Warn("Failed to decode identifier from echo reply payload")
+				}).Debug("Failed to decode identifier from echo reply payload")
 				continue recvLoop
 			}
 			// trim off the delimiter
@@ -265,17 +271,7 @@ recvLoop:
 					"id":     id,
 					"seq":    seq,
 					"data":   pkt.Data,
-				}).Warn("Failed to decode sent time from echo reply payload")
-				continue recvLoop
-			}
-
-			if err != nil {
-				log.WithFields(log.Fields{
-					"prefix": pingLogPrefix,
-					"id":     id,
-					"seq":    seq,
-					"data":   pkt.Data,
-				}).Warn("Failed to decode echo reply payload")
+				}).Debug("Failed to decode sent time from echo reply payload")
 				continue recvLoop
 			}
 
@@ -325,7 +321,7 @@ func (pr *pingRouter) routeResponse(identifier string, id int, seq int, data []b
 			"id":         id,
 			"seq":        seq,
 			"data":       data,
-		}).Warn("Unable to find ping routing consumer")
+		}).Debug("Unable to find ping routing consumer")
 		return
 	}
 	pr.mu.Unlock()
