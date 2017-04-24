@@ -446,10 +446,25 @@ func (s *EleSession) handlePollerCommit(f *protocol.FrameMsg) {
 
 // handleCheckTest runs within a go routine
 func (s *EleSession) handleCheckTest(f *protocol.FrameMsg) {
-	req := protocol.DecodePollerCheckTestRequest(f)
+	req, err := protocol.DecodePollerCheckTestRequest(f)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"prefix": s.logPrefix,
+			"err":    err,
+			"frame":  f,
+		}).Warn("Unable to interpret the given check for testing")
+		resp := protocol.NewErrorResponse(f, 1, "Unable to interpret the given check for testing")
+		s.Respond(resp)
+		return
+	}
 
 	newCheck, err := check.NewCheckParsed(s.ctx, *req.Params.CheckParams)
 	if err != nil {
+		log.WithFields(log.Fields{
+			"prefix": s.logPrefix,
+			"err":    err,
+			"frame":  f,
+		}).Warn("Unable to interpret the given check for testing")
 		resp := protocol.NewErrorResponse(f, 1, "Unable to interpret the given check for testing")
 		s.Respond(resp)
 		return
@@ -462,6 +477,11 @@ func (s *EleSession) handleCheckTest(f *protocol.FrameMsg) {
 	crs, err := newCheck.Run()
 
 	if err != nil {
+		log.WithFields(log.Fields{
+			"prefix": s.logPrefix,
+			"err":    err,
+			"check":  newCheck,
+		}).Warn("Running check")
 		resp := protocol.NewErrorResponse(f, 2, err.Error())
 		s.Respond(resp)
 		return

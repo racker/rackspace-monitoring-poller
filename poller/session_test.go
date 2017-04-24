@@ -700,6 +700,7 @@ func TestEleSession_PollerPrepareTimeout(t *testing.T) {
 func TestEleSession_CheckTest(t *testing.T) {
 	tests := []struct {
 		name          string
+		expectError   bool
 		expected      protocol.PollerCheckTestResponse
 		verifyMetrics func(t *testing.T, m map[string]*protocol.MetricTVU)
 	}{
@@ -714,6 +715,10 @@ func TestEleSession_CheckTest(t *testing.T) {
 			verifyMetrics: func(t *testing.T, m map[string]*protocol.MetricTVU) {
 				assert.Equal(t, "1", m["code_200"].Value)
 			},
+		},
+		{
+			name:        "unsupportedCheckType",
+			expectError: true,
 		},
 	}
 
@@ -748,14 +753,22 @@ func TestEleSession_CheckTest(t *testing.T) {
 				require.NoError(t, err)
 				t.Log("Received response", resp)
 
-				assert.Equal(t, tt.expected.Result.EntityId, resp.Result.EntityId)
-				assert.Equal(t, tt.expected.Result.CheckType, resp.Result.CheckType)
-				assert.Len(t, resp.Result.Metrics, 1)
-				assert.Len(t, resp.Result.Metrics[0], 2)
+				if tt.expectError {
+					assert.NotNil(t, resp.Error)
+					assert.NotEmpty(t, resp.Error.Message)
 
-				if tt.verifyMetrics != nil {
-					tt.verifyMetrics(t, resp.Result.Metrics[0][1])
+				} else {
+					assert.Equal(t, tt.expected.Result.EntityId, resp.Result.EntityId)
+					assert.Equal(t, tt.expected.Result.CheckType, resp.Result.CheckType)
+					require.Len(t, resp.Result.Metrics, 1)
+					require.Len(t, resp.Result.Metrics[0], 2)
+
+					if tt.verifyMetrics != nil {
+						tt.verifyMetrics(t, resp.Result.Metrics[0][1])
+					}
+
 				}
+
 			})
 
 		})

@@ -19,6 +19,7 @@ package protocol
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/pkg/errors"
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/protocol/check"
 	"github.com/racker/rackspace-monitoring-poller/utils"
@@ -405,7 +406,8 @@ type PollerCommitResponse struct {
 }
 
 type PollerCheckTestParams struct {
-	CheckParams *check.CheckIn `json:"checkParams"`
+	CheckParamsRaw string         `json:"checkParams"`
+	CheckParams    *check.CheckIn `json:"-"`
 }
 
 type PollerCheckTestRequest struct {
@@ -413,13 +415,20 @@ type PollerCheckTestRequest struct {
 	Params PollerCheckTestParams `json:"params"`
 }
 
-func DecodePollerCheckTestRequest(frame *FrameMsg) *PollerCheckTestRequest {
+func DecodePollerCheckTestRequest(frame *FrameMsg) (*PollerCheckTestRequest, error) {
 	req := &PollerCheckTestRequest{}
 	req.SetFromFrameMsg(frame)
 	if frame.GetRawParams() != nil {
-		json.Unmarshal(frame.GetRawParams(), &req.Params)
+		err := json.Unmarshal(frame.GetRawParams(), &req.Params)
+		if err != nil {
+			return nil, errors.Wrap(err, "Unmarshaling raw parameters")
+		}
+		err = json.Unmarshal([]byte(req.Params.CheckParamsRaw), &req.Params.CheckParams)
+		if err != nil {
+			return nil, errors.Wrap(err, "Unmarshaling embedded checkParams")
+		}
 	}
-	return req
+	return req, nil
 }
 
 type PollerCheckTestResponse struct {
