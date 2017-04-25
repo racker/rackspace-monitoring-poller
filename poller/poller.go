@@ -55,6 +55,7 @@ type LogPrefixGetter interface {
 // register, connect, and send data in connections.
 // It is the main factory for connection handling
 type ConnectionStream interface {
+	ChecksReconciler
 	utils.EventSource
 
 	SendMetrics(crs *check.ResultSet)

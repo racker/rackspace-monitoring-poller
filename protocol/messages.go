@@ -18,6 +18,8 @@ package protocol
 
 import (
 	"encoding/json"
+	"fmt"
+	"github.com/pkg/errors"
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/protocol/check"
 	"github.com/racker/rackspace-monitoring-poller/utils"
@@ -172,7 +174,11 @@ type MetricTVU struct {
 	Unit  string `json:"u"`
 }
 
-type MetricsPostRequestParams struct {
+func (m *MetricTVU) String() string {
+	return fmt.Sprintf("{t=%v, v=%v, u=%v}", m.Type, m.Value, m.Unit)
+}
+
+type MetricsPostContent struct {
 	EntityId       string       `json:"entity_id"`
 	CheckId        string       `json:"check_id"`
 	CheckType      string       `json:"check_type"`
@@ -185,7 +191,7 @@ type MetricsPostRequestParams struct {
 
 type MetricsPostRequest struct {
 	FrameMsg
-	Params MetricsPostRequestParams `json:"params"`
+	Params MetricsPostContent `json:"params"`
 }
 
 func (r MetricsPostRequest) Encode() ([]byte, error) {
@@ -397,4 +403,61 @@ func NewPollerPrepareCommitResponse(source *FrameMsg, result PollerCommitResult)
 type PollerCommitResponse struct {
 	FrameMsg
 	Result PollerCommitResult `json:"result"`
+}
+
+type PollerCheckTestParams struct {
+	CheckParamsRaw string         `json:"checkParams"`
+	CheckParams    *check.CheckIn `json:"-"`
+}
+
+type PollerCheckTestRequest struct {
+	FrameMsg
+	Params PollerCheckTestParams `json:"params"`
+}
+
+func DecodePollerCheckTestRequest(frame *FrameMsg) (*PollerCheckTestRequest, error) {
+	req := &PollerCheckTestRequest{}
+	req.SetFromFrameMsg(frame)
+	if frame.GetRawParams() != nil {
+		err := json.Unmarshal(frame.GetRawParams(), &req.Params)
+		if err != nil {
+			return nil, errors.Wrap(err, "Unmarshaling raw parameters")
+		}
+		err = json.Unmarshal([]byte(req.Params.CheckParamsRaw), &req.Params.CheckParams)
+		if err != nil {
+			return nil, errors.Wrap(err, "Unmarshaling embedded checkParams")
+		}
+	}
+	return req, nil
+}
+
+type PollerCheckTestResponse struct {
+	FrameMsg
+	Result MetricsPostContent `json:"result"`
+}
+
+func NewPollerCheckTestResponse(source *FrameMsg, result *MetricsPostContent) Frame {
+	resp := &FrameMsg{}
+	resp.SetResponseFrameMsg(source)
+
+	raw, err := json.Marshal(result)
+	if err != nil {
+		return nil
+	}
+
+	resp.RawResult = json.RawMessage(raw)
+
+	return resp
+}
+
+// NewErrorResponse builds an error response to a given request frame. This is a purely generic response and does
+// not populate the result section.
+func NewErrorResponse(source *FrameMsg, code uint64, message string) Frame {
+	resp := &FrameMsg{}
+	resp.SetResponseFrameMsg(source)
+	resp.Error = &Error{
+		Code:    code,
+		Message: message,
+	}
+	return resp
 }

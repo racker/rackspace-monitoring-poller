@@ -26,10 +26,12 @@ import (
 
 	"fmt"
 	log "github.com/Sirupsen/logrus"
+	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/hostinfo"
 	"github.com/racker/rackspace-monitoring-poller/protocol"
 	"github.com/racker/rackspace-monitoring-poller/utils"
+	"math/rand"
 )
 
 // CompletionFrame is a pointer to a request with a specified
@@ -290,6 +292,8 @@ func (s *EleSession) handleFrame(f *protocol.FrameMsg) error {
 		s.handlePollerPrepareEnd(f)
 	case protocol.MethodPollerCommit:
 		s.handlePollerCommit(f)
+	case protocol.MethodCheckTest:
+		go s.handleCheckTest(f)
 	default:
 		log.WithFields(log.Fields{
 			"prefix": s.logPrefix,
@@ -438,6 +442,57 @@ func (s *EleSession) handlePollerCommit(f *protocol.FrameMsg) {
 	}
 	s.respondCommitResult(f, req, protocol.PrepareResultStatusCommitted, "")
 	s.prepDetails.commit()
+}
+
+// handleCheckTest runs within a go routine
+func (s *EleSession) handleCheckTest(f *protocol.FrameMsg) {
+	req, err := protocol.DecodePollerCheckTestRequest(f)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"prefix": s.logPrefix,
+			"err":    err,
+			"frame":  f,
+		}).Warn("Unable to interpret the given check for testing")
+		resp := protocol.NewErrorResponse(f, 1, "Unable to interpret the given check for testing")
+		s.Respond(resp)
+		return
+	}
+
+	newCheck, err := check.NewCheckParsed(s.ctx, *req.Params.CheckParams)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"prefix": s.logPrefix,
+			"err":    err,
+			"frame":  f,
+		}).Warn("Unable to interpret the given check for testing")
+		resp := protocol.NewErrorResponse(f, 1, "Unable to interpret the given check for testing")
+		s.Respond(resp)
+		return
+	}
+
+	// Ensure the check has an ID or create a temp one if it's a "test new check"
+	if newCheck.GetID() == "" {
+		newCheck.SetID(fmt.Sprintf("tch%06d", rand.Intn(999999)))
+	}
+	crs, err := newCheck.Run()
+
+	if err != nil {
+		log.WithFields(log.Fields{
+			"prefix": s.logPrefix,
+			"err":    err,
+			"check":  newCheck,
+		}).Warn("Running check")
+		resp := protocol.NewErrorResponse(f, 2, err.Error())
+		s.Respond(resp)
+		return
+	}
+
+	var content protocol.MetricsPostContent
+	crs.PopulateMetricsPostContent(0, &content)
+
+	resp := protocol.NewPollerCheckTestResponse(f, &content)
+	s.Respond(resp)
+
 }
 
 func (s *EleSession) respondCommitResult(f *protocol.FrameMsg, req *protocol.PollerCommitRequest,

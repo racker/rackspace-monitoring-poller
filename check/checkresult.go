@@ -17,8 +17,10 @@
 package check
 
 import (
+	"github.com/racker/rackspace-monitoring-poller/protocol"
 	"fmt"
 	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
+	"github.com/racker/rackspace-monitoring-poller/utils"
 	"strings"
 )
 
@@ -230,4 +232,23 @@ func (crs *ResultSet) Get(idx int) *Result {
 		panic("CheckResultSet index is greater than length")
 	}
 	return crs.Metrics[idx]
+}
+
+func (crs *ResultSet) PopulateMetricsPostContent(clockOffset int64, content *protocol.MetricsPostContent) {
+	content.EntityId = crs.Check.GetEntityID()
+	content.CheckId = crs.Check.GetID()
+	content.CheckType = crs.Check.GetCheckType()
+	content.MinCheckPeriod = crs.Check.GetPeriod() * 1000
+	content.State = crs.State
+	content.Status = crs.Status
+	content.Timestamp = utils.NowTimestampMillis() + clockOffset
+	if crs.Length() == 0 {
+		content.Metrics = nil
+	} else {
+		content.Metrics = make([]protocol.MetricWrap, crs.Length())
+		for i := 0; i < crs.Length(); i++ {
+			content.Metrics[i] = ConvertToMetricResults(crs.Get(i))
+		}
+	}
+
 }

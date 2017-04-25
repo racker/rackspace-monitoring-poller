@@ -181,7 +181,7 @@ func (s *BasicServer) handleFrame(ctx context.Context, c *utils.SmartConn, frame
 		go waitOnAgentError(ctx, agentErrors, c)
 
 	case protocol.MethodCheckMetricsPostMulti:
-		params := &protocol.MetricsPostRequestParams{}
+		params := &protocol.MetricsPostContent{}
 
 		err := json.Unmarshal(frame.GetRawParams(), params)
 		if err != nil {

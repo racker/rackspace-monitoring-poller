@@ -1,0 +1,10 @@
+{
+  "v": "1",
+  "id": 0,
+  "target": "agentA",
+  "source": "endpoint",
+  "method": "check.test",
+  "params": {
+    "checkParams": "{\"account_id\":\"acOne\",\"label\":\"Agent check 1\",\"entity_id\":\"enAAAAIPV4\",\"type\":\"agent.cpu\",\"details\":{\"foo\":\"bar\"},\"target_alias\":\"default\",\"check_version\":1}"
+  }
+}

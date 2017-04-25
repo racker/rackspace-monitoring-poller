@@ -573,11 +573,13 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 			origTimestamper := installDeterministicTimestamper(1000, 2000)
 			defer utils.InstallAlternateTimestampFunc(origTimestamper)
 
-			cfg := config.NewConfig("1-2-3", false, nil)
+			cfg := config.NewConfig(tt.name, false, nil)
 			es := poller.NewSession(context.Background(), eleConn, reconciler, cfg)
+			defer func() { time.Sleep(5 * time.Millisecond) }()
 			defer es.Close()
 
 			decoder := handshake(t, writesHere, readsHere, 50000)
+			<-eleConn.Authenticated()
 			time.Sleep(5 * time.Millisecond)
 
 			if tt.expectValidate {
@@ -595,7 +597,8 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 
 				for _, expected := range tt.expectedPrepResponses {
 					var resp protocol.PollerPrepareResponse
-					decoder.Decode(&resp)
+					err := decoder.Decode(&resp)
+					require.NoError(t, err)
 					t.Log("Received prepare response", resp)
 
 					assert.Equal(t, expected.Version, resp.Result.Version)
@@ -692,4 +695,83 @@ func TestEleSession_PollerPrepareTimeout(t *testing.T) {
 		})
 	}
 
+}
+
+func TestEleSession_CheckTest(t *testing.T) {
+	tests := []struct {
+		name          string
+		expectError   bool
+		expected      protocol.PollerCheckTestResponse
+		verifyMetrics func(t *testing.T, m map[string]*protocol.MetricTVU)
+	}{
+		{
+			name: "existing",
+			expected: protocol.PollerCheckTestResponse{
+				Result: protocol.MetricsPostContent{
+					EntityId:  "enCFTmZUVn",
+					CheckType: "remote.http",
+				},
+			},
+			verifyMetrics: func(t *testing.T, m map[string]*protocol.MetricTVU) {
+				assert.Equal(t, "1", m["code_200"].Value)
+			},
+		},
+		{
+			name:        "unsupportedCheckType",
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			eleConn, reconciler, writesHere, readsHere := setupConnStreamExpectations(ctrl, true)
+			defer readsHere.Close()
+
+			origTimestamper := installDeterministicTimestamper(1000, 2000)
+			defer utils.InstallAlternateTimestampFunc(origTimestamper)
+
+			cfg := config.NewConfig(tt.name, false, nil)
+			es := poller.NewSession(context.Background(), eleConn, reconciler, cfg)
+			defer es.Close()
+
+			decoder := handshake(t, writesHere, readsHere, 50000)
+			<-eleConn.Authenticated()
+			time.Sleep(5 * time.Millisecond)
+
+			checkTestReq, err := ioutil.ReadFile(fmt.Sprintf("testdata/check_test_%s.json", tt.name))
+			require.NoError(t, err)
+
+			readsHere.Write(checkTestReq)
+
+			utils.TimeboxNamed(t, tt.name, 5*time.Second, func(t *testing.T) {
+
+				var resp protocol.PollerCheckTestResponse
+				err := decoder.Decode(&resp)
+				require.NoError(t, err)
+				t.Log("Received response", resp)
+
+				if tt.expectError {
+					assert.NotNil(t, resp.Error)
+					assert.NotEmpty(t, resp.Error.Message)
+
+				} else {
+					assert.Equal(t, tt.expected.Result.EntityId, resp.Result.EntityId)
+					assert.Equal(t, tt.expected.Result.CheckType, resp.Result.CheckType)
+					require.Len(t, resp.Result.Metrics, 1)
+					require.Len(t, resp.Result.Metrics[0], 2)
+
+					if tt.verifyMetrics != nil {
+						tt.verifyMetrics(t, resp.Result.Metrics[0][1])
+					}
+
+				}
+
+			})
+
+		})
+
+	}
 }
