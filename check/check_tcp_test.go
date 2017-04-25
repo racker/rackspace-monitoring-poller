@@ -60,7 +60,7 @@ func TestTCP_TLSRunSuccess(t *testing.T) {
 	  "ip_addresses":{"default":"127.0.0.1"},
 	  "target_alias":"default",
 	  "target_hostname":"",
-	  "target_resolver":1,
+	  "target_resolver":"IPv4",
 	  "disabled":false
 	  }`, listenPort)
 	check, err := check.NewCheck(context.Background(), []byte(checkData))
@@ -132,7 +132,7 @@ func TestTCPRunSuccess(t *testing.T) {
 	  "ip_addresses":{"default":"127.0.0.1"},
 	  "target_alias":"default",
 	  "target_hostname":"",
-	  "target_resolver":1,
+	  "target_resolver":"IPv4",
 	  "disabled":false
 	  }`, listenPort)
 	check, err := check.NewCheck(context.Background(), []byte(checkData))
@@ -169,7 +169,7 @@ func TestTCPRunFailureClosedPort(t *testing.T) {
 	  "ip_addresses":{"default":"127.0.0.1"},
 	  "target_alias":"default",
 	  "target_hostname":"",
-	  "target_resolver":1,
+	  "target_resolver":"IPv4",
 	  "disabled":false
 	  }`)
 	check, err := check.NewCheck(context.Background(), []byte(checkData))

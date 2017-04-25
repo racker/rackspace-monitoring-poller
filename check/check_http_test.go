@@ -57,7 +57,7 @@ func TestHTTPSuccess(t *testing.T) {
 	  "ip_addresses":{"default":"127.0.0.1"},
 	  "target_alias":"default",
 	  "target_hostname":"",
-	  "target_resolver":1,
+	  "target_resolver":"IPv4",
 	  "disabled":false
 	  }`, ts.URL)
 	check, err := check.NewCheck(context.Background(), []byte(checkData))
@@ -103,7 +103,7 @@ func TestHTTPSuccessHostname(t *testing.T) {
 	  "ip_addresses":null,
 	  "target_alias":null,
 	  "target_hostname":"%s",
-	  "target_resolver":1,
+	  "target_resolver":"IPv4",
 	  "disabled":false
 	  }`, ts.URL, host)
 	check, err := check.NewCheck(context.Background(), []byte(checkData))
@@ -146,7 +146,7 @@ func TestHTTPTargetIPNilSuccess(t *testing.T) {
 	  "ip_addresses":null,
 	  "target_alias":null,
 	  "target_hostname":null,
-	  "target_resolver":1,
+	  "target_resolver":"IPv4",
 	  "disabled":false
 	  }`, ts.URL)
 	check, err := check.NewCheck(context.Background(), []byte(checkData))
@@ -193,7 +193,7 @@ func TestHTTPSuccessDefaultPort(t *testing.T) {
 	  "ip_addresses":null,
 	  "target_alias":null,
 	  "target_hostname":"%s",
-	  "target_resolver":1,
+	  "target_resolver":"IPv4",
 	  "disabled":false
 	  }`, ts.URL, host)
 	check, err := check.NewCheck(context.Background(), []byte(checkData))
@@ -236,7 +236,7 @@ func TestHTTPSuccessIncludeBodyAndHeaders(t *testing.T) {
 	  "ip_addresses":{"default":"127.0.0.1"},
 	  "target_alias":"default",
 	  "target_hostname":"",
-	  "target_resolver":1,
+	  "target_resolver":"IPv4",
 	  "disabled":false
 	  }`, ts.URL)
 	check, err := check.NewCheck(context.Background(), []byte(checkData))
@@ -289,7 +289,7 @@ func TestHTTPSuccessBodyMatch(t *testing.T) {
 	  "ip_addresses":{"default":"127.0.0.1"},
 	  "target_alias":"default",
 	  "target_hostname":"",
-	  "target_resolver":1,
+	  "target_resolver":"IPv4",
 	  "disabled":false
 	  }`, ts.URL)
 	check, err := check.NewCheck(context.Background(), []byte(checkData))
@@ -354,7 +354,7 @@ func TestHTTPClosed(t *testing.T) {
 	  "ip_addresses":{"default":"127.0.0.1"},
 	  "target_alias":"default",
 	  "target_hostname":"",
-	  "target_resolver":1,
+	  "target_resolver":"IPv4",
 	  "disabled":false
 	  }`, ts.URL)
 	check, err := check.NewCheck(context.Background(), []byte(checkData))
@@ -393,7 +393,7 @@ func TestHTTPTimeout(t *testing.T) {
 	  "ip_addresses":{"default":"127.0.0.1"},
 	  "target_alias":"default",
 	  "target_hostname":"",
-	  "target_resolver":1,
+	  "target_resolver":"IPv4",
 	  "disabled":false
 	  }`, ts.URL)
 	check, err := check.NewCheck(context.Background(), []byte(checkData))
@@ -425,7 +425,7 @@ func TestHTTPInvalidUrl(t *testing.T) {
 	  "ip_addresses":{"default":"127.0.0.1"},
 	  "target_alias":"default",
 	  "target_hostname":"",
-	  "target_resolver":1,
+	  "target_resolver":"IPv4",
 	  "disabled":false
 	}`, "http://192.168.0.%31/")
 	check, err := check.NewCheck(context.Background(), []byte(checkData))
@@ -453,7 +453,7 @@ func TestHTTP_TLS(t *testing.T) {
 	  "ip_addresses":{"default":"127.0.0.1"},
 	  "target_alias":"default",
 	  "target_hostname":"",
-	  "target_resolver":1,
+	  "target_resolver":"IPv4",
 	  "disabled":false
 	}`, ts.URL)
 	check, err := check.NewCheck(context.Background(), []byte(checkData))
