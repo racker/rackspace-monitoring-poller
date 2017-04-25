@@ -17,8 +17,8 @@
 package check
 
 import (
-	"github.com/racker/rackspace-monitoring-poller/protocol"
 	"fmt"
+	"github.com/racker/rackspace-monitoring-poller/protocol"
 	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	"github.com/racker/rackspace-monitoring-poller/utils"
 	"strings"
@@ -207,7 +207,6 @@ func (crs *ResultSet) SetStateAvailable() {
 func (crs *ResultSet) SetStateUnavailable() {
 	crs.Available = false
 	crs.States.SetStateUnavailable()
-	crs.ClearMetrics()
 }
 
 // ClearMetrics clears all the check results (empties the list)

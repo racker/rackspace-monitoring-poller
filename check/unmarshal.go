@@ -61,6 +61,8 @@ func resolveCheckType(checkBase *Base) (Check, error) {
 		return NewHTTPCheck(checkBase)
 	case "remote.ping":
 		return NewPingCheck(checkBase)
+	case "agent.plugin":
+		return NewPluginCheck(checkBase)
 	}
 	return nil, errors.New(fmt.Sprintf("Invalid check type: %v", checkBase.CheckType))
 }
