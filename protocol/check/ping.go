@@ -18,7 +18,7 @@ package check
 
 type PingCheckDetails struct {
 	Details struct {
-		Count uint8 `json:"count,string"`
+		Count uint8 `json:"count"`
 	} `json:"details"`
 }
 

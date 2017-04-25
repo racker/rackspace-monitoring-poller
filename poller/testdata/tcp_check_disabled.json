@@ -3,7 +3,7 @@
   "zone_id": "pzA",
   "entity_id": "enAAAAIPV4",
   "details": {
-    "port": "8023",
+    "port": 8023,
     "ssl": false
   },
   "type": "remote.tcp",

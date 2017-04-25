@@ -318,6 +318,12 @@ func (cs *EleConnectionStream) runHostConnection(addr string) {
 reconnect:
 	for {
 		conn := cs.connectionFactory(addr, cs.config.Guid, cs)
+		if conn == nil {
+			log.WithFields(log.Fields{
+				"prefix": cs.GetLogPrefix(),
+			}).Error("Connection factory provided nil")
+			return
+		}
 		pendingAuth := conn.Authenticated()
 		err := conn.Connect(cs.ctx, cs.config, cs.buildTLSConfig(addr))
 		if err != nil {
