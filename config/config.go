@@ -40,11 +40,14 @@ var (
 )
 
 const (
-	DefaultTimeoutRead       = 10 * time.Second
-	DefaultTimeoutWrite      = 10 * time.Second
-	DefaultTimeoutPrepareEnd = 60 * time.Second
-	DefaultTimeoutAuth       = 10 * time.Second
-	DefaultAgentId           = "-poller-"
+	DefaultTimeoutRead            = 10 * time.Second
+	DefaultTimeoutWrite           = 10 * time.Second
+	DefaultTimeoutPrepareEnd      = 60 * time.Second
+	DefaultTimeoutAuth            = 10 * time.Second
+	DefaultAgentId                = "-poller-"
+	DefaultReconnectMinBackoff    = 25 * time.Second
+	DefaultReconnectMaxBackoff    = 180 * time.Second
+	DefaultReconnectFactorBackoff = 2
 )
 
 type Feature struct {
@@ -71,6 +74,13 @@ type Config struct {
 
 	// Zones
 	ZoneIds []string
+
+	// MinBackoff the minimum backoff in seconds
+	ReconnectMinBackoff time.Duration
+	// MaxBackoff the maximum backoff in seconds
+	ReconnectMaxBackoff time.Duration
+	// FactorBackoff the factor for the backoff
+	ReconnectFactorBackoff float64
 
 	// Timeouts
 	TimeoutRead  time.Duration
@@ -108,6 +118,9 @@ func NewConfig(guid string, useStaging bool, features []Feature) *Config {
 	cfg.AgentName = "remote_poller"
 	cfg.ProcessVersion = version.Version
 	cfg.BundleVersion = version.Version
+	cfg.ReconnectMinBackoff = DefaultReconnectMinBackoff
+	cfg.ReconnectMaxBackoff = DefaultReconnectMaxBackoff
+	cfg.ReconnectFactorBackoff = DefaultReconnectFactorBackoff
 	cfg.TimeoutRead = DefaultTimeoutRead
 	cfg.TimeoutWrite = DefaultTimeoutWrite
 	cfg.TimeoutPrepareEnd = DefaultTimeoutPrepareEnd
