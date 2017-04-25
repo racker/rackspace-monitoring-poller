@@ -22,7 +22,7 @@ import (
 )
 
 type CheckHeader struct {
-	Id        string `json:"check_id"`
+	Id        string `json:"id"`
 	CheckType string `json:"type"`
 	Period    uint64 `json:"period"`
 	// Timeout is the overall check's bounded timeout in milliseconds
