@@ -32,7 +32,7 @@ func TestNewMetricsPostRequest(t *testing.T) {
 	  "check_id":"chTestTCP_TLSRunSuccess",
 	  "zone_id":"pzA",
 	  "entity_id":"enAAAAIPV4",
-	  "details":{"port":"443","ssl":true},
+	  "details":{"port":443,"ssl":true},
 	  "type":"remote.tcp",
 	  "timeout":15,
 	  "period":30,

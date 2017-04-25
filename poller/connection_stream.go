@@ -44,12 +44,8 @@ const (
 	EventTypeDeregister = "deregister"
 	// EventTypeDroppedMetric has a target of *check.ResultSet
 	EventTypeDroppedMetric = "dropped"
-	// MinBackoff the minimum backoff in seconds
-	MinBackoff = 25 * time.Second
-	// MaxBackoff the maximum backoff in seconds
-	MaxBackoff = 180 * time.Second
-	// FactorBackoff the factor for the backoff
-	FactorBackoff = 2
+	// EventTypeAllConnectionsLost indicates that all endpoint connections were lost
+	EventTypeAllConnectionsLost = "allConnectionsLost"
 )
 
 // EleConnectionStream implements ConnectionStream
@@ -167,12 +163,22 @@ func (cs *EleConnectionStream) deregisterConnection(qry string, conn Connection)
 		cs.EmitEvent(utils.NewEvent(EventTypeDeregister, conn))
 		if len(cs.conns) == 0 {
 			log.WithFields(log.Fields{
-				"prefix": "scheduler",
+				"prefix": cs.GetLogPrefix(),
 			}).Info("Lost all connections to endpoints")
 
 			for _, scheduler := range cs.schedulers {
 				scheduler.Reset()
 			}
+
+			cs.EmitEvent(utils.NewEvent(EventTypeAllConnectionsLost, nil))
+
+			newGuid := generatePollerGuid()
+			log.WithFields(log.Fields{
+				"prefix":   cs.GetLogPrefix(),
+				"previous": cs.config.Guid,
+				"new":      newGuid,
+			}).Info("Re-generating GUID to start new logical poller session")
+			cs.config.Guid = newGuid
 		}
 	} else {
 		log.WithFields(log.Fields{
@@ -303,15 +309,21 @@ func (cs *EleConnectionStream) runHostConnection(addr string) {
 	defer cs.wg.Done()
 
 	b := &backoff.Backoff{
-		Min:    MinBackoff,
-		Max:    MaxBackoff,
-		Factor: FactorBackoff,
+		Min:    cs.config.ReconnectMinBackoff,
+		Max:    cs.config.ReconnectMaxBackoff,
+		Factor: cs.config.ReconnectFactorBackoff,
 		Jitter: true,
 	}
 
 reconnect:
 	for {
 		conn := cs.connectionFactory(addr, cs.config.Guid, cs)
+		if conn == nil {
+			log.WithFields(log.Fields{
+				"prefix": cs.GetLogPrefix(),
+			}).Error("Connection factory provided nil")
+			return
+		}
 		pendingAuth := conn.Authenticated()
 		err := conn.Connect(cs.ctx, cs.config, cs.buildTLSConfig(addr))
 		if err != nil {

@@ -32,7 +32,7 @@ const checkDataTemplate = `{
 	  "id":"chPzATCP",
 	  "zone_id":"pzA",
 	  "entity_id":"enAAAAIPV4",
-	  "details":{"count":"%d"},
+	  "details":{"count":%d},
 	  "type":"remote.ping",
 	  "timeout":%d,
 	  "period":30,

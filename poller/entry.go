@@ -26,14 +26,18 @@ import (
 	"time"
 )
 
+func generatePollerGuid() string {
+	return uuid.NewV4().String()
+}
+
 func Run(configFilePath string, insecure bool) {
-	guid := uuid.NewV4()
+	guid := generatePollerGuid()
 	useStaging := config.IsUsingStaging()
 	features := []config.Feature{
 		{Name: "poller", Disabled: false},
 	}
 
-	cfg := config.NewConfig(guid.String(), useStaging, features)
+	cfg := config.NewConfig(guid, useStaging, features)
 	if err := cfg.LoadFromFile(configFilePath); err != nil {
 		utils.Die(err, "Failed to load configuration")
 	}

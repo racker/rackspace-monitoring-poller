@@ -14,6 +14,7 @@ import (
 	"github.com/racker/rackspace-monitoring-poller/protocol"
 	"github.com/racker/rackspace-monitoring-poller/utils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"time"
 )
 
@@ -209,7 +210,7 @@ func TestEleConnectionStream_SendMetrics_Normal(t *testing.T) {
 	c4.EXPECT().GetLogPrefix().AnyTimes().Return("c4")
 	c4.EXPECT().Done().AnyTimes().Return(done)
 
-	cfg := factory.renderConfig()
+	cfg := factory.renderConfig(4)
 
 	consumer := newPhasingEventConsumer()
 
@@ -219,7 +220,7 @@ func TestEleConnectionStream_SendMetrics_Normal(t *testing.T) {
 	cs.RegisterEventConsumer(consumer)
 
 	cs.Connect()
-	factory.waitForConnections(t, 20*time.Millisecond)
+	factory.waitForConnections(t, 4, 20*time.Millisecond)
 
 	// None authenticated, so none should be registered yet
 	consumer.assertNoEvent(t, 5*time.Millisecond)
@@ -277,7 +278,7 @@ func TestEleConnectionStream_SendMetrics_RollOver(t *testing.T) {
 	c3.EXPECT().Done().AnyTimes().Return(done)
 	c3.EXPECT().GetSession().Return(mockSession)
 
-	cfg := factory.renderConfig()
+	cfg := factory.renderConfig(3)
 
 	consumer := newPhasingEventConsumer()
 
@@ -287,7 +288,7 @@ func TestEleConnectionStream_SendMetrics_RollOver(t *testing.T) {
 	cs.RegisterEventConsumer(consumer)
 
 	cs.Connect()
-	factory.waitForConnections(t, 20*time.Millisecond)
+	factory.waitForConnections(t, 3, 20*time.Millisecond)
 	c1.SetAuthenticated()
 	c2.SetAuthenticated()
 	c3.SetAuthenticated()
@@ -321,15 +322,15 @@ func TestEleConnectionStream_SendMetrics_OneThenDrop(t *testing.T) {
 	mockSession := NewMockSession(ctrl)
 	mockSession.EXPECT().Send(gomock.Any()).Do(factory.interceptSend)
 
-	c2 := factory.add(NewMockConnection(ctrl))
-	c2.EXPECT().GetLatency().AnyTimes().Return(int64(10))
-	c2.EXPECT().HasLatencyMeasurements().AnyTimes().Return(true)
-	c2.EXPECT().GetClockOffset().AnyTimes().Return(int64(0))
-	c2.EXPECT().GetSession().Return(mockSession)
-	c2.EXPECT().GetLogPrefix().AnyTimes().Return("c2")
-	c2.EXPECT().Done().AnyTimes().Return(done)
+	c1 := factory.add(NewMockConnection(ctrl))
+	c1.EXPECT().GetLatency().AnyTimes().Return(int64(10))
+	c1.EXPECT().HasLatencyMeasurements().AnyTimes().Return(true)
+	c1.EXPECT().GetClockOffset().AnyTimes().Return(int64(0))
+	c1.EXPECT().GetSession().Return(mockSession)
+	c1.EXPECT().GetLogPrefix().AnyTimes().Return("c2")
+	c1.EXPECT().Done().AnyTimes().Return(done)
 
-	cfg := factory.renderConfig()
+	cfg := factory.renderConfig(1)
 
 	consumer := newPhasingEventConsumer()
 
@@ -339,9 +340,9 @@ func TestEleConnectionStream_SendMetrics_OneThenDrop(t *testing.T) {
 	cs.RegisterEventConsumer(consumer)
 
 	cs.Connect()
-	factory.waitForConnections(t, 20*time.Millisecond)
-	c2.SetAuthenticated()
-	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeRegister, gomock.Eq(c2))
+	factory.waitForConnections(t, 1, 20*time.Millisecond)
+	c1.SetAuthenticated()
+	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeRegister, gomock.Eq(c1))
 
 	crs := &check.ResultSet{
 		Check: &check.TCPCheck{},
@@ -352,10 +353,67 @@ func TestEleConnectionStream_SendMetrics_OneThenDrop(t *testing.T) {
 	consumer.assertNoEvent(t, 5*time.Millisecond)
 
 	close(done)
-	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeDeregister, gomock.Eq(c2))
+	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeDeregister, gomock.Eq(c1))
+	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeAllConnectionsLost, gomock.Nil())
 
 	cs.SendMetrics(crs)
 	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeDroppedMetric, gomock.Eq(crs))
+}
+
+func setupMockConnExpectations(c *MockConnection, latency int, offset int, mockSession *MockSession, prefix string) chan struct{} {
+	done := make(chan struct{}, 3)
+	c.EXPECT().GetLatency().AnyTimes().Return(int64(latency))
+	c.EXPECT().HasLatencyMeasurements().AnyTimes().Return(true)
+	c.EXPECT().GetClockOffset().AnyTimes().Return(int64(offset))
+	c.EXPECT().GetLogPrefix().AnyTimes().Return(prefix)
+	c.EXPECT().Done().AnyTimes().Return(done)
+
+	return done
+}
+
+func TestEleConnectionStream_NewGuidAfterLosingAll(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	factory := newMockConnFactory()
+
+	mockSession := NewMockSession(ctrl)
+
+	consumer := newPhasingEventConsumer()
+
+	ctx, _ := context.WithCancel(context.Background())
+
+	c1 := factory.add(NewMockConnection(ctrl))
+	c1done := setupMockConnExpectations(c1, 10, 0, mockSession, "c1")
+
+	cfg := factory.renderConfig(1)
+	cfg.Guid = "original-guid"
+	cfg.ReconnectMinBackoff = 1 * time.Millisecond
+
+	cs := poller.NewCustomConnectionStream(ctx, cfg, nil, factory.produce)
+	cs.RegisterEventConsumer(consumer)
+
+	cs.Connect()
+	factory.waitForConnections(t, 1, 20*time.Millisecond)
+	c1.SetAuthenticated()
+	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeRegister, gomock.Eq(c1))
+
+	assert.Equal(t, "original-guid", factory.guids[0])
+
+	c2 := factory.add(NewMockConnection(ctrl))
+	c2done := setupMockConnExpectations(c2, 10, 0, mockSession, "c2")
+
+	close(c1done)
+	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeDeregister, gomock.Eq(c1))
+	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeAllConnectionsLost, gomock.Nil())
+
+	factory.waitForConnections(t, 1, 20*time.Millisecond)
+	c2.SetAuthenticated()
+	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeRegister, gomock.Eq(c2))
+
+	assert.NotEqual(t, factory.guids[0], factory.guids[1])
+
+	close(c2done)
 }
 
 func TestEleConnectionStream_SendMetrics_NoConnections(t *testing.T) {
@@ -364,7 +422,7 @@ func TestEleConnectionStream_SendMetrics_NoConnections(t *testing.T) {
 
 	factory := newMockConnFactory()
 
-	cfg := factory.renderConfig()
+	cfg := factory.renderConfig(1)
 
 	consumer := newPhasingEventConsumer()
 
@@ -388,6 +446,7 @@ type mockConnFactory struct {
 	conns     *list.List
 	connected chan struct{}
 	frames    chan protocol.Frame
+	guids     []string
 }
 
 func newMockConnFactory() *mockConnFactory {
@@ -395,6 +454,7 @@ func newMockConnFactory() *mockConnFactory {
 		conns:     list.New(),
 		connected: make(chan struct{}, 10),
 		frames:    make(chan protocol.Frame, 10),
+		guids:     make([]string, 0),
 	}
 }
 
@@ -416,25 +476,27 @@ func (f *mockConnFactory) interceptSend(frame protocol.Frame) {
 	f.frames <- frame
 }
 
-func (f *mockConnFactory) waitForFrame(t *testing.T, timeout time.Duration) {
+func (f *mockConnFactory) waitForFrame(t *testing.T, timeout time.Duration) protocol.Frame {
 	select {
 	case <-time.After(timeout):
 		assert.Fail(t, "Did not see frame")
-	case <-f.frames:
-		break
+		return nil
+	case f := <-f.frames:
+		return f
 	}
 }
 
 func (f *mockConnFactory) produce(address string, guid string, checksReconciler poller.ChecksReconciler) poller.Connection {
 	if f.conns.Len() > 0 {
 		connection := f.conns.Remove(f.conns.Front()).(poller.Connection)
+		f.guids = append(f.guids, guid)
 		return connection
 	} else {
 		return nil
 	}
 }
 
-func (f *mockConnFactory) waitForConnections(t *testing.T, timeout time.Duration) {
+func (f *mockConnFactory) waitForConnections(t *testing.T, expect int, timeout time.Duration) {
 	var seen int
 
 	limiter := time.After(timeout)
@@ -442,24 +504,25 @@ func (f *mockConnFactory) waitForConnections(t *testing.T, timeout time.Duration
 	for {
 		select {
 		case <-limiter:
-			assert.Fail(t, "Did not see enough connections. Only saw %v", seen)
+			require.Fail(t, "Did not see enough connections")
+			return
 
 		case <-f.connected:
 			seen++
-			if seen >= f.conns.Len() {
+			if seen >= expect {
 				return
 			}
 		}
 	}
 }
 
-func (f *mockConnFactory) renderConfig() *config.Config {
+func (f *mockConnFactory) renderConfig(addresses int) *config.Config {
 	cfg := &config.Config{
 		UseSrv:    false,
-		Addresses: make([]string, f.conns.Len()),
+		Addresses: make([]string, addresses),
 	}
 
-	for i := 0; i < f.conns.Len(); i++ {
+	for i := 0; i < addresses; i++ {
 		cfg.Addresses[i] = fmt.Sprintf("c%d", i+1)
 	}
 
