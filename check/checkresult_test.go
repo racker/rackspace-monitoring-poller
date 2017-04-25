@@ -29,7 +29,7 @@ import (
 
 func TestNewMetricsPostRequest(t *testing.T) {
 	checkData := `{
-	  "check_id":"chTestTCP_TLSRunSuccess",
+	  "id":"chTestTCP_TLSRunSuccess",
 	  "zone_id":"pzA",
 	  "entity_id":"enAAAAIPV4",
 	  "details":{"port":443,"ssl":true},
