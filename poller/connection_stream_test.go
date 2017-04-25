@@ -516,13 +516,13 @@ func (f *mockConnFactory) waitForConnections(t *testing.T, expect int, timeout t
 	}
 }
 
-func (f *mockConnFactory) renderConfig(addresses int) *config.Config {
+func (f *mockConnFactory) renderConfig(addressCount int) *config.Config {
 	cfg := &config.Config{
 		UseSrv:    false,
-		Addresses: make([]string, addresses),
+		Addresses: make([]string, addressCount),
 	}
 
-	for i := 0; i < addresses; i++ {
+	for i := 0; i < addressCount; i++ {
 		cfg.Addresses[i] = fmt.Sprintf("c%d", i+1)
 	}
 
