@@ -142,7 +142,7 @@ func (ch *PluginCheck) Run() (*ResultSet, error) {
 	}).Debug("Running Plugin Check")
 
 	// Set Context
-	ctx, cancel := context.WithTimeout(context.Background(), ctxTimeout)
+	ctx, cancel := context.WithTimeout(ch.context, ctxTimeout)
 	defer cancel()
 
 	// Setup results
@@ -182,6 +182,9 @@ func (ch *PluginCheck) Run() (*ResultSet, error) {
 	// Close stdin
 	r.Close()
 
+	// Wait for stdout to drain
+	<-stdoutReadDone
+
 	// Wait for commmand to finish
 	var errorFlag bool
 	if err := cmd.Wait(); err != nil {
@@ -194,9 +197,6 @@ func (ch *PluginCheck) Run() (*ResultSet, error) {
 		crs.SetStatus(ErrorPluginExit)
 		errorFlag = true
 	}
-
-	// drain the stdout done channel
-	<-stdoutReadDone
 
 	log.WithFields(log.Fields{
 		"prefix":  ch.GetLogPrefix(),
