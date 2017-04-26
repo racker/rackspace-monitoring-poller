@@ -18,6 +18,8 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"regexp"
@@ -59,6 +61,70 @@ func NewPluginCheck(base *Base) (Check, error) {
 	return check, nil
 }
 
+func (ch *PluginCheck) handleStdout(stdout io.Reader, stdoutReadDone chan struct{}, crs *ResultSet) {
+	defer close(stdoutReadDone)
+	scanner := bufio.NewScanner(stdout)
+	cr := crs.Get(0)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		log.WithFields(log.Fields{
+			"prefix": ch.GetLogPrefix() + ":stdout",
+			"id":     ch.Id,
+			"line":   line,
+		}).Debug("output")
+		if matches := statusRegex.FindStringSubmatch(line); matches != nil {
+			switch strings.ToLower(matches[1]) {
+			case "ok", "warn", "err":
+				crs.SetStatus(matches[2])
+			default:
+				crs.SetStatus(strings.Join(matches[1:], " "))
+			}
+		}
+		if matches := stateRegex.FindStringSubmatch(line); matches != nil {
+			fields := strings.Fields(line)
+			if len(fields) > 1 {
+				state := strings.ToLower(fields[1])
+				switch state {
+				case "available":
+					crs.SetStateAvailable()
+				case "unavailable":
+					crs.SetStateUnavailable()
+				}
+			}
+		}
+		if matches := metricRegex.FindStringSubmatch(line); matches != nil {
+			metricName := matches[1]
+			metricUnit := strings.ToLower(matches[2])
+			metricValue := matches[3]
+			var pollerType int
+			switch metricUnit {
+			case "string":
+				pollerType = metric.MetricString
+			case "double", "float":
+				pollerType = metric.MetricFloat
+			case "gauge", "int", "int32", "uint32", "int64", "uint64":
+				pollerType = metric.MetricNumber
+			default:
+				continue
+			}
+			log.WithFields(log.Fields{
+				"prefix": ch.GetLogPrefix(),
+				"id":     ch.Id,
+				"unit":   metricUnit,
+				"value":  metricValue,
+			}).Debug("Add metric")
+			cr.AddMetric(metric.NewMetric(metricName, "", pollerType, metricValue, metricUnit))
+		}
+	}
+}
+
+func (ch *PluginCheck) setupEnvironment(cmd *exec.Cmd) {
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, fmt.Sprintf("RAX_CHECK_ID=%v", ch.Id))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("RAX_CHECK_PERIOD=%v", ch.Period))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("RAX_CHECK_TYPE=%v", ch.GetCheckType()))
+}
+
 func (ch *PluginCheck) Run() (*ResultSet, error) {
 	// Setup timeout
 	timeout := uint64(ch.Details.Timeout)
@@ -89,6 +155,7 @@ func (ch *PluginCheck) Run() (*ResultSet, error) {
 
 	// Command Setup
 	cmd := exec.CommandContext(ctx, ch.Details.File, ch.Details.Args...)
+	ch.setupEnvironment(cmd)
 
 	// Set I/O
 	stdout, err := cmd.StdoutPipe()
@@ -99,76 +166,22 @@ func (ch *PluginCheck) Run() (*ResultSet, error) {
 	}
 	cmd.Stdin = r
 
-	// Start process and close stdin
+	// Start process
 	if err := cmd.Start(); err != nil {
 		log.WithFields(log.Fields{
 			"prefix": ch.GetLogPrefix(),
 			"id":     ch.Id,
-			"error":  err.Error(),
 		}).Debug("Plugin start failed")
 		r.Close()
 		crs.SetStateUnavailable()
 		crs.SetStatus(ErrorPluginExit)
 		return crs, nil
 	}
+	// Close stdin
 	r.Close()
 
 	stdoutReadDone := make(chan struct{})
-	go func() {
-		defer close(stdoutReadDone)
-		scanner := bufio.NewScanner(stdout)
-		for scanner.Scan() {
-			line := strings.TrimSpace(scanner.Text())
-			log.WithFields(log.Fields{
-				"prefix": ch.GetLogPrefix() + ":stdout",
-				"id":     ch.Id,
-				"line":   line,
-			}).Debug("output")
-			if matches := statusRegex.FindStringSubmatch(line); matches != nil {
-				switch strings.ToLower(matches[1]) {
-				case "ok", "warn", "err":
-					crs.SetStatus(matches[2])
-				default:
-					crs.SetStatus(strings.Join(matches[1:], " "))
-				}
-			}
-			if matches := stateRegex.FindStringSubmatch(line); matches != nil {
-				fields := strings.Fields(line)
-				if len(fields) > 1 {
-					state := strings.ToLower(fields[1])
-					switch state {
-					case "available":
-						crs.SetStateAvailable()
-					case "unavailable":
-						crs.SetStateUnavailable()
-					}
-				}
-			}
-			if matches := metricRegex.FindStringSubmatch(line); matches != nil {
-				metricName := matches[1]
-				metricUnit := strings.ToLower(matches[2])
-				metricValue := matches[3]
-				var pollerType int
-				switch metricUnit {
-				case "string":
-					pollerType = metric.MetricString
-				case "double", "float":
-					pollerType = metric.MetricFloat
-				case "gauge", "int", "int32", "uint32", "int64", "uint64":
-					pollerType = metric.MetricNumber
-				default:
-					continue
-				}
-				log.WithFields(log.Fields{
-					"prefix": ch.GetLogPrefix(),
-					"id":     ch.Id,
-					"unit":   metricUnit,
-					"value":  metricValue,
-				}).Debug("Add metric")
-				cr.AddMetric(metric.NewMetric(metricName, "", pollerType, metricValue, metricUnit))
-			}
-		}
-	}()
+	go ch.handleStdout(stdout, stdoutReadDone, crs)
 
 	// Wait for commmand to finish
 	var errorFlag bool
