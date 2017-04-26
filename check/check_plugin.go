@@ -102,9 +102,9 @@ func (ch *PluginCheck) Run() (*ResultSet, error) {
 	go func() {
 		defer close(stdoutReadDone)
 		scanner := bufio.NewScanner(stdout)
-		statusRegex, _ := regexp.Compile("^status\\s+(err|warn|ok)\\s+(.*)")
-		stateRegex, _ := regexp.Compile("^state\\s+(.*?)")
-		metricRegex, _ := regexp.Compile("^metric\\s+(.*)\\s+(.*)\\s+(.*)")
+		statusRegex := regexp.MustCompile("^status\\s+(err|warn|ok)\\s+(.*)")
+		stateRegex := regexp.MustCompile("^state\\s+(.*?)")
+		metricRegex := regexp.MustCompile("^metric\\s+(.*)\\s+(.*)\\s+(.*)")
 		for scanner.Scan() {
 			line := strings.TrimSpace(scanner.Text())
 			log.WithFields(log.Fields{
