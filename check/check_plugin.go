@@ -114,11 +114,7 @@ func (ch *PluginCheck) Run() (*ResultSet, error) {
 			}).Debug("output")
 			if matches := statusRegex.FindStringSubmatch(line); matches != nil {
 				switch strings.ToLower(matches[1]) {
-				case "ok":
-					fallthrough
-				case "warn":
-					fallthrough
-				case "err":
+				case "ok", "warn", "err":
 					crs.SetStatus(matches[2])
 				default:
 					crs.SetStatus(strings.Join(matches[1:], " "))
@@ -146,17 +142,7 @@ func (ch *PluginCheck) Run() (*ResultSet, error) {
 					pollerType = metric.MetricString
 				case "double":
 					pollerType = metric.MetricFloat
-				case "gauge":
-					fallthrough
-				case "int":
-					fallthrough
-				case "int32":
-					fallthrough
-				case "uint32":
-					fallthrough
-				case "int64":
-					fallthrough
-				case "uint64":
+				case "gauge", "int", "int32", "uint32", "int64", "uint64":
 					pollerType = metric.MetricNumber
 				default:
 					pollerType = metric.MetricString
