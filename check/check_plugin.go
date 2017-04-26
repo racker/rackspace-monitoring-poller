@@ -62,7 +62,7 @@ func (ch *PluginCheck) Run() (*ResultSet, error) {
 		"args":    ch.Details.Args,
 		"file":    ch.Details.File,
 		"id":      ch.Id,
-		"timeout": timeout,
+		"timeout": ctxTimeout,
 	}).Debug("Running Plugin Check")
 
 	// Set Context
@@ -168,9 +168,9 @@ func (ch *PluginCheck) Run() (*ResultSet, error) {
 	<-stdoutReadDone
 
 	log.WithFields(log.Fields{
-		"prefix": ch.GetLogPrefix(),
-		"id":     ch.Id,
-		"error":  errorFlag,
+		"prefix":  ch.GetLogPrefix(),
+		"id":      ch.Id,
+		"errored": errorFlag,
 	}).Debug("End Plugin Check")
 
 	return crs, nil
