@@ -134,10 +134,10 @@ func (ch *PluginCheck) Run() (*ResultSet, error) {
 			}
 			if matches := metricRegex.FindStringSubmatch(line); matches != nil {
 				metricName := matches[1]
-				metricType := strings.ToLower(matches[2])
+				metricUnit := strings.ToLower(matches[2])
 				metricValue := matches[3]
 				var pollerType int
-				switch metricType {
+				switch metricUnit {
 				case "string":
 					pollerType = metric.MetricString
 				case "double":
@@ -147,7 +147,13 @@ func (ch *PluginCheck) Run() (*ResultSet, error) {
 				default:
 					pollerType = metric.MetricString
 				}
-				cr.AddMetric(metric.NewMetric(metricName, "", pollerType, metricValue, metricType))
+				log.WithFields(log.Fields{
+					"prefix": ch.GetLogPrefix(),
+					"id":     ch.Id,
+					"unit":   metricUnit,
+					"value":  metricValue,
+				}).Debug("Add metric")
+				cr.AddMetric(metric.NewMetric(metricName, "", pollerType, metricValue, metricUnit))
 			}
 		}
 	}()
