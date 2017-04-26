@@ -158,13 +158,15 @@ func (ch *PluginCheck) Run() (*ResultSet, error) {
 	ch.setupEnvironment(cmd)
 
 	// Set I/O
+	cmd.Stdin = r
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		crs.SetStateUnavailable()
 		crs.SetStatus(err.Error())
 		return crs, nil
 	}
-	cmd.Stdin = r
+	stdoutReadDone := make(chan struct{})
+	go ch.handleStdout(stdout, stdoutReadDone, crs)
 
 	// Start process
 	if err := cmd.Start(); err != nil {
@@ -179,9 +181,6 @@ func (ch *PluginCheck) Run() (*ResultSet, error) {
 	}
 	// Close stdin
 	r.Close()
-
-	stdoutReadDone := make(chan struct{})
-	go ch.handleStdout(stdout, stdoutReadDone, crs)
 
 	// Wait for commmand to finish
 	var errorFlag bool
