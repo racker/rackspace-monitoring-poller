@@ -1,4 +1,4 @@
-// Copyright 2016 Rackspace
+// Copyright 2017 Rackspace
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,6 +28,10 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	protocol "github.com/racker/rackspace-monitoring-poller/protocol/check"
+)
+
+const (
+	ErrorPluginExit = "Plugin exited with non-zero status code"
 )
 
 type PluginCheck struct {
@@ -72,7 +76,7 @@ func (ch *PluginCheck) Run() (*ResultSet, error) {
 	// Setup results
 	cr := NewResult()
 	crs := NewResultSet(ch, cr)
-	crs.SetStateUnavailable()
+	crs.SetStateAvailable()
 
 	// Setup stdin pipe, which gets closed
 	r, _, _ := os.Pipe()
@@ -91,9 +95,14 @@ func (ch *PluginCheck) Run() (*ResultSet, error) {
 
 	// Start process and close stdin
 	if err := cmd.Start(); err != nil {
+		log.WithFields(log.Fields{
+			"prefix": ch.GetLogPrefix(),
+			"id":     ch.Id,
+			"error":  err.Error(),
+		}).Debug("Plugin start failed")
 		r.Close()
 		crs.SetStateUnavailable()
-		crs.SetStatus(err.Error())
+		crs.SetStatus(ErrorPluginExit)
 		return crs, nil
 	}
 	r.Close()
@@ -104,7 +113,7 @@ func (ch *PluginCheck) Run() (*ResultSet, error) {
 		scanner := bufio.NewScanner(stdout)
 		statusRegex := regexp.MustCompile("^status\\s+(err|warn|ok)\\s+(.*)")
 		stateRegex := regexp.MustCompile("^state\\s+(.*?)")
-		metricRegex := regexp.MustCompile("^metric\\s+(.*)\\s+(.*)\\s+(.*)")
+		metricRegex := regexp.MustCompile("^metric\\s+(.*?)\\s+(.*?)\\s+(.*)")
 		for scanner.Scan() {
 			line := strings.TrimSpace(scanner.Text())
 			log.WithFields(log.Fields{
@@ -140,12 +149,12 @@ func (ch *PluginCheck) Run() (*ResultSet, error) {
 				switch metricUnit {
 				case "string":
 					pollerType = metric.MetricString
-				case "double":
+				case "double", "float":
 					pollerType = metric.MetricFloat
 				case "gauge", "int", "int32", "uint32", "int64", "uint64":
 					pollerType = metric.MetricNumber
 				default:
-					pollerType = metric.MetricString
+					continue
 				}
 				log.WithFields(log.Fields{
 					"prefix": ch.GetLogPrefix(),
@@ -161,10 +170,17 @@ func (ch *PluginCheck) Run() (*ResultSet, error) {
 	// Wait for commmand to finish
 	var errorFlag bool
 	if err := cmd.Wait(); err != nil {
+		log.WithFields(log.Fields{
+			"prefix": ch.GetLogPrefix(),
+			"id":     ch.Id,
+			"error":  err.Error(),
+		}).Debug("Plugin wait failed")
 		crs.SetStateUnavailable()
-		crs.SetStatus(err.Error())
+		crs.SetStatus(ErrorPluginExit)
 		errorFlag = true
 	}
+
+	// drain the stdout done channel
 	<-stdoutReadDone
 
 	log.WithFields(log.Fields{
