@@ -34,6 +34,12 @@ const (
 	ErrorPluginExit = "Plugin exited with non-zero status code"
 )
 
+var (
+	statusRegex = regexp.MustCompile("^status\\s+(err|warn|ok)\\s+(.*)")
+	stateRegex  = regexp.MustCompile("^state\\s+(.*?)")
+	metricRegex = regexp.MustCompile("^metric\\s+(.*?)\\s+(.*?)\\s+(.*)")
+)
+
 type PluginCheck struct {
 	Base
 	protocol.PluginCheckDetails
@@ -111,9 +117,6 @@ func (ch *PluginCheck) Run() (*ResultSet, error) {
 	go func() {
 		defer close(stdoutReadDone)
 		scanner := bufio.NewScanner(stdout)
-		statusRegex := regexp.MustCompile("^status\\s+(err|warn|ok)\\s+(.*)")
-		stateRegex := regexp.MustCompile("^state\\s+(.*?)")
-		metricRegex := regexp.MustCompile("^metric\\s+(.*?)\\s+(.*?)\\s+(.*)")
 		for scanner.Scan() {
 			line := strings.TrimSpace(scanner.Text())
 			log.WithFields(log.Fields{
