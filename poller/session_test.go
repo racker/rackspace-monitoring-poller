@@ -314,6 +314,7 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 		actionCount            int
 		expectedZone           string
 		reconcileValidateErr   error
+		timeoutBeforeClose     time.Duration
 	}{
 		{
 			name:       "normal",
@@ -404,6 +405,23 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 			expectReconcile: false,
 			actionCount:     1,
 			expectedZone:    "zn1",
+		},
+		{
+			name:       "abortAfterPrep",
+			prepareSeq: "abortAfterPrep",
+			commitSeq:  "",
+			expectedPrepResponses: []protocol.PollerPrepareResult{
+				{
+					Status:  "aborted",
+					Version: 5,
+				},
+			},
+			expectValidate:  true,
+			expectReconcile: false,
+			actionCount:     1,
+			expectedZone:    "zn1",
+			// allow time for poller prepare timeout
+			timeoutBeforeClose: 15 * time.Millisecond,
 		},
 		{
 			name:       "badDirective",
@@ -574,8 +592,8 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 			defer utils.InstallAlternateTimestampFunc(origTimestamper)
 
 			cfg := config.NewConfig(tt.name, false, nil)
+			cfg.TimeoutPrepareEnd = 10 * time.Millisecond
 			es := poller.NewSession(context.Background(), eleConn, reconciler, cfg)
-			defer func() { time.Sleep(5 * time.Millisecond) }()
 			defer es.Close()
 
 			decoder := handshake(t, writesHere, readsHere, 50000)
@@ -629,6 +647,10 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 					assert.Equal(t, tt.expectedCommitResponse.Status, resp.Result.Status)
 
 				})
+			}
+
+			if tt.timeoutBeforeClose != 0 {
+				time.Sleep(tt.timeoutBeforeClose)
 			}
 
 		})
