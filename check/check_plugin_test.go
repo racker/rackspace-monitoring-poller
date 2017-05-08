@@ -36,7 +36,7 @@ func TestAgentPlugin_RunSuccess(t *testing.T) {
 	  "ip_addresses":{"default":"127.0.0.1"},
 	  "target_alias":"default",
 	  "target_hostname":"",
-	  "target_resolver":1,
+	  "target_resolver":"IPv4",
 	  "disabled":false
 	  }`, "fixtures/cloudkick_agent_custom_plugin_1.sh")
 	check, err := check.NewCheck(context.Background(), []byte(checkData))
@@ -64,7 +64,7 @@ func TestAgentPlugin_RunTimeout(t *testing.T) {
 	  "ip_addresses":{"default":"127.0.0.1"},
 	  "target_alias":"default",
 	  "target_hostname":"",
-	  "target_resolver":1,
+	  "target_resolver":"IPv4",
 	  "disabled":false
 	  }`, "fixtures/cloudkick_agent_custom_plugin_timeout.sh")
 	check, err := check.NewCheck(context.Background(), []byte(checkData))
@@ -89,7 +89,7 @@ func TestAgentPlugin_WarnPlugin2(t *testing.T) {
 	  "ip_addresses":{"default":"127.0.0.1"},
 	  "target_alias":"default",
 	  "target_hostname":"",
-	  "target_resolver":1,
+	  "target_resolver":"IPv4",
 	  "disabled":false
 	  }`, "fixtures/cloudkick_agent_custom_plugin_2.sh")
 	check, err := check.NewCheck(context.Background(), []byte(checkData))
@@ -114,7 +114,7 @@ func TestAgentPlugin_InvalidMetricLines1(t *testing.T) {
 	  "ip_addresses":{"default":"127.0.0.1"},
 	  "target_alias":"default",
 	  "target_hostname":"",
-	  "target_resolver":1,
+	  "target_resolver":"IPv4",
 	  "disabled":false
 	  }`, "fixtures/invalid_metric_lines_1.sh")
 	check, err := check.NewCheck(context.Background(), []byte(checkData))
@@ -145,7 +145,7 @@ func TestAgentPlugin_InvalidMetricLines2(t *testing.T) {
 	  "ip_addresses":{"default":"127.0.0.1"},
 	  "target_alias":"default",
 	  "target_hostname":"",
-	  "target_resolver":1,
+	  "target_resolver":"IPv4",
 	  "disabled":false
 	  }`, "fixtures/invalid_metric_lines_2.sh")
 	check, err := check.NewCheck(context.Background(), []byte(checkData))
@@ -177,7 +177,7 @@ func TestAgentPlugin_InvalidMetricLines3(t *testing.T) {
 	  "ip_addresses":{"default":"127.0.0.1"},
 	  "target_alias":"default",
 	  "target_hostname":"",
-	  "target_resolver":1,
+	  "target_resolver":"IPv4",
 	  "disabled":false
 	  }`, "fixtures/invalid_metric_lines_3.sh")
 	check, err := check.NewCheck(context.Background(), []byte(checkData))
@@ -209,7 +209,7 @@ func TestAgentPlugin_InvalidMetricLines4(t *testing.T) {
 	  "ip_addresses":{"default":"127.0.0.1"},
 	  "target_alias":"default",
 	  "target_hostname":"",
-	  "target_resolver":1,
+	  "target_resolver":"IPv4",
 	  "disabled":false
 	  }`, "fixtures/invalid_metric_lines_4.sh")
 	check, err := check.NewCheck(context.Background(), []byte(checkData))
@@ -241,7 +241,7 @@ func TestAgentPlugin_StatusCodeNonZero(t *testing.T) {
 	  "ip_addresses":{"default":"127.0.0.1"},
 	  "target_alias":"default",
 	  "target_hostname":"",
-	  "target_resolver":1,
+	  "target_resolver":"IPv4",
 	  "disabled":false
 	  }`, "fixtures/non_zero_with_status.sh")
 	ch, err := check.NewCheck(context.Background(), []byte(checkData))
@@ -267,7 +267,7 @@ func TestAgentPlugin_NotExecutable(t *testing.T) {
 	  "ip_addresses":{"default":"127.0.0.1"},
 	  "target_alias":"default",
 	  "target_hostname":"",
-	  "target_resolver":1,
+	  "target_resolver":"IPv4",
 	  "disabled":false
 	  }`, "fixtures/not_executable.sh")
 	ch, err := check.NewCheck(context.Background(), []byte(checkData))
@@ -293,7 +293,7 @@ func TestAgentPlugin_PartialOutputWithSleep(t *testing.T) {
 	  "ip_addresses":{"default":"127.0.0.1"},
 	  "target_alias":"default",
 	  "target_hostname":"",
-	  "target_resolver":1,
+	  "target_resolver":"IPv4",
 	  "disabled":false
 	  }`, "fixtures/partial_output_with_sleep.sh")
 	ch, err := check.NewCheck(context.Background(), []byte(checkData))
@@ -324,7 +324,7 @@ func TestAgentPlugin_Plugin1(t *testing.T) {
 	  "ip_addresses":{"default":"127.0.0.1"},
 	  "target_alias":"default",
 	  "target_hostname":"",
-	  "target_resolver":1,
+	  "target_resolver":"IPv4",
 	  "disabled":false
 	  }`, "fixtures/plugin_1.sh")
 	ch, err := check.NewCheck(context.Background(), []byte(checkData))
@@ -355,7 +355,7 @@ func TestAgentPlugin_PluginCustomArguments(t *testing.T) {
 	  "ip_addresses":{"default":"127.0.0.1"},
 	  "target_alias":"default",
 	  "target_hostname":"",
-	  "target_resolver":1,
+	  "target_resolver":"IPv4",
 	  "disabled":false
 	  }`, "fixtures/plugin_custom_arguments.sh")
 	ch, err := check.NewCheck(context.Background(), []byte(checkData))
