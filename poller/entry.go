@@ -31,6 +31,8 @@ func generatePollerGuid() string {
 }
 
 func Run(configFilePath string, insecure bool) {
+	utils.CheckFDLimit()
+
 	guid := generatePollerGuid()
 	useStaging := config.IsUsingStaging()
 	features := []config.Feature{

@@ -28,7 +28,6 @@ import (
 // This method needs to be updated to add to the known types.
 func NewCheck(parentContext context.Context, rawParams json.RawMessage) (Check, error) {
 	ctx, cancel := context.WithCancel(parentContext)
-
 	checkBase := &Base{
 		context: ctx,
 		cancel:  cancel,
@@ -37,19 +36,16 @@ func NewCheck(parentContext context.Context, rawParams json.RawMessage) (Check, 
 	if err != nil {
 		return nil, err
 	}
-
 	return resolveCheckType(checkBase)
 }
 
 func NewCheckParsed(parentContext context.Context, checkIn check.CheckIn) (Check, error) {
 	ctx, cancel := context.WithCancel(parentContext)
-
 	checkBase := &Base{
 		CheckIn: checkIn,
 		context: ctx,
 		cancel:  cancel,
 	}
-
 	return resolveCheckType(checkBase)
 }
 
@@ -61,6 +57,8 @@ func resolveCheckType(checkBase *Base) (Check, error) {
 		return NewHTTPCheck(checkBase)
 	case "remote.ping":
 		return NewPingCheck(checkBase)
+	case "agent.plugin":
+		return NewPluginCheck(checkBase)
 	}
 	return nil, errors.New(fmt.Sprintf("Invalid check type: %v", checkBase.CheckType))
 }

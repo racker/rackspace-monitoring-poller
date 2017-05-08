@@ -1,4 +1,3 @@
-//
 // Copyright 2016 Rackspace
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,7 +35,6 @@ type PingCheck struct {
 	protocol.PingCheckDetails
 }
 
-// NewPingCheck - Constructor for an Ping Check
 func NewPingCheck(base *Base) (Check, error) {
 	check := &PingCheck{Base: *base}
 	err := json.Unmarshal(*base.RawDetails, &check.Details)

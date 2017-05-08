@@ -153,6 +153,11 @@ func (ch *HTTPCheck) Run() (*ResultSet, error) {
 		crs.SetStateUnavailable()
 		return crs, nil
 	}
+	// Setup Auth
+	if len(ch.Details.AuthUser) > 0 && len(ch.Details.AuthPassword) > 0 {
+		req.SetBasicAuth(ch.Details.AuthUser, ch.Details.AuthPassword)
+	}
+	// Setup Tracing
 	trace := &httptrace.ClientTrace{
 		GotFirstResponseByte: func() {
 			firstbytetime := utils.NowTimestampMillis()
