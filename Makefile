@@ -120,7 +120,7 @@ ${DEB_BUILD_DIR}/${UPSTART_CONF} : ${DEB_SRC_DIR}/service.upstart ${DEB_BUILD_DI
 	cp $< $@
 	chmod +x $@
 
-${DEB_BUILD_DIR}/${SYSTEMD_CONF} : ${GENERIC_SRC_DIR}/systemd.upstart ${DEB_BUILD_DIR}/${PKGDIR_ETC}/init
+${DEB_BUILD_DIR}/${SYSTEMD_CONF} : ${GENERIC_SRC_DIR}/service.systemd ${DEB_BUILD_DIR}/${PKGDIR_ETC}/init
 	cp $< $@
 	chmod +x $@
 
