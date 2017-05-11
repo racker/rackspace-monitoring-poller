@@ -2,6 +2,7 @@
 GIT_TAG := $(shell git describe --abbrev=0)
 TAG_DISTANCE := $(shell git describe --long | awk -F- '{print $$2}')
 SRC_DIR := pkg
+GENERIC_SRC_DIR := ${SRC_DIR}/generic
 DEB_SRC_DIR := ${SRC_DIR}/debian
 DEB_REPO_DIR := ${DEB_SRC_DIR}/repo
 CLOUDFILES_REPO_NAME := poller-$(GIT_TAG)
@@ -24,13 +25,14 @@ PKG_DEB := ${BUILD_DIR}/${APP_NAME}_${GIT_TAG}-${TAG_DISTANCE}_${ARCH}.deb
 
 # TODO: should poller get its own specific file?
 APP_CFG := ${PKGDIR_ETC}/rackspace-monitoring-poller.cfg
+SYSTEMD_CONF := ${PKGDIR_ETC}/init/${APP_NAME}.systemd
 UPSTART_CONF := ${PKGDIR_ETC}/init/${APP_NAME}.conf
 UPSTART_DEFAULT := ${PKGDIR_ETC}/default/${APP_NAME}
 LOGROTATE_CFG := ${PKGDIR_ETC}/logrotate.d/${APP_NAME}
 
 OWNED_DIRS :=
 DEB_CONFIG_FILES := ${APP_CFG} ${LOGROTATE_CFG}
-DEB_ALL_FILES := ${DEB_CONFIG_FILES} ${UPSTART_CONF} ${UPSTART_DEFAULT}
+DEB_ALL_FILES := ${DEB_CONFIG_FILES} ${UPSTART_CONF} ${UPSTART_DEFAULT} ${SYSTEMD_CONF}
 
 MOCK_POLLER := LogPrefixGetter,ConnectionStream,Connection,Session,CheckScheduler,CheckExecutor,Scheduler,ChecksReconciler
 
@@ -95,6 +97,7 @@ ${PKG_DEB} : ${DEB_BUILD_DIR}/${PKGDIR_BIN}/${EXE} $(addprefix ${DEB_BUILD_DIR}/
 	  $(foreach c,${DEB_CONFIG_FILES},--config-files ${c}) \
 	  --deb-default ${DEB_BUILD_DIR}/${UPSTART_DEFAULT} \
 	  --deb-upstart ${DEB_BUILD_DIR}/${UPSTART_CONF} \
+	  --deb-systemd ${DEB_BUILD_DIR}/${SYSTEMD_CONF} \
 	  -C ${DEB_BUILD_DIR} ${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES}
 
 clean:
@@ -114,6 +117,10 @@ ${DEB_BUILD_DIR}/${LOGROTATE_CFG} : ${SRC_DIR}/generic/logrotate.cfg ${DEB_BUILD
 	cp $< $@
 
 ${DEB_BUILD_DIR}/${UPSTART_CONF} : ${DEB_SRC_DIR}/service.upstart ${DEB_BUILD_DIR}/${PKGDIR_ETC}/init
+	cp $< $@
+	chmod +x $@
+
+${DEB_BUILD_DIR}/${SYSTEMD_CONF} : ${GENERIC_SRC_DIR}/service.systemd ${DEB_BUILD_DIR}/${PKGDIR_ETC}/init
 	cp $< $@
 	chmod +x $@
 

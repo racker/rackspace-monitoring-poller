@@ -1,0 +1,11 @@
+[Unit]
+After=network.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/rackspace-monitoring-agent -l /var/log/rackspace-monitoring-poller.log
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
