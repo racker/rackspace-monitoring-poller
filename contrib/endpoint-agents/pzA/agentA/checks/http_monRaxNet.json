@@ -17,6 +17,6 @@
   },
   "target_alias": "default",
   "target_hostname": "monitoring.rackspace.net",
-  "target_resolver": 1,
+  "target_resolver":"IPv4",
   "disabled": false
 }

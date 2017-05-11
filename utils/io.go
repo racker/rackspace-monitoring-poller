@@ -27,6 +27,7 @@ import (
 type BlockingReadBuffer struct {
 	bytes.Buffer
 	blockingCond *sync.Cond
+	bufferGuard  sync.Mutex
 	closed       bool
 }
 
@@ -50,7 +51,9 @@ func (bb *BlockingReadBuffer) Read(p []byte) (n int, err error) {
 			return 0, io.EOF
 		}
 
+		bb.bufferGuard.Lock()
 		n, err = bb.Buffer.Read(p)
+		bb.bufferGuard.Unlock()
 		if err != io.EOF {
 			return
 		}
@@ -59,12 +62,19 @@ func (bb *BlockingReadBuffer) Read(p []byte) (n int, err error) {
 
 // ReadReady is a non-blocking operation to see if any bytes are ready to be read.
 func (bb *BlockingReadBuffer) ReadReady() bool {
-	return bb.Buffer.Len() != 0
+	bb.bufferGuard.Lock()
+	ready := bb.Buffer.Len() != 0
+	bb.bufferGuard.Unlock()
+
+	return ready
 }
 
 // Write places more content in the internal buffer and
 func (bb *BlockingReadBuffer) Write(p []byte) (n int, err error) {
+	bb.bufferGuard.Lock()
 	n, err = bb.Buffer.Write(p)
+	bb.bufferGuard.Unlock()
+
 	bb.blockingCond.Signal()
 	return
 }

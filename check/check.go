@@ -377,7 +377,7 @@ func ReadCheckFromFile(filename string) (Check, error) {
 	return NewCheck(ctx, json.RawMessage(jsonContent))
 }
 
-func NewCustomDialContext(rType uint64) DialContextFunc {
+func NewCustomDialContext(rType string) DialContextFunc {
 	netType := "tcp"
 	switch rType {
 	case protocheck.ResolverIPV4:

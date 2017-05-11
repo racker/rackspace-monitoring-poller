@@ -676,6 +676,10 @@ func (cp *prepDetails) clear() {
 	cp.activePrep = nil
 	cp.srcPrepMsg = nil
 	cp.prepared = false
+	if cp.prepareToEndTimer != nil {
+		cp.prepareToEndTimer.Stop()
+		cp.prepareToEndTimer = nil
+	}
 }
 
 func (cp *prepDetails) commit() {

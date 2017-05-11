@@ -29,7 +29,7 @@ import (
 
 func TestNewMetricsPostRequest(t *testing.T) {
 	checkData := `{
-	  "check_id":"chTestTCP_TLSRunSuccess",
+	  "id":"chTestTCP_TLSRunSuccess",
 	  "zone_id":"pzA",
 	  "entity_id":"enAAAAIPV4",
 	  "details":{"port":443,"ssl":true},
@@ -39,7 +39,7 @@ func TestNewMetricsPostRequest(t *testing.T) {
 	  "ip_addresses":{"default":"127.0.0.1"},
 	  "target_alias":"default",
 	  "target_hostname":"",
-	  "target_resolver":1,
+	  "target_resolver":"IPv4",
 	  "disabled":false
 	  }`
 	ch, err := check.NewCheck(context.Background(), []byte(checkData))

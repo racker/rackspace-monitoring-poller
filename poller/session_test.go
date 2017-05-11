@@ -62,7 +62,7 @@ func (fm frameMatcher) Matches(in interface{}) bool {
 	return true
 }
 
-func setupConnStreamExpectations(ctrl *gomock.Controller, expectAuth bool) (eleConn *MockConnection,
+func setupConnStreamExpectations(ctrl *gomock.Controller, guid string, expectAuth bool) (eleConn *MockConnection,
 	reconciler *MockChecksReconciler,
 	writesHere *utils.BlockingReadBuffer, readsHere *utils.BlockingReadBuffer) {
 	eleConn = NewMockConnection(ctrl)
@@ -72,11 +72,11 @@ func setupConnStreamExpectations(ctrl *gomock.Controller, expectAuth bool) (eleC
 
 	eleConn.EXPECT().GetFarendWriter().AnyTimes().Return(writesHere)
 	eleConn.EXPECT().GetFarendReader().AnyTimes().Return(readsHere)
-	eleConn.EXPECT().GetGUID().AnyTimes().Return("1-2-3")
-	eleConn.EXPECT().GetLogPrefix().AnyTimes().Return("1-2-3")
+	eleConn.EXPECT().GetGUID().AnyTimes().Return(guid)
+	eleConn.EXPECT().GetLogPrefix().AnyTimes().Return(guid)
 	eleConn.EXPECT().SetReadDeadline(gomock.Any()).AnyTimes()
 	eleConn.EXPECT().SetWriteDeadline(gomock.Any()).AnyTimes()
-	eleConn.EXPECT().GetLogPrefix().AnyTimes().Return("1-2-3")
+	eleConn.EXPECT().GetLogPrefix().AnyTimes().Return(guid)
 	if expectAuth {
 		authCh := make(chan struct{}, 1)
 		eleConn.EXPECT().SetAuthenticated().Do(func() {
@@ -147,7 +147,7 @@ func TestEleSession_HeartbeatSending(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	eleConn, reconciler, writesHere, readsHere := setupConnStreamExpectations(ctrl, true)
+	eleConn, reconciler, writesHere, readsHere := setupConnStreamExpectations(ctrl, "HeartbeatSending", true)
 	defer readsHere.Close()
 
 	origTimestamper := installDeterministicTimestamper(1000, 2000)
@@ -189,7 +189,7 @@ func TestEleSession_HeartbeatConsumption(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	eleConn, reconciler, writesHere, readsHere := setupConnStreamExpectations(ctrl, true)
+	eleConn, reconciler, writesHere, readsHere := setupConnStreamExpectations(ctrl, "HeartbeatConsumption", true)
 	defer readsHere.Close()
 
 	origTimestamper := installDeterministicTimestamper(1000, 2000)
@@ -229,7 +229,7 @@ func TestEleSession_HandshakeError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	eleConn, reconciler, writesHere, readsHere := setupConnStreamExpectations(ctrl, false)
+	eleConn, reconciler, writesHere, readsHere := setupConnStreamExpectations(ctrl, "HandshakeError", false)
 	defer readsHere.Close()
 
 	eventConsumer := newPhasingEventConsumer()
@@ -247,7 +247,7 @@ func TestEleSession_HandshakeTimeout(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	eleConn, reconciler, _, readsHere := setupConnStreamExpectations(ctrl, false)
+	eleConn, reconciler, _, readsHere := setupConnStreamExpectations(ctrl, "HandshakeTimeout", false)
 	defer readsHere.Close()
 
 	eleConn.EXPECT().Close()
@@ -266,7 +266,7 @@ func TestEleSession_HandshakeTimeoutStoppedOnSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	eleConn, reconciler, writesHere, readsHere := setupConnStreamExpectations(ctrl, true)
+	eleConn, reconciler, writesHere, readsHere := setupConnStreamExpectations(ctrl, "HandshakeTimeoutStoppedOnSuccess", true)
 	defer readsHere.Close()
 
 	origTimestamper := installDeterministicTimestamper(1000, 2000)
@@ -314,6 +314,7 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 		actionCount            int
 		expectedZone           string
 		reconcileValidateErr   error
+		timeoutBeforeClose     time.Duration
 	}{
 		{
 			name:       "normal",
@@ -404,6 +405,23 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 			expectReconcile: false,
 			actionCount:     1,
 			expectedZone:    "zn1",
+		},
+		{
+			name:       "abortAfterPrep",
+			prepareSeq: "abortAfterPrep",
+			commitSeq:  "",
+			expectedPrepResponses: []protocol.PollerPrepareResult{
+				{
+					Status:  "aborted",
+					Version: 5,
+				},
+			},
+			expectValidate:  true,
+			expectReconcile: false,
+			actionCount:     1,
+			expectedZone:    "zn1",
+			// allow time for poller prepare timeout
+			timeoutBeforeClose: 15 * time.Millisecond,
 		},
 		{
 			name:       "badDirective",
@@ -567,15 +585,15 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			eleConn, reconciler, writesHere, readsHere := setupConnStreamExpectations(ctrl, true)
+			eleConn, reconciler, writesHere, readsHere := setupConnStreamExpectations(ctrl, tt.name, true)
 			defer readsHere.Close()
 
 			origTimestamper := installDeterministicTimestamper(1000, 2000)
 			defer utils.InstallAlternateTimestampFunc(origTimestamper)
 
 			cfg := config.NewConfig(tt.name, false, nil)
+			cfg.TimeoutPrepareEnd = 10 * time.Millisecond
 			es := poller.NewSession(context.Background(), eleConn, reconciler, cfg)
-			defer func() { time.Sleep(5 * time.Millisecond) }()
 			defer es.Close()
 
 			decoder := handshake(t, writesHere, readsHere, 50000)
@@ -631,6 +649,10 @@ func TestEleSession_PollerPrepare(t *testing.T) {
 				})
 			}
 
+			if tt.timeoutBeforeClose != 0 {
+				time.Sleep(tt.timeoutBeforeClose)
+			}
+
 		})
 	}
 
@@ -658,7 +680,7 @@ func TestEleSession_PollerPrepareTimeout(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			eleConn, reconciler, writesHere, readsHere := setupConnStreamExpectations(ctrl, true)
+			eleConn, reconciler, writesHere, readsHere := setupConnStreamExpectations(ctrl, tt.name, true)
 			defer readsHere.Close()
 
 			origTimestamper := installDeterministicTimestamper(1000, 2000)
@@ -727,7 +749,7 @@ func TestEleSession_CheckTest(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
 
-			eleConn, reconciler, writesHere, readsHere := setupConnStreamExpectations(ctrl, true)
+			eleConn, reconciler, writesHere, readsHere := setupConnStreamExpectations(ctrl, tt.name, true)
 			defer readsHere.Close()
 
 			origTimestamper := installDeterministicTimestamper(1000, 2000)

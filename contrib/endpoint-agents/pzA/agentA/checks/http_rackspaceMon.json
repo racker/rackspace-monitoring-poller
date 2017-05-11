@@ -16,6 +16,6 @@
   },
   "target_alias": "default",
   "target_hostname": "",
-  "target_resolver": 1,
+  "target_resolver":"IPv4",
   "disabled": false
 }

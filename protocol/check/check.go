@@ -22,7 +22,7 @@ import (
 )
 
 type CheckHeader struct {
-	Id        string `json:"check_id"`
+	Id        string `json:"id"`
 	CheckType string `json:"type"`
 	Period    uint64 `json:"period"`
 	// Timeout is the overall check's bounded timeout in milliseconds
@@ -33,7 +33,7 @@ type CheckHeader struct {
 	IpAddresses    map[string]string `json:"ip_addresses"`
 	TargetAlias    *string           `json:"target_alias"`
 	TargetHostname *string           `json:"target_hostname"`
-	TargetResolver uint64            `json:"target_resolver"`
+	TargetResolver string            `json:"target_resolver"`
 }
 
 // CheckIn is used for unmarshalling received check requests.
@@ -45,6 +45,8 @@ type CheckIn struct {
 }
 
 const (
-	ResolverIPV4 = 1
-	ResolverIPV6 = 2
+	ResolverIPV4     = "IPv4"
+	ResolverIPV6     = "IPv6"
+	ResolverCodeIPV4 = 1
+	ResolverCodeIPV6 = 2
 )

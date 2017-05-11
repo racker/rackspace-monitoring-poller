@@ -39,7 +39,7 @@ const checkDataTemplate = `{
 	  "ip_addresses":{"default":"127.0.0.1"},
 	  "target_alias":"default",
 	  "target_hostname":"",
-	  "target_resolver":1,
+	  "target_resolver":"IPv4",
 	  "disabled":false
 	  }`
 
