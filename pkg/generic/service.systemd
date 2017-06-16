@@ -3,9 +3,10 @@ After=network.target
 Wants=network-online.target
 
 [Service]
-ExecStart=/usr/bin/rackspace-monitoring-agent -l /var/log/rackspace-monitoring-poller.log
+ExecStart=/usr/bin/rackspace-monitoring-poller serve
 Restart=always
 RestartSec=5
+LimitNOFILE=16384
 
 [Install]
 WantedBy=multi-user.target
