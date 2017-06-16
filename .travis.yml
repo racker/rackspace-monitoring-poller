@@ -1,38 +1,35 @@
 language: go
-
 sudo: false
-
 go:
-  - 1.8.3
-
+- 1.8.3
 install:
-  - go get -v github.com/Masterminds/glide
-  - cd $GOPATH/src/github.com/Masterminds/glide && git checkout v0.12.3 && go install && cd -
-  - go get -v github.com/mitchellh/gox
-  - cd $GOPATH/src/github.com/mitchellh/gox && git checkout v0.3.0 && go install && cd -
-  - glide install
-  - gem install --no-ri --no-rdoc fpm
-
+- go get -v github.com/Masterminds/glide
+- cd $GOPATH/src/github.com/Masterminds/glide && git checkout v0.12.3 && go install
+  && cd -
+- go get -v github.com/mitchellh/gox
+- cd $GOPATH/src/github.com/mitchellh/gox && git checkout v0.3.0 && go install &&
+  cd -
+- glide install
+- gem install --no-ri --no-rdoc fpm
 script:
-  - go test -short -v $(glide novendor)
-  - CGO_ENABLED=0 gox
-    -osarch "linux/386 linux/amd64 darwin/amd64"
-    -output="build/{{.Dir}}_{{.OS}}_{{.Arch}}"
-    -ldflags="-X github.com/racker/rackspace-monitoring-poller/version.Version=$(git symbolic-ref -q --short HEAD || git describe --tags --exact-match)"
-  # integration tests need the latest rackspace-monitoring-poller built
-  - go test -v github.com/racker/rackspace-monitoring-poller/integrationcli
-  - make package-deb-local
+- go test -short -v $(glide novendor)
+- CGO_ENABLED=0 gox -osarch "linux/386 linux/amd64 darwin/amd64" -output="build/{{.Dir}}_{{.OS}}_{{.Arch}}"
+  -ldflags="-X github.com/racker/rackspace-monitoring-poller/version.Version=$(git
+  symbolic-ref -q --short HEAD || git describe --tags --exact-match)"
+- go test -v github.com/racker/rackspace-monitoring-poller/integrationcli
+- make package-deb-local
 after_script:
-  - go get github.com/mattn/goveralls
-  - bash contrib/combine-coverage.sh --coveralls
+- go get github.com/mattn/goveralls
+- bash contrib/combine-coverage.sh --coveralls
 deploy:
   provider: releases
-  # Generate OAuth token at https://github.com/settings/tokens and configure in
-  # project settings https://travis-ci.org/racker/rackspace-monitoring-poller/settings
   api_key: "$GITHUB_OAUTH_TOKEN"
   file_glob: true
   file:
-    - "build/rackspace-monitoring-poller_*"
+  - build/rackspace-monitoring-poller_*
   skip_cleanup: true
   on:
     tags: true
+notifications:
+  slack:
+    secure: oj8QJhx7xFCNN8WFO89GeNTI9BP7A0IKP/RYg52dzugLaWzhtyInPAFZrXQaxBN8IB41VRu45gBKYGklfz90Z05MGtrFnOlsEqo52R4YIvj4UuxoVrTcuPKeWgnJ6Vm9mvxut9Dy6eej9coUOBIkTLvPoLqqM8IugpneK88PbnCkFwc2ir59x3obKjI2gXrjn8MUFnOOJFm17z9IpzBpFpVdAZkoVFJ/57MyfO6HSyloTtvbEYCephViI8lPceeWYcBeXRkf6uKqyNReYTDql7bbZDGxNyZbaqjS0OTmIOXbDIU+funA7hwDt2fXfMiGw/BX21cWYAZgLLONdvPbahbsY3D00QnE7K227s5e2mw92i+u8YN9ms/WUl8H+zAF7eJBPQnzArqciHtUxXKTpTb5KamanqeUuTHi3m8D94UZY+Fi6zihUMUIUyxqpm8UaqgCMUrYRJgTX/hrIUgFtQ3KMadkGCfGWbHJ6Xx2jQ+OAIhCM6iYfHvkkA7uOzcsjAK9VSf1tVW0muNRADG8N9OmYzhHtPcJQ0Z29U8D8iMd1cmSp0mJWRSqr9o9cf8gspfAtrKMHBlsRAtYtjli98adK64x21t8Nhqk00rYnLwArGVA9eyar6r0MKrAvN2shEZoyuZcVO9I1YYt0f43nQTRYgL7qq/BMPflfjtOr3A=
