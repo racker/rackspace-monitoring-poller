@@ -3,7 +3,7 @@ After=network.target
 Wants=network-online.target
 
 [Service]
-ExecStart=/usr/bin/rackspace-monitoring-poller -l /var/log/rackspace-monitoring-poller.log
+ExecStart=/usr/bin/rackspace-monitoring-poller serve
 Restart=always
 RestartSec=5
 
