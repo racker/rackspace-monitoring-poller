@@ -46,10 +46,6 @@ const (
 	EventTypeDroppedMetric = "dropped"
 	// EventTypeAllConnectionsLost indicates that all endpoint connections were lost
 	EventTypeAllConnectionsLost = "allConnectionsLost"
-	// EventTypeConnected indicates that TCP connection has been established
-	EventTypeConnected = "connected"
-	// EventTypeDisconnected indicates that TCP connection has been lost
-	EventTypeDisconnected = "disconnected"
 )
 
 // EleConnectionStream implements ConnectionStream
@@ -333,7 +329,6 @@ reconnect:
 		if err != nil {
 			goto conn_error
 		}
-		cs.EmitEvent(utils.NewEvent(EventTypeConnected, conn))
 
 		// Successful connection. reset backoff
 		b.Reset()
@@ -371,7 +366,6 @@ reconnect:
 			"address": addr,
 		}).Errorf("Error: %v", err)
 	new_connection:
-		cs.EmitEvent(utils.NewEvent(EventTypeDisconnected, nil))
 		sleepDuration := b.Duration()
 		log.WithFields(log.Fields{
 			"prefix":  cs.GetLogPrefix(),

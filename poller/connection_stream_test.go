@@ -147,7 +147,7 @@ func TestEleConnectionStream_Connect_ClearText(t *testing.T) {
 	cs.RegisterEventConsumer(consumer)
 
 	cs.Connect()
-	consumer.waitFor(t, 10*time.Millisecond, poller.EventTypeConnected, gomock.Eq(conn))
+	consumer.waitFor(t, 10*time.Millisecond, poller.EventTypeRegister, gomock.Eq(conn))
 	cancel()
 }
 
