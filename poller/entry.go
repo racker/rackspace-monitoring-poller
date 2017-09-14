@@ -24,6 +24,7 @@ import (
 	"github.com/satori/go.uuid"
 	"os"
 	"time"
+	"crypto/x509"
 )
 
 func generatePollerGuid() string {
@@ -49,7 +50,10 @@ func Run(configFilePath string, insecure bool) {
 
 	log.WithField("guid", guid).Info("Assigned unique identifier")
 
-	rootCAs := config.LoadRootCAs(insecure, useStaging)
+	var rootCAs *x509.CertPool
+	if !config.IsUsingCleartext() {
+		rootCAs = config.LoadRootCAs(insecure, useStaging)
+	}
 
 	signalNotify := utils.HandleInterrupts()
 	ctx, cancel := context.WithCancel(context.Background())

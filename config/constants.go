@@ -59,5 +59,6 @@ const (
 
 	EnvStaging    = "STAGING"
 	EnvDevCA      = "DEV_CA"
+	EnvCleartext  = "CLEARTEXT"
 	EnabledEnvOpt = "1"
 )

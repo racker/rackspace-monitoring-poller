@@ -179,15 +179,14 @@ func (conn *EleConnection) Connect(ctx context.Context, config *config.Config, t
 		log.WithField("err", err).Debug("Failed to get metricsConnectionsAttempt counter")
 	}
 
-	tlsConn, err := tls.DialWithDialer(&nd, "tcp", conn.address, tlsConfig)
-	if err != nil {
+	if err = conn.dial(&nd, tlsConfig); err != nil {
 		return err
 	}
-	conn.conn = tlsConn
+
 	conn.session = NewSession(ctx, conn, conn.checksReconciler, config)
 	log.WithFields(log.Fields{
 		"prefix":         conn.GetLogPrefix(),
-		"remote_address": tlsConn.RemoteAddr(),
+		"remote_address": conn.address,
 	}).Info("Connected")
 
 	counter, err = metricsConnectionsConnected.GetMetricWithLabelValues(conn.address)
@@ -195,6 +194,22 @@ func (conn *EleConnection) Connect(ctx context.Context, config *config.Config, t
 		counter.Inc()
 	} else {
 		log.WithField("err", err).Debug("Failed to get metricsConnectionsConnected counter")
+	}
+
+	return nil
+}
+
+func (conn *EleConnection) dial(nd *net.Dialer, tlsConfig *tls.Config) (err error) {
+	if tlsConfig != nil {
+		conn.conn, err = tls.DialWithDialer(nd, "tcp", conn.address, tlsConfig)
+		if err != nil {
+			return
+		}
+	} else {
+		conn.conn, err = nd.Dial("tcp", conn.address)
+		if err != nil {
+			return
+		}
 	}
 
 	return nil
