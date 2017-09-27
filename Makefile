@@ -21,12 +21,14 @@ BIN_URL := https://github.com/racker/rackspace-monitoring-poller/releases/downlo
 VENDOR := Rackspace US, Inc.
 LICENSE := Apache v2
 
-PKG_DEB_UPSTART := ${BUILD_DIR}/${APP_NAME}_${GIT_TAG}-${TAG_DISTANCE}-upstart_${ARCH}.deb
+# Until CMC-1705 we'll treat the upstart flavor as the "official" package
+PKG_DEB_UPSTART := ${BUILD_DIR}/${APP_NAME}_${GIT_TAG}-${TAG_DISTANCE}_${ARCH}.deb
+# ...note this one has the "-systemd" qualifier on the version
 PKG_DEB_SYSTEMD := ${BUILD_DIR}/${APP_NAME}_${GIT_TAG}-${TAG_DISTANCE}-systemd_${ARCH}.deb
 
 # TODO: should poller get its own specific file?
 APP_CFG := ${PKGDIR_ETC}/rackspace-monitoring-poller.cfg
-SYSTEMD_CONF := ${PKGDIR_ETC}/init/${APP_NAME}.systemd
+SYSTEMD_CONF := ${PKGDIR_ETC}/init/${APP_NAME}
 UPSTART_CONF := ${PKGDIR_ETC}/init/${APP_NAME}.conf
 UPSTART_DEFAULT := ${PKGDIR_ETC}/default/${APP_NAME}
 LOGROTATE_CFG := ${PKGDIR_ETC}/logrotate.d/${APP_NAME}
@@ -83,7 +85,7 @@ package-upload-deb:
 	rclone copy ${DEB_REPO_DIR}/ rackspace:${CLOUDFILES_REPO_NAME}/debian
 
 reprepro-deb:
-	${REPREPRO} -b ${DEB_REPO_DIR} includedeb cloudmonitoring ${PKG_DEB_UPSTART} ${PKG_DEB_SYSTEMD}
+	${REPREPRO} -b ${DEB_REPO_DIR} includedeb cloudmonitoring ${PKG_DEB_UPSTART}
 
 package-deb: ${PKG_DEB_UPSTART} ${PKG_DEB_SYSTEMD}
 
