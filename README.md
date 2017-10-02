@@ -13,6 +13,9 @@ download either the "deb" package or one of the standalone binaries listed after
 
 ## APT
 
+**NOTE:** the following "apt repo" procedure is only supported on [upstart](http://upstart.ubuntu.com/) based systems
+such as Ubuntu 14.04 Trusty.
+
 * Update your packages to latest
 
 ```
@@ -48,6 +51,10 @@ Proceed to configuring your poller.
 
 ## DEB package installation directly
 
+**NOTE:** there are two deb packages provided. The one with the `-systemd` qualifier should be installed on systems that
+use [systemd](https://freedesktop.org/wiki/Software/systemd/) for the init system, such as Ubuntu 15.04 Vivid and greater. 
+The other deb package should be installed on systems that use [upstart](http://upstart.ubuntu.com/).
+
 Install the package with `dpkg -i rackspace-monitoring-poller_*.deb`. 
 
 Proceed to configuring your poller.
@@ -58,7 +65,8 @@ Proceed to configuring your poller.
 Adjust these configuration files
 
 * `/etc/rackspace-monitoring-poller.cfg`
-  * Configure `monitoring_token` and `monitoring_private_zones`
+  * Configure `monitoring_token` by uncommenting the line and replacing the `TOKEN` placeholder
+  * Configure `monitoring_private_zones` by uncommenting the line and replacing the `ZONE` placeholder
 * `/etc/default/rackspace-monitoring-poller`
   * Enable the service by setting `ENABLED=true`
 
@@ -88,136 +96,87 @@ or specify a custom confiuration file location:
 ./rackspace-monitoring-poller serve --config custom.cfg
 ```
 
-# Development Notes
+# Preparing your Rackspace Monitoring account
 
-## Prepare your workspace
+The Rackspace Monitoring Poller is primarily intended to be used as part of 
+your overall [Rackspace Monitoring](https://developer.rackspace.com/docs/rackspace-monitoring/v1/getting-started/concepts/) setup. 
+You will need to ensure the following items are prepared before you can effectively use one or more poller instances:
 
-If you haven't already, setup your `$GOPATH` in the typical way [described here](https://golang.org/doc/code.html#GOPATH).
+- [ ] [Enable private zones feature](#enable-private-zones-feature)
+- [ ] [Locate or create a monitoring token](#locate-or-create-a-monitoring-token)
+- [ ] [Allocate a private zone](#allocate-a-private-zone)
+- [ ] [Creating remote checks to run in a private zone](#creating-remote-checks-to-run-in-a-private-zone)
 
-Similarly, if you haven't already installed [Glide, package management for Go](https://glide.sh/), then visit their
-page and follow the "Get Glide" step.
+The examples below show use of the [Rackspace Monitoring REST API](https://developer.rackspace.com/docs/rackspace-monitoring/v1/),
+but you can also use the [Rackspace Monitoring CLI](https://support.rackspace.com/how-to/getting-started-with-rackspace-monitoring-cli/).
 
-In order to comply with Go's packaging structure, be sure to clone this repo
-into the path `$GOPATH/src/github.com/racker/rackspace-monitoring-poller`, such as:
+Using the REST API requires obtaining a token ID and knowing your tenant ID. 
+[This page in the developer guide](https://developer.rackspace.com/docs/rackspace-monitoring/v1/getting-started/send-request-ovw/) explains this procedure.
+The examples exclude the service access endpoint and path prefix for brevity. 
+The actual calls should be invoked against `https://monitoring.api.rackspacecloud.com/v1.0/$TENANT_ID`
 
-```
-mkdir -p $GOPATH/src/github.com/racker
-cd $GOPATH/src/github.com/racker
-git clone https://github.com/racker/rackspace-monitoring-poller.git
-```
+## Enable private zones feature
 
-With this repository cloned into your `$GOPATH`, populate the external dependencies before building/running:
+Private zone monitoring is currently a limited-availability feature, so 
+please contact [Rackspace Support](https://www.rackspace.com/support) to request this feature to be enabled on your
+account.
 
-```
-glide install
-```
+## Locate or create a monitoring token
 
-or setup/upgrade Glide and install dependencies with make:
+In order for your poller instance to authenticate against your Rackspace Monitoring account you will either need to
+obtain an existing token from your account or a create a new one. _The later is a good practice in order to delineate
+the authentication of your private zone pollers independent of your on-node agents._
 
-```
-make prep
-```
+**NOTE:** the token is traditionally referred to as an **agent** token, but the concept is interchaneable with **monitoring** tokens. 
 
-Finally, you can build an instance of the `rackspace-monitoring-poller` executable using:
+You can [list existing tokens](https://developer.rackspace.com/docs/rackspace-monitoring/v1/api-reference/agent-token-operations/#list-agent-tokens)
+by invoking:
 
-```
-go build
-```
-
-## Running Simple Endpoint Server for development
-
-In the workspace, generate self-signed client/server certificates and keys. In the following examples, the files
-will be stored under sub-directories of `data`. Create that directory, if needed:
-
-```
-mkdir -p data
+```text
+GET /agent_tokens
 ```
 
-First, be your own certificate authority by filling out the prompts when running:
+and using the `token` from the appropriate entry in the response list.
 
-```
-docker run -it -v $(pwd)/data/ca:/ca itzg/cert-helper \
-  init
-```
+You can also [create a new token](https://developer.rackspace.com/docs/rackspace-monitoring/v1/api-reference/agent-token-operations/#create-an-agent-token)
+by invoking:
 
-NOTE: if you forget the pass phrase for the ca.pem, just remove `data/ca` and `data/server-certs` and re-run init.
-
-With CA powers, create a server certificate/key replacing `localhost` and `127.0.0.1` for your setup:
-
-```
-docker run -it -v $(pwd)/data/ca:/ca -v $(pwd)/data/server-certs:/certs itzg/cert-helper \
-  create -server -cn localhost -alt IP:127.0.0.1
+```text
+POST /agent_tokens
 ```
 
-When running the `serve` command, your CA certificate will be specified by setting the environment variable `DEV_CA`
-to the location `data/ca/ca.pem`.
+You may choose any `label` that you would like.
 
-Before starting the endpoint, place any additional zones->agents->checks under `contrib/endpoint-agents` (if using the example config), then
-start the Endpoint server and Poller server.
+## Allocate a private zone
 
-#### For docker, you can simply:
+A private zone is allocated by invoking
 
-```
-docker build -t racker-poller .
-docker run -ti --rm -v $(pwd)/contrib:/config racker-poller
+```text
+POST /monitoring_zones
 ```
 
-#### If running locally, then
+The JSON object payload contains the following attributes:
 
-In window #1:
+Name | Description | Validation
+-----|-------------|-----------
+label | A label of your choosing | (Required) Non-empty string
+maximum_checks | Maximum number of checks that can be created in this zone | (Optional) Integer greater than or equal to 1
+maximum_agents | Maximum number of agent/pollers that can join this zone | (Optional) Integer greater than or equal to 1
+disabled | Disable new check creation and agent connection to this zone | (Optional) Boolean, default is false
+metadata | Arbitrary key/value pairs | (Optional) Object of string values, up to 256 keys. Values and keys must be less than 255 characters.
 
-    ./rackspace-monitoring-poller endpoint --config contrib/endpoint-config.json  --debug
+A response status of `201` indicates that the zone was successfully created. 
+The `X-Object-ID` response header contains the ID that is used in the poller configuration file, above, and the check
+creation, below. 
+The full details of the newly created zone can be retrieving from the URL in the `Location` response header.
 
-In window #2:
+## Creating remote checks to run in a private zone
 
-    export DEV_CA=data/ca/ca.pem
-    ./rackspace-monitoring-poller serve --config contrib/local-endpoint.cfg  --debug
+Creating a check for a private zone uses the existing API to [create a check](https://developer.rackspace.com/docs/rackspace-monitoring/v1/api-reference/check-operations/#create-a-check).
+Be sure to pass the private zone ID in the `monitoring_zones_poll` array attribute.
 
-## Development-time Documentation
-
-If you are adding or modifying documentation comments, viewing the godoc's locally will be very helpful.
-The [godoc tool documentation](https://godoc.org/golang.org/x/tools/cmd/godoc) shows several ways to
-run it, but the easiest is to run
-
-    godoc -http=:6060
-
-With that running, open your browser to [http://localhost:6060/pkg/github.com/racker/rackspace-monitoring-poller/]().
-
-As you save file changes, just refresh the browser page to pick up the documentation changes.
-
-### Generating mocks
-
-To regenerate mocks automatically, run:
-
-```
-make generate-mocks
-```
-
-[GoMock](https://github.com/golang/mock) is currently in use for unit testing where an interface needs to be mocked out to minimize scope of testing,
-system impact, etc. To generate a mock of an interface located in this repository first install mockgen
-
-```
-go get github.com/golang/mock/mockgen
-```
-
-With `$GOPATH/bin` in your `PATH`, run
-
-```
-mockgen -source={Pkg}/{InterfaceFile}.go -package={Pkg} -destination={Pkg}/{InterfaceFile}_mock_test.go
-```
-
-where `Pkg` is the sub-package that contains one or more interfaces in `{InterfaceFile}.go` to mock.
-It will write mocks of those interfaces to an adjacent file `{InterfaceFile}_mock_test.go` where those
-mocks will also reside in the package `Pkg`.
-
-An example use for the interfaces in `poller/poller.go` is:
-
-```
-mockgen -source=poller/poller.go -package=poller -destination=poller/poller_mock_test.go
-```
-
-Don't forget to re-run `mockgen` when a mocked interface is altered since test-time compilation errors will result
-from incomplete interface implementations.
-
-Please note that due to https://github.com/golang/mock/issues/30 you may need to manually scrub the imports of
-the generated file.
+The following check types are currently supported:
+* [remote.tcp](https://developer.rackspace.com/docs/rackspace-monitoring/v1/tech-ref-info/check-type-reference/#remote-tcp)
+* [remote.http](https://developer.rackspace.com/docs/rackspace-monitoring/v1/tech-ref-info/check-type-reference/#remote-http)
+* [remote.ping](https://developer.rackspace.com/docs/rackspace-monitoring/v1/tech-ref-info/check-type-reference/#remote-ping)
+* [agent.plugin](https://developer.rackspace.com/docs/rackspace-monitoring/v1/tech-ref-info/check-type-reference/#agent-plugin)
