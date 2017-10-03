@@ -124,10 +124,10 @@ account.
 ## Locate or create a monitoring token
 
 In order for your poller instance to authenticate against your Rackspace Monitoring account you will either need to
-obtain an existing token from your account or a create a new one. _The later is a good practice in order to delineate
+obtain an existing token from your account or create a new one. _The latter is a good practice in order to delineate
 the authentication of your private zone pollers independent of your on-node agents._
 
-**NOTE:** the token is traditionally referred to as an **agent** token, but the concept is interchaneable with **monitoring** tokens. 
+**NOTE:** the token is traditionally referred to as an **agent** token, but the concept is interchangeable with **monitoring** tokens. 
 
 You can [list existing tokens](https://developer.rackspace.com/docs/rackspace-monitoring/v1/api-reference/agent-token-operations/#list-agent-tokens)
 by invoking:
@@ -160,9 +160,6 @@ The JSON object payload contains the following attributes:
 Name | Description | Validation
 -----|-------------|-----------
 label | A label of your choosing | (Required) Non-empty string
-maximum_checks | Maximum number of checks that can be created in this zone | (Optional) Integer greater than or equal to 1
-maximum_agents | Maximum number of agent/pollers that can join this zone | (Optional) Integer greater than or equal to 1
-disabled | Disable new check creation and agent connection to this zone | (Optional) Boolean, default is false
 metadata | Arbitrary key/value pairs | (Optional) Object of string values, up to 256 keys. Values and keys must be less than 255 characters.
 
 A response status of `201` indicates that the zone was successfully created. 
