@@ -24,9 +24,13 @@ func TestConnection_Connect(t *testing.T) {
 	ts := httptest.NewTLSServer(http.HandlerFunc(staticResponse))
 	defer ts.Close()
 
+	tsNonSsl := httptest.NewServer(http.HandlerFunc(staticResponse))
+	defer tsNonSsl.Close()
+
 	tests := []struct {
 		name               string
-		url                func() string
+		host               func() string
+		tlsConfig          func(host string) *tls.Config
 		guid               string
 		expectedErr        bool
 		expectedErrMessage string
@@ -34,9 +38,16 @@ func TestConnection_Connect(t *testing.T) {
 	}{
 		{
 			name: "Happy path",
-			url: func() string {
+			host: func() string {
 				testURL, _ := url.Parse(ts.URL)
 				return testURL.Host
+			},
+			tlsConfig: func(host string) *tls.Config {
+				return &tls.Config{
+					InsecureSkipVerify: true,
+					ServerName:         host,
+					RootCAs:            nil,
+				}
 			},
 			guid:        "happy-test",
 			ctx:         context.Background(),
@@ -44,7 +55,7 @@ func TestConnection_Connect(t *testing.T) {
 		},
 		{
 			name: "Invalid url",
-			url: func() string {
+			host: func() string {
 				return "invalid-url"
 			},
 			guid:               "another-test",
@@ -54,7 +65,7 @@ func TestConnection_Connect(t *testing.T) {
 		},
 		{
 			name: "Empty context",
-			url: func() string {
+			host: func() string {
 				testURL, _ := url.Parse(ts.URL)
 				return testURL.Host
 			},
@@ -62,6 +73,19 @@ func TestConnection_Connect(t *testing.T) {
 			ctx:                nil,
 			expectedErr:        true,
 			expectedErrMessage: "Context is undefined",
+		},
+		{
+			name: "Cleartext connection",
+			host: func() string {
+				testURL, _ := url.Parse(tsNonSsl.URL)
+				return testURL.Host
+			},
+			tlsConfig: func(host string) *tls.Config {
+				return nil
+			},
+			guid:        "cleartext-guid",
+			ctx:         context.Background(),
+			expectedErr: false,
 		},
 	}
 	for _, tt := range tests {
@@ -71,16 +95,16 @@ func TestConnection_Connect(t *testing.T) {
 
 			reconciler := NewMockChecksReconciler(ctrl)
 
-			conn := poller.NewConnection(tt.url(), tt.guid, reconciler)
+			conn := poller.NewConnection(tt.host(), tt.guid, reconciler)
 			if tt.expectedErr {
 				err := conn.Connect(tt.ctx, config.NewConfig("1-2-3", false, nil), nil)
 				assert.Error(t, err)
 			} else {
-				assert.NoError(t, conn.Connect(tt.ctx, config.NewConfig("1-2-3", false, nil), &tls.Config{
-					InsecureSkipVerify: true,
-					ServerName:         tt.url(),
-					RootCAs:            nil,
-				}), "Simple connect should not throw an error")
+				assert.NoError(t,
+					conn.Connect(tt.ctx,
+						config.NewConfig("1-2-3", false, nil),
+						tt.tlsConfig(tt.host())),
+					"Simple connect should not throw an error")
 			}
 		})
 	}

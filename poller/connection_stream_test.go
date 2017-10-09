@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"time"
+	"os"
 )
 
 func TestConnectionStream_Connect(t *testing.T) {
@@ -70,7 +71,7 @@ func TestConnectionStream_Connect(t *testing.T) {
 			done := make(chan struct{}, 1)
 
 			conn := NewMockConnection(ctrl)
-			conn.EXPECT().Connect(gomock.Any(), gomock.Any(), gomock.Any())
+			conn.EXPECT().Connect(gomock.Any(), gomock.Any(), gomock.Not(nil))
 			conn.EXPECT().Done().AnyTimes().Return(done)
 			conn.EXPECT().GetLogPrefix().AnyTimes().Return("1234")
 			conn.EXPECT().Close().AnyTimes().Do(func() {
@@ -107,6 +108,47 @@ func TestConnectionStream_Connect(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestEleConnectionStream_Connect_ClearText(t *testing.T) {
+	os.Setenv(config.EnvCleartext, config.EnabledEnvOpt)
+	defer os.Unsetenv(config.EnvCleartext)
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	conn := NewMockConnection(ctrl)
+	// NOTE: expecting the nil tlsConfig is the primary expectation of this case
+	conn.EXPECT().Connect(gomock.Any(), gomock.Any(), gomock.Nil())
+	conn.EXPECT().GetLogPrefix().AnyTimes().Return("1234")
+
+	preAuthedChannel := make(chan struct{}, 1)
+	close(preAuthedChannel)
+	conn.EXPECT().Authenticated().AnyTimes().Return(preAuthedChannel)
+
+	done := make(chan struct{}, 1)
+	conn.EXPECT().Done().AnyTimes().Return(done)
+	conn.EXPECT().Close().AnyTimes().Do(func() {
+		t.Log("Mock conn is closing")
+		close(done)
+	})
+
+	connFactory := func(address string, guid string, stream poller.ChecksReconciler) poller.Connection {
+		return conn
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cs := poller.NewCustomConnectionStream(ctx, &config.Config{
+		UseSrv:    false,
+		Addresses: []string{"localhost"},
+	}, nil, connFactory)
+
+	consumer := newPhasingEventConsumer()
+	cs.RegisterEventConsumer(consumer)
+
+	cs.Connect()
+	consumer.waitFor(t, 10*time.Millisecond, poller.EventTypeRegister, gomock.Eq(conn))
+	cancel()
 }
 
 func TestConnectionsByHost_ChooseBest(t *testing.T) {
@@ -463,8 +505,8 @@ func (f *mockConnFactory) add(conn *MockConnection) *MockConnection {
 	auth := make(chan struct{}, 1)
 	conn.EXPECT().Connect(gomock.Any(), gomock.Any(), gomock.Any()).
 		Do(func(ctx context.Context, config *config.Config, tlsConfig *tls.Config) {
-			f.connected <- struct{}{}
-		})
+		f.connected <- struct{}{}
+	})
 	conn.EXPECT().Authenticated().AnyTimes().Return(auth)
 	conn.EXPECT().SetAuthenticated().Do(func() {
 		close(auth)

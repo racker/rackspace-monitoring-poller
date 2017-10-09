@@ -338,3 +338,7 @@ func (cfg *Config) ComputeWriteDeadline(offset time.Duration) time.Time {
 func IsUsingStaging() bool {
 	return os.Getenv(EnvStaging) == EnabledEnvOpt
 }
+
+func IsUsingCleartext() bool {
+	return os.Getenv(EnvCleartext) == EnabledEnvOpt
+}

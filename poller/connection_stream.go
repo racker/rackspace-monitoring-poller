@@ -393,12 +393,17 @@ reconnect:
 
 func (cs *EleConnectionStream) buildTLSConfig(addr string) *tls.Config {
 	host, _, _ := net.SplitHostPort(addr)
-	conf := &tls.Config{
-		InsecureSkipVerify: cs.rootCAs == nil,
-		ServerName:         host,
-		RootCAs:            cs.rootCAs,
+
+	if !config.IsUsingCleartext() {
+		conf := &tls.Config{
+			InsecureSkipVerify: cs.rootCAs == nil,
+			ServerName:         host,
+			RootCAs:            cs.rootCAs,
+		}
+		return conf
+	} else {
+		return nil
 	}
-	return conf
 }
 
 // ChooseBest selects the best of its connections for posting metrics, etc.
