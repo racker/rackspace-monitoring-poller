@@ -503,10 +503,10 @@ func TestEleConnectionStream_UseStatsdDistributor(t *testing.T) {
 				buf := make([]byte, 500)
 				_, _, err := udpConn.ReadFrom(buf)
 				if err != nil {
-					t.Fatal(err)
-					return
+					t.Log(err)
+				} else {
+					pktChan <- buf
 				}
-				pktChan <- buf
 			}
 		}
 	}()
