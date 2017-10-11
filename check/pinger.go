@@ -22,7 +22,7 @@ import (
 
 	"bytes"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/pkg/errors"
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"

@@ -18,7 +18,7 @@ package poller_test
 
 import (
 	"flag"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"os"
 	"testing"
 )

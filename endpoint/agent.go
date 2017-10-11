@@ -21,7 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	set "github.com/deckarep/golang-set"
 	"github.com/fsnotify/fsnotify"
 	"github.com/racker/rackspace-monitoring-poller/check"

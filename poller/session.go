@@ -25,7 +25,7 @@ import (
 	"time"
 
 	"fmt"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/hostinfo"

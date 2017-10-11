@@ -29,7 +29,7 @@ import (
 
 	"bytes"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"text/template"
 )
 
@@ -43,7 +43,7 @@ const (
 	DefaultTimeoutRead            = 10 * time.Second
 	DefaultTimeoutWrite           = 10 * time.Second
 	DefaultTimeoutPrepareEnd      = 60 * time.Second
-	DefaultTimeoutAuth            = 10 * time.Second
+	DefaultTimeoutAuth            = 30 * time.Second
 	DefaultAgentId                = "-poller-"
 	DefaultReconnectMinBackoff    = 25 * time.Second
 	DefaultReconnectMaxBackoff    = 180 * time.Second
@@ -95,6 +95,10 @@ type Config struct {
 	// a host:port address, typically for local/onsite usage. The given service name will be qualified by the
 	// service "_prometheus" and proto "_tcp".
 	PrometheusUri string
+
+	// If configured, all check's metrics will be distributed to the configured statsd endpoint.
+	// The address is formatted as host:port.
+	StatsdEndpoint string
 }
 
 type configEntry struct {
@@ -236,6 +240,10 @@ func (cfg *Config) DefineConfigEntries() []configEntry {
 		{
 			Name:     "prometheus_uri",
 			ValuePtr: &cfg.PrometheusUri,
+		},
+		{
+			Name:     "statsd_endpoint",
+			ValuePtr: &cfg.StatsdEndpoint,
 		},
 	}
 }

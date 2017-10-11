@@ -1,6 +1,6 @@
 package: github.com/racker/rackspace-monitoring-poller
 import:
-- package: github.com/Sirupsen/logrus
+- package: github.com/sirupsen/logrus
   version: v0.11.4
 - package: github.com/shirou/gopsutil
   version: ~v2.17.02
@@ -31,3 +31,7 @@ import:
   version: ^0.8.0
 - package: github.com/x-cray/logrus-prefixed-formatter
   version: ^0.4.0
+- package: github.com/DataDog/datadog-go
+  version: ^1.1.0
+  subpackages:
+  - statsd

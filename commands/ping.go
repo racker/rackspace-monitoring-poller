@@ -2,7 +2,7 @@ package commands
 
 import (
 	"fmt"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/check"
 	protocheck "github.com/racker/rackspace-monitoring-poller/protocol/check"
 	"github.com/spf13/cobra"

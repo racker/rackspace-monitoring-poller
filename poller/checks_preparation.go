@@ -21,7 +21,7 @@ import (
 	"errors"
 	"fmt"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/racker/rackspace-monitoring-poller/protocol"
 	"github.com/racker/rackspace-monitoring-poller/protocol/check"

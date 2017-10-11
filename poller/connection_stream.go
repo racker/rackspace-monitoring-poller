@@ -27,7 +27,7 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/jpillora/backoff"
 
 	"github.com/racker/rackspace-monitoring-poller/check"
@@ -69,6 +69,8 @@ type EleConnectionStream struct {
 
 	// map is the private zone ID as a string
 	schedulers map[string]Scheduler
+
+	metricsDistributor *MetricsDistributor
 }
 
 type connectionRegistration struct {
@@ -89,12 +91,13 @@ func NewCustomConnectionStream(ctx context.Context, config *config.Config, rootC
 		connectionFactory = NewConnection
 	}
 	stream := &EleConnectionStream{
-		config:            config,
-		rootCAs:           rootCAs,
-		schedulers:        make(map[string]Scheduler),
-		connectionFactory: connectionFactory,
-		metricsToSend:     make(chan *check.ResultSet, metricsChannelSize),
-		registrations:     make(chan *connectionRegistration, registrationsChannelSize),
+		config:             config,
+		rootCAs:            rootCAs,
+		schedulers:         make(map[string]Scheduler),
+		connectionFactory:  connectionFactory,
+		metricsToSend:      make(chan *check.ResultSet, metricsChannelSize),
+		registrations:      make(chan *connectionRegistration, registrationsChannelSize),
+		metricsDistributor: NewMetricsDistributor(ctx, config),
 	}
 	stream.ctx, stream.cancel = context.WithCancel(ctx)
 	stream.conns = make(ConnectionsByHost)
@@ -216,6 +219,8 @@ func (cs *EleConnectionStream) ValidateChecks(cp ChecksPreparing) error {
 // retrieve in the connection list
 func (cs *EleConnectionStream) SendMetrics(crs *check.ResultSet) {
 	cs.metricsToSend <- crs
+
+	cs.metricsDistributor.Distribute(crs)
 }
 
 func (cs *EleConnectionStream) sendMetrics(crs *check.ResultSet) {
@@ -256,6 +261,8 @@ func (cs *EleConnectionStream) Connect() {
 			go cs.runHostConnection(addr)
 		}
 	}
+
+	cs.metricsDistributor.Start()
 }
 
 // Done provides a channel for waiting on connection closure

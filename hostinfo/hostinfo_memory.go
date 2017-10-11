@@ -17,7 +17,7 @@
 package hostinfo
 
 import (
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/protocol/hostinfo"
 	"github.com/racker/rackspace-monitoring-poller/utils"
 	"github.com/shirou/gopsutil/mem"

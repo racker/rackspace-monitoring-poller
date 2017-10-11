@@ -17,7 +17,7 @@
 package endpoint
 
 import (
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/protocol"
 
 	"context"
