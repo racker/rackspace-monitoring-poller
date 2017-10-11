@@ -43,7 +43,7 @@ const (
 	DefaultTimeoutRead            = 10 * time.Second
 	DefaultTimeoutWrite           = 10 * time.Second
 	DefaultTimeoutPrepareEnd      = 60 * time.Second
-	DefaultTimeoutAuth            = 10 * time.Second
+	DefaultTimeoutAuth            = 30 * time.Second
 	DefaultAgentId                = "-poller-"
 	DefaultReconnectMinBackoff    = 25 * time.Second
 	DefaultReconnectMaxBackoff    = 180 * time.Second

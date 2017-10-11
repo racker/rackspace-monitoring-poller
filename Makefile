@@ -21,10 +21,7 @@ BIN_URL := https://github.com/racker/rackspace-monitoring-poller/releases/downlo
 VENDOR := Rackspace US, Inc.
 LICENSE := Apache v2
 
-# Until CMC-1705 we'll treat the upstart flavor as the "official" package
-PKG_DEB_UPSTART := ${BUILD_DIR}/${APP_NAME}_${GIT_TAG}-${TAG_DISTANCE}_${ARCH}.deb
-# ...note this one has the "-systemd" qualifier on the version
-PKG_DEB_SYSTEMD := ${BUILD_DIR}/${APP_NAME}_${GIT_TAG}-${TAG_DISTANCE}-systemd_${ARCH}.deb
+PKG_DEB := ${BUILD_DIR}/${APP_NAME}_${GIT_TAG}-${TAG_DISTANCE}_${ARCH}.deb
 
 # TODO: should poller get its own specific file?
 APP_CFG := ${PKGDIR_ETC}/rackspace-monitoring-poller.cfg
@@ -85,13 +82,13 @@ package-upload-deb:
 	rclone copy ${DEB_REPO_DIR}/ rackspace:${CLOUDFILES_REPO_NAME}/debian
 
 reprepro-deb:
-	${REPREPRO} -b ${DEB_REPO_DIR} includedeb cloudmonitoring ${PKG_DEB_UPSTART}
+	${REPREPRO} -b ${DEB_REPO_DIR} includedeb cloudmonitoring build/*.deb
 
-package-deb: ${PKG_DEB_UPSTART} ${PKG_DEB_SYSTEMD}
+package-deb: ${PKG_DEB}
 
 package-deb-local: stage-deb-exe-local package-deb
 
-${PKG_DEB_UPSTART} : ${DEB_BUILD_DIR}/${PKGDIR_BIN}/${EXE} $(addprefix ${DEB_BUILD_DIR}/,${DEB_ALL_FILES}) ${DEB_BUILD_DIR}
+${PKG_DEB} : ${DEB_BUILD_DIR}/${PKGDIR_BIN}/${EXE} $(addprefix ${DEB_BUILD_DIR}/,${DEB_ALL_FILES}) ${DEB_BUILD_DIR}
 	rm -f $@
 	${FPM} -p $@ -s dir -t deb \
 	  -n ${APP_NAME} --license "${LICENSE}" --vendor "${VENDOR}" \
@@ -100,16 +97,8 @@ ${PKG_DEB_UPSTART} : ${DEB_BUILD_DIR}/${PKGDIR_BIN}/${EXE} $(addprefix ${DEB_BUI
 	  $(foreach c,${DEB_CONFIG_FILES},--config-files ${c}) \
 	  --deb-default ${DEB_BUILD_DIR}/${UPSTART_DEFAULT} \
 	  --deb-upstart ${DEB_BUILD_DIR}/${UPSTART_CONF} \
-	  -C ${DEB_BUILD_DIR} ${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES}
-
-${PKG_DEB_SYSTEMD} : ${DEB_BUILD_DIR}/${PKGDIR_BIN}/${EXE} $(addprefix ${DEB_BUILD_DIR}/,${DEB_ALL_FILES}) ${DEB_BUILD_DIR}
-	rm -f $@
-	${FPM} -p $@ -s dir -t deb \
-	  -n ${APP_NAME} --license "${LICENSE}" --vendor "${VENDOR}" \
-	  -v ${GIT_TAG} --iteration ${TAG_DISTANCE} \
-	  $(foreach d,${OWNED_DIRS},--directories ${d}) \
-	  $(foreach c,${DEB_CONFIG_FILES},--config-files ${c}) \
 	  --deb-systemd ${DEB_BUILD_DIR}/${SYSTEMD_CONF} \
+	  --no-deb-systemd-restart-after-upgrade \
 	  -C ${DEB_BUILD_DIR} ${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES}
 
 clean:
