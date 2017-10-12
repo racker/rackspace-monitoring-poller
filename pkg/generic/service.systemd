@@ -3,7 +3,8 @@ After=network.target
 Wants=network-online.target
 
 [Service]
-ExecStart=/usr/bin/rackspace-monitoring-poller serve
+EnvironmentFile=/etc/default/rackspace-monitoring-poller
+ExecStart=/usr/bin/rackspace-monitoring-poller serve --config $CONFIG_FILE $POLLER_SERVE_OPTS
 Restart=always
 RestartSec=5
 LimitNOFILE=16384
