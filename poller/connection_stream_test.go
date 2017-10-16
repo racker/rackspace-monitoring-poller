@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"strconv"
 	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
-	"strings"
 )
 
 func TestConnectionStream_Connect(t *testing.T) {
@@ -490,7 +489,7 @@ func TestEleConnectionStream_UseStatsdDistributor(t *testing.T) {
 	require.NoError(t, err)
 	defer udpConn.Close()
 
-	pktChan := make(chan []byte, 100)
+	pktChan := make(chan string, 100)
 	done := make(chan struct{}, 1)
 	defer close(done)
 	go func() {
@@ -501,11 +500,11 @@ func TestEleConnectionStream_UseStatsdDistributor(t *testing.T) {
 
 			default:
 				buf := make([]byte, 500)
-				_, _, err := udpConn.ReadFrom(buf)
+				len, _, err := udpConn.ReadFrom(buf)
 				if err != nil {
 					t.Log(err)
 				} else {
-					pktChan <- buf
+					pktChan <- string(buf[:len])
 				}
 			}
 		}
@@ -544,6 +543,6 @@ func TestEleConnectionStream_UseStatsdDistributor(t *testing.T) {
 		t.Fail()
 
 	case pkt := <-pktChan:
-		assert.True(t, strings.Index(string(pkt), "rackspace.remote.ping.average:4.500000|g|#tenant:123456,entity:,check:chTEST") == 0)
+		assert.Equal(t, "rackspace.remote.ping.average:4.500000|g|#tenant:123456,entity:,check:chTEST,targetIP:", pkt)
 	}
 }
