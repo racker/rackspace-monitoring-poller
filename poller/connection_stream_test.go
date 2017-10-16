@@ -543,6 +543,6 @@ func TestEleConnectionStream_UseStatsdDistributor(t *testing.T) {
 		t.Fail()
 
 	case pkt := <-pktChan:
-		assert.Equal(t, "rackspace.remote.ping.average:4.500000|g|#tenant:123456,entity:,check:chTEST,targetIP:", pkt)
+		assert.Regexp(t, "rackspace.remote.ping.average:4.500000|g|#tenant:123456,entity:,check:chTEST,targetIP:,host:.+", pkt)
 	}
 }

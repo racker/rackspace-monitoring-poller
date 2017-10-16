@@ -24,6 +24,7 @@ import (
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"fmt"
 	"strings"
+	"os"
 )
 
 type MetricsDistributor struct {
@@ -138,6 +139,13 @@ func (d *statsdDistributor) sendToStatsd(crs *check.ResultSet) {
 
 	if targetIp, err := ch.GetTargetIP(); err != nil {
 		tags = append(tags, "targetIP:"+targetIp)
+	}
+
+	hostname, hostnameErr := os.Hostname()
+	if hostnameErr != nil {
+		log.WithError(hostnameErr).Warn("Unable to identify our own hostname")
+	} else {
+		tags = append(tags, "host:"+hostname)
 	}
 
 	for _, result := range crs.Metrics {
