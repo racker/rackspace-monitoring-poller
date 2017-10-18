@@ -18,7 +18,7 @@ package poller
 
 import (
 	"context"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/push"
 	"github.com/racker/rackspace-monitoring-poller/config"

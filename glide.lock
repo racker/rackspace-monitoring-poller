@@ -1,10 +1,14 @@
-hash: c85a88923357d85c7fc98370d3700d0a4d6d6e0826d849ebe4f471d361c69cb4
-updated: 2017-04-20T08:35:08.620676482-05:00
+hash: 40feb3ec39841b0cb6b38889f3e96b5f0e8b4ead44778e31371f33481215b096
+updated: 2017-10-10T13:25:25.049139962-05:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
   subpackages:
   - quantile
+- name: github.com/DataDog/datadog-go
+  version: 0ddda6bee21174ef6c4873647cb0d6ec9cba996f
+  subpackages:
+  - statsd
 - name: github.com/davecgh/go-spew
   version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
   subpackages:
@@ -14,26 +18,26 @@ imports:
 - name: github.com/fsnotify/fsnotify
   version: 629574ca2a5df945712d3079857300b5e4da0236
 - name: github.com/go-ole/go-ole
-  version: de8695c8edbf8236f30d6e1376e20b198a028d42
+  version: 2ca6d5950a178eae0d0b51e0993facc42f3cefe2
   subpackages:
   - oleutil
 - name: github.com/golang/mock
-  version: bd3c8e81be01eef76d4b503f5e687d2d1354d2d9
+  version: 6e20fef50e74e443696bc32b693cf286b612d45b
   subpackages:
   - gomock
   - mockgen
 - name: github.com/golang/protobuf
-  version: 2bba0603135d7d7f5cb73b2125beeda19c09f4ef
+  version: 130e6b02ab059e7b717a096f397c5b60111cae74
   subpackages:
   - proto
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
 - name: github.com/jpillora/backoff
-  version: 06c7a16c845dc8e0bf575fafeeca0f5462f5eb4d
+  version: 8eab2debe79d12b7bd3d10653910df25fa9552ba
 - name: github.com/mattn/go-colorable
-  version: acb9493f2794fd0f820de7a27a217dafbb1b65ea
+  version: ad5389df28cdac544c99bd7b9161a0b5b6ca9d1b
 - name: github.com/mattn/go-isatty
-  version: 57fdcb988a5c543893cc61bce354a6e24ab70022
+  version: a5cdd64afdee435007ee3e9f6ed4684af949d568
 - name: github.com/matttproud/golang_protobuf_extensions
   version: c12348ce28de40eed0136aa2b644d0ee0650e56c
   subpackages:
@@ -56,19 +60,19 @@ imports:
   subpackages:
   - go
 - name: github.com/prometheus/common
-  version: 9e0844febd9e2856f839c9cb974fbd676d1755a8
+  version: 1bab55dd05dbff384524a6a1c99006d9eb5f139b
   subpackages:
   - expfmt
   - internal/bitbucket.org/ww/goautoneg
   - model
 - name: github.com/prometheus/procfs
-  version: 1e2146578273cef808354faa16a1922e0b5d6b2f
+  version: e645f4e5aaa8506fc71d6edbc5c4ff02c04c46f2
   subpackages:
   - xfs
 - name: github.com/satori/go.uuid
   version: 879c5887cd475cd7864858769793b2ceb0d44feb
 - name: github.com/shirou/gopsutil
-  version: e49a95f3d5f824c3f9875ca49e54e4fef17f82cf
+  version: 6e221c482653ef05c9f6a7bf71ddceea0e40bac5
   subpackages:
   - cpu
   - disk
@@ -79,32 +83,37 @@ imports:
   - process
 - name: github.com/shirou/w32
   version: bb4de0191aa41b5507caa14b0650cdbddcd9280b
-- name: github.com/Sirupsen/logrus
+- name: github.com/sirupsen/logrus
   version: 0208149b40d863d2c1a2f8fe5753096a9cf2cc8b
 - name: github.com/spf13/cobra
-  version: fcd0c5a1df88f5d6784cb4feead962c3f3d0b66c
+  version: 4d6af280c76ff7d266434f2dba207c4b75dfc076
 - name: github.com/spf13/pflag
-  version: 9ff6c6923cfffbcd502984b8e0c80539a94968b7
+  version: a9789e855c7696159b7db0db7f440b449edf2b31
 - name: github.com/StackExchange/wmi
-  version: 9f32b5905fd6ce7384093f9d048437e79f7b4d85
+  version: ea383cf3ba6ec950874b8486cd72356d007c768f
 - name: github.com/stretchr/testify
   version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
   subpackages:
   - assert
   - require
 - name: github.com/x-cray/logrus-prefixed-formatter
-  version: 54b7cd10b359d569484cc6b6ffd21d4649dcd148
+  version: bb2702d423886830dee131692131d35648c382e2
+- name: golang.org/x/crypto
+  version: 9419663f5a44be8b34ca85f08abc5fe1be11f8a3
+  subpackages:
+  - ssh/terminal
 - name: golang.org/x/net
-  version: 906cda9512f77671ab44f8c8563b13a8e707b230
+  version: a04bdaca5b32abe1c069418fb7088ae607de5bd0
   subpackages:
   - bpf
   - icmp
   - internal/iana
-  - internal/netreflect
+  - internal/socket
   - ipv4
   - ipv6
 - name: golang.org/x/sys
-  version: 76cc09b634294339fa19ec41b5f2a0b3932cea8b
+  version: ebfc5b4631820b793c9010c87fd8fef0f39eb082
   subpackages:
   - unix
+  - windows
 testImports: []

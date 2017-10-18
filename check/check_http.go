@@ -30,7 +30,7 @@ import (
 	"strconv"
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	protocol "github.com/racker/rackspace-monitoring-poller/protocol/check"
 	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	"github.com/racker/rackspace-monitoring-poller/utils"

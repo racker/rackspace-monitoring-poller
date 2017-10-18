@@ -22,7 +22,7 @@ import (
 
 	"os"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 type EndpointConfig struct {

@@ -18,7 +18,7 @@ package poller
 
 import (
 	"context"
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/utils"
 	"github.com/satori/go.uuid"

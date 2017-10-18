@@ -20,6 +20,7 @@ package metric
 import (
 	"errors"
 	"fmt"
+	"strconv"
 )
 
 type Metric struct {
@@ -128,12 +129,27 @@ func (m *Metric) ToInt32() (int32, error) {
 }
 
 func (m *Metric) ToFloat64() (float64, error) {
-	if m.Type != MetricFloat {
-		return 0, errors.New("Invalid coercion to float64")
+	if m.Type == MetricString {
+		strVal, ok := m.Value.(string)
+		if !ok {
+			return 0, errors.New("Wrong type for string metric")
+		}
+		return strToFloat(strVal)
 	}
 	value, ok := m.Value.(float64)
 	if !ok {
-		return 0, errors.New("Invalid coercion to float64")
+		// Let's try harder...
+		asStr := fmt.Sprintf("%v", m.Value)
+		return strToFloat(asStr)
 	}
 	return value, nil
+}
+
+func strToFloat(strVal string) (float64, error) {
+	asFloat, err := strconv.ParseFloat(strVal, 32)
+	if err != nil {
+		return 0, errors.New("Invalid coercion to float64")
+	} else {
+		return asFloat, nil
+	}
 }

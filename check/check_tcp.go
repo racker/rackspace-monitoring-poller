@@ -27,7 +27,7 @@ import (
 	"strconv"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	protocheck "github.com/racker/rackspace-monitoring-poller/protocol/check"
 	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	"github.com/racker/rackspace-monitoring-poller/utils"

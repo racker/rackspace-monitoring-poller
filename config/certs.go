@@ -18,8 +18,8 @@ package config
 
 import (
 	"crypto/x509"
-	"github.com/Sirupsen/logrus"
-	log "github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"os"
 )

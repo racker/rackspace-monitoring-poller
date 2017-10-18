@@ -28,7 +28,7 @@ import (
 
 	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	protocol "github.com/racker/rackspace-monitoring-poller/protocol/check"
 )
 

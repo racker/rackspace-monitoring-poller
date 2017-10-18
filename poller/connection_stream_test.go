@@ -3,20 +3,18 @@ package poller_test
 import (
 	"testing"
 
-	"container/list"
 	"context"
-	"crypto/tls"
-	"fmt"
 	"github.com/golang/mock/gomock"
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/poller"
-	"github.com/racker/rackspace-monitoring-poller/protocol"
-	"github.com/racker/rackspace-monitoring-poller/utils"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"time"
 	"os"
+	"net"
+	"github.com/stretchr/testify/require"
+	"strconv"
+	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 )
 
 func TestConnectionStream_Connect(t *testing.T) {
@@ -484,126 +482,67 @@ func TestEleConnectionStream_SendMetrics_NoConnections(t *testing.T) {
 	consumer.waitFor(t, 5*time.Millisecond, poller.EventTypeDroppedMetric, gomock.Eq(crs))
 }
 
-type mockConnFactory struct {
-	conns     *list.List
-	connected chan struct{}
-	frames    chan protocol.Frame
-	guids     []string
-}
+func TestEleConnectionStream_UseStatsdDistributor(t *testing.T) {
+	factory := newMockConnFactory()
 
-func newMockConnFactory() *mockConnFactory {
-	return &mockConnFactory{
-		conns:     list.New(),
-		connected: make(chan struct{}, 10),
-		frames:    make(chan protocol.Frame, 10),
-		guids:     make([]string, 0),
-	}
-}
+	udpConn, err := net.ListenUDP("udp4", nil)
+	require.NoError(t, err)
+	defer udpConn.Close()
 
-func (f *mockConnFactory) add(conn *MockConnection) *MockConnection {
-	f.conns.PushBack(conn)
-	auth := make(chan struct{}, 1)
-	conn.EXPECT().Connect(gomock.Any(), gomock.Any(), gomock.Any()).
-		Do(func(ctx context.Context, config *config.Config, tlsConfig *tls.Config) {
-		f.connected <- struct{}{}
-	})
-	conn.EXPECT().Authenticated().AnyTimes().Return(auth)
-	conn.EXPECT().SetAuthenticated().Do(func() {
-		close(auth)
-	})
-	return conn
-}
-
-func (f *mockConnFactory) interceptSend(frame protocol.Frame) {
-	f.frames <- frame
-}
-
-func (f *mockConnFactory) waitForFrame(t *testing.T, timeout time.Duration) protocol.Frame {
-	select {
-	case <-time.After(timeout):
-		assert.Fail(t, "Did not see frame")
-		return nil
-	case f := <-f.frames:
-		return f
-	}
-}
-
-func (f *mockConnFactory) produce(address string, guid string, checksReconciler poller.ChecksReconciler) poller.Connection {
-	if f.conns.Len() > 0 {
-		connection := f.conns.Remove(f.conns.Front()).(poller.Connection)
-		f.guids = append(f.guids, guid)
-		return connection
-	} else {
-		return nil
-	}
-}
-
-func (f *mockConnFactory) waitForConnections(t *testing.T, expect int, timeout time.Duration) {
-	var seen int
-
-	limiter := time.After(timeout)
-
-	for {
-		select {
-		case <-limiter:
-			require.Fail(t, "Did not see enough connections")
-			return
-
-		case <-f.connected:
-			seen++
-			if seen >= expect {
+	pktChan := make(chan string, 100)
+	done := make(chan struct{}, 1)
+	defer close(done)
+	go func() {
+		for {
+			select {
+			case <-done:
 				return
+
+			default:
+				buf := make([]byte, 500)
+				len, _, err := udpConn.ReadFrom(buf)
+				if err != nil {
+					t.Log(err)
+				} else {
+					pktChan <- string(buf[:len])
+				}
 			}
 		}
+	}()
+
+	cfg := factory.renderConfig(1)
+	cfg.Token = "***.123456"
+	addr := udpConn.LocalAddr()
+	ourUdpAddr := addr.(*net.UDPAddr)
+	cfg.StatsdEndpoint = net.JoinHostPort("127.0.0.1", strconv.FormatInt(int64(ourUdpAddr.Port), 10))
+
+	consumer := newPhasingEventConsumer()
+
+	ctx, _ := context.WithCancel(context.Background())
+
+	cs := poller.NewCustomConnectionStream(ctx, cfg, nil, factory.produce)
+	cs.RegisterEventConsumer(consumer)
+	cs.Connect()
+
+	crs := check.ResultSet{
+		Check: &check.PingCheck{},
 	}
-}
+	crs.Check.SetCheckType("remote.ping")
+	crs.Check.SetID("chTEST")
 
-func (f *mockConnFactory) renderConfig(addresses int) *config.Config {
-	cfg := &config.Config{
-		UseSrv:    false,
-		Addresses: make([]string, addresses),
+	metrics := make(map[string]*metric.Metric)
+	metrics["average"] = metric.NewMetric("average", "", metric.MetricFloat, 4.5, "")
+	crs.Metrics = []*check.Result{
+		{Metrics: metrics},
 	}
 
-	for i := 0; i < addresses; i++ {
-		cfg.Addresses[i] = fmt.Sprintf("c%d", i+1)
-	}
+	cs.SendMetrics(&crs)
 
-	return cfg
-}
-
-type phasingEventConsumer struct {
-	events chan utils.Event
-}
-
-func newPhasingEventConsumer() *phasingEventConsumer {
-	return &phasingEventConsumer{
-		events: make(chan utils.Event, 10),
-	}
-}
-
-func (c *phasingEventConsumer) HandleEvent(evt utils.Event) error {
-	c.events <- evt
-	return nil
-}
-
-func (c *phasingEventConsumer) waitFor(t *testing.T, timeout time.Duration, eventType string, targetMatcher gomock.Matcher) {
 	select {
-	case evt := <-c.events:
-		assert.Equal(t, eventType, evt.Type(), "Wrong event type")
-		if !targetMatcher.Matches(evt.Target()) {
-			assert.Fail(t, targetMatcher.String())
-		}
-	case <-time.After(timeout):
+	case <-time.After(1 * time.Second):
 		t.Fail()
-		//assert.Fail(t, "Did not observe an event")
-	}
-}
 
-func (c *phasingEventConsumer) assertNoEvent(t *testing.T, timeout time.Duration) {
-	select {
-	case evt := <-c.events:
-		assert.Fail(t, fmt.Sprintf("Should not have seen an event, but got %v", evt.Type()))
-	case <-time.After(timeout):
-		break
+	case pkt := <-pktChan:
+		assert.Regexp(t, "rackspace.remote.ping.average:4.500000|g|#tenant:123456,entity:,check:chTEST,targetIP:,host:.+", pkt)
 	}
 }
