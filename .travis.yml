@@ -13,7 +13,7 @@ install:
 - gem install --no-ri --no-rdoc fpm
 script:
 - go test -short -v $(glide novendor)
-- CGO_ENABLED=0 gox -osarch "linux/386 linux/amd64 darwin/amd64" -output="build/{{.Dir}}_{{.OS}}_{{.Arch}}"
+- CGO_ENABLED=0 gox -osarch "linux/386 linux/amd64 darwin/amd64 windows/386 windows/amd64" -output="build/{{.Dir}}_{{.OS}}_{{.Arch}}"
   -ldflags="-X github.com/racker/rackspace-monitoring-poller/version.Version=$(git
   symbolic-ref -q --short HEAD || git describe --tags --exact-match)"
 - go test -v github.com/racker/rackspace-monitoring-poller/integrationcli
