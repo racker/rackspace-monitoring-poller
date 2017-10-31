@@ -35,3 +35,5 @@ import:
   version: ^1.1.0
   subpackages:
   - statsd
+- package: github.com/rackerlabs/go-connect-tunnel
+  version: ^1.0.0

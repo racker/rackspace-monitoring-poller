@@ -1,5 +1,5 @@
-hash: 40feb3ec39841b0cb6b38889f3e96b5f0e8b4ead44778e31371f33481215b096
-updated: 2017-10-26T16:57:22.604133-05:00
+hash: 4011f749e1f12caff9e9d72e959b4ef33fbdc1adaf20b973eb2cae948ffd9d65
+updated: 2017-10-31T12:20:25.883678-05:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -69,6 +69,8 @@ imports:
   version: a6e9df898b1336106c743392c48ee0b71f5c4efa
   subpackages:
   - xfs
+- name: github.com/rackerlabs/go-connect-tunnel
+  version: fbbb5e09a34b84a8527bb6a621892d3a26c1104e
 - name: github.com/satori/go.uuid
   version: 879c5887cd475cd7864858769793b2ceb0d44feb
 - name: github.com/shirou/gopsutil
@@ -99,11 +101,11 @@ imports:
 - name: github.com/x-cray/logrus-prefixed-formatter
   version: bb2702d423886830dee131692131d35648c382e2
 - name: golang.org/x/crypto
-  version: 2509b142fb2b797aa7587dad548f113b2c0f20ce
+  version: bd6f299fb381e4c3393d1c4b1f0b94f5e77650c8
   subpackages:
   - ssh/terminal
 - name: golang.org/x/net
-  version: 4b14673ba32bee7f5ac0f990a48f033919fd418b
+  version: c73622c77280266305273cb545f54516ced95b93
   subpackages:
   - bpf
   - context

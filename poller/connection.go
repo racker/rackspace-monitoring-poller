@@ -26,6 +26,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/racker/rackspace-monitoring-poller/config"
+	"github.com/rackerlabs/go-connect-tunnel"
 )
 
 var (
@@ -207,7 +208,7 @@ func (conn *EleConnection) dial(config *config.Config, tlsConfig *tls.Config) (e
 			"prefix": conn.GetLogPrefix(),
 			"proxy":  config.ProxyUrl,
 		}).Info("Connecting to agent/poller endpoint via proxy")
-		proxyConn, err = dialViaProxy(config.ProxyUrl, conn.address)
+		proxyConn, err = tunnel.DialViaProxy(config.ProxyUrl, conn.address)
 		if err != nil {
 			return err
 		}
