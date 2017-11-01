@@ -146,7 +146,7 @@ func (ch *TCPCheck) Run() (*ResultSet, error) {
 		"prefix":  ch.GetLogPrefix(),
 		"address": addr,
 		"ssl":     ch.Details.UseSSL,
-	}).Info("Running TCP Check")
+	}).Info("Running check")
 
 	ctx := context.Background()
 	timeout := ch.GetTimeoutDuration()

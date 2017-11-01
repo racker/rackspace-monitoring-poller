@@ -265,7 +265,7 @@ func (s *EleScheduler) reconcile(cp ChecksPrepared) {
 	}
 
 	for checkIdToRemove := range remainder.Iter() {
-		log.WithField("checkId", checkIdToRemove).Debug("Removing check implicitly due to absence in check preparation")
+		log.WithField("checkId", checkIdToRemove).Info("Removing check implicitly due to absence in check preparation")
 
 		checkIdToRemoveStr := checkIdToRemove.(string)
 		checkToRemove := s.checks[checkIdToRemoveStr]
@@ -316,10 +316,13 @@ func (s *EleScheduler) runCheckTimerLoop(ch check.Check) {
 	jitter := rand.Intn(CheckSpreadInMilliseconds) + 1
 
 	log.WithFields(log.Fields{
-		"checkId":    ch.GetID(),
+		"id":         ch.GetID(),
+		"type":       ch.GetCheckType(),
+		"entity":     ch.GetEntityID(),
+		"period":     ch.GetPeriod(),
 		"jitterMs":   jitter,
 		"waitPeriod": ch.GetWaitPeriod(),
-	}).Debug("Starting check")
+	}).Info("Starting check")
 
 	time.Sleep(time.Duration(jitter) * time.Millisecond)
 	for {
