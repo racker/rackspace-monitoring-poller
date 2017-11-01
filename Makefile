@@ -21,11 +21,11 @@ BIN_URL := https://github.com/racker/rackspace-monitoring-poller/releases/downlo
 VENDOR := Rackspace US, Inc.
 LICENSE := Apache v2
 
-PKG_DEB := ${BUILD_DIR}/${APP_NAME}_${GIT_TAG}-${TAG_DISTANCE}_${ARCH}.deb
+PKG_BASE := ${APP_NAME}_${GIT_TAG}-${TAG_DISTANCE}_${ARCH}
 
 # TODO: should poller get its own specific file?
 APP_CFG := ${PKGDIR_ETC}/rackspace-monitoring-poller.cfg
-SYSTEMD_CONF := ${PKGDIR_ETC}/init/${APP_NAME}
+SYSTEMD_CONF := lib/systemd/system/${APP_NAME}.service
 UPSTART_CONF := ${PKGDIR_ETC}/init/${APP_NAME}.conf
 UPSTART_DEFAULT := ${PKGDIR_ETC}/default/${APP_NAME}
 LOGROTATE_CFG := ${PKGDIR_ETC}/logrotate.d/${APP_NAME}
@@ -41,7 +41,7 @@ FPM := fpm
 REPREPRO := reprepro
 
 .PHONY: default repackage package package-deb package-repo-upload package-upload-deb package-deb-local \
-	clean generate-mocks stage-deb-exe-local prep \
+	clean generate-mocks stage-deb-exe-local build \
 	generate-callgraphs regenerate-callgraphs clean-callgraphs
 
 default: clean package
@@ -53,9 +53,19 @@ generate-mocks:
 	sed -i '' s,$(PROJECT_VENDOR)/,, check/pinger_mock_test.go
 	mockgen -destination mock_golang/mock_conn.go -package mock_golang net Conn
 
-prep:
-	curl https://glide.sh/get | sh
+vendor: ${GOPATH}/bin/glide glide.yaml glide.lock
 	${GOPATH}/bin/glide install
+
+build: ${GOPATH}/bin/gox vendor
+	CGO_ENABLED=0 ${GOPATH}/bin/gox \
+	  -osarch "linux/386 linux/amd64 darwin/amd64 windows/386 windows/amd64" \
+	  -output="build/{{.Dir}}_{{.OS}}_{{.Arch}}"
+
+${GOPATH}/bin/glide :
+	curl https://glide.sh/get | sh
+
+${GOPATH}/bin/gox :
+	go get -v github.com/mitchellh/gox
 
 regenerate-callgraphs : clean-callgraphs generate-callgraphs
 
@@ -84,11 +94,11 @@ package-upload-deb:
 reprepro-deb:
 	${REPREPRO} -b ${DEB_REPO_DIR} includedeb cloudmonitoring build/*.deb
 
-package-deb: ${PKG_DEB}
+package-deb: ${BUILD_DIR}/${PKG_BASE}.deb
 
 package-deb-local: stage-deb-exe-local package-deb
 
-${PKG_DEB} : ${DEB_BUILD_DIR}/${PKGDIR_BIN}/${EXE} $(addprefix ${DEB_BUILD_DIR}/,${DEB_ALL_FILES}) ${DEB_BUILD_DIR}
+${BUILD_DIR}/${PKG_BASE}.deb : ${DEB_BUILD_DIR}/${PKGDIR_BIN}/${EXE} $(addprefix ${DEB_BUILD_DIR}/,${DEB_ALL_FILES})
 	rm -f $@
 	${FPM} -p $@ -s dir -t deb \
 	  -n ${APP_NAME} --license "${LICENSE}" --vendor "${VENDOR}" \
@@ -104,29 +114,28 @@ ${PKG_DEB} : ${DEB_BUILD_DIR}/${PKGDIR_BIN}/${EXE} $(addprefix ${DEB_BUILD_DIR}/
 clean:
 	rm -rf $(BUILD_DIR)
 
-stage-deb-exe-local: | ${DEB_BUILD_DIR}/${PKGDIR_BIN}
+stage-deb-exe-local:
+	mkdir -p ${DEB_BUILD_DIR}/${PKGDIR_BIN}
 	cp -p ${BUILD_DIR}/${APP_NAME}_${OS}_${ARCH} ${DEB_BUILD_DIR}/${PKGDIR_BIN}/${EXE}
 
-${DEB_BUILD_DIR}/${PKGDIR_BIN}/${EXE} : | ${DEB_BUILD_DIR}/${PKGDIR_BIN}
+${DEB_BUILD_DIR}/${PKGDIR_BIN}/${EXE} :
+	mkdir -p ${DEB_BUILD_DIR}/${PKGDIR_BIN}
 	$(WGET) -q --no-use-server-timestamps -O $@ $(BIN_URL)
 	chmod +x $@
 
-${DEB_BUILD_DIR}/${APP_CFG} : ${SRC_DIR}/generic/sample.cfg ${DEB_BUILD_DIR}/${PKGDIR_ETC}
+${DEB_BUILD_DIR}/${UPSTART_CONF} : ${DEB_SRC_DIR}/service.upstart
+${DEB_BUILD_DIR}/${APP_CFG} : ${SRC_DIR}/generic/sample.cfg
+${DEB_BUILD_DIR}/${LOGROTATE_CFG} : ${SRC_DIR}/generic/logrotate.cfg
+${DEB_BUILD_DIR}/${SYSTEMD_CONF} : ${GENERIC_SRC_DIR}/service.systemd
+${DEB_BUILD_DIR}/${UPSTART_DEFAULT} : ${DEB_SRC_DIR}/upstart_default.cfg
+
+# Regular package files
+${DEB_BUILD_DIR}/${SYSTEMD_CONF} ${DEB_BUILD_DIR}/${UPSTART_DEFAULT} ${DEB_BUILD_DIR}/${LOGROTATE_CFG} ${DEB_BUILD_DIR}/${APP_CFG}  :
+	mkdir -p $(@D)
 	cp $< $@
 
-${DEB_BUILD_DIR}/${LOGROTATE_CFG} : ${SRC_DIR}/generic/logrotate.cfg ${DEB_BUILD_DIR}/${PKGDIR_ETC}/logrotate.d
-	cp $< $@
-
-${DEB_BUILD_DIR}/${UPSTART_CONF} : ${DEB_SRC_DIR}/service.upstart ${DEB_BUILD_DIR}/${PKGDIR_ETC}/init
+# Executable package files
+${DEB_BUILD_DIR}/${UPSTART_CONF} :
+	mkdir -p $(@D)
 	cp $< $@
 	chmod +x $@
-
-${DEB_BUILD_DIR}/${SYSTEMD_CONF} : ${GENERIC_SRC_DIR}/service.systemd ${DEB_BUILD_DIR}/${PKGDIR_ETC}/init
-	cp $< $@
-	chmod +x $@
-
-${DEB_BUILD_DIR}/${UPSTART_DEFAULT} : ${DEB_SRC_DIR}/upstart_default.cfg ${DEB_BUILD_DIR}/${PKGDIR_ETC}/default
-	cp $< $@
-
-${BUILD_DIR} $(addprefix ${DEB_BUILD_DIR}/,${PKGDIR_BIN} ${PKGDIR_ETC} ${PKGDIR_ETC}/logrotate.d ${PKGDIR_ETC}/init ${PKGDIR_ETC}/default) :
-	mkdir -p $@
