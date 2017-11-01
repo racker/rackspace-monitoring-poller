@@ -87,6 +87,14 @@ func (ch *PingCheck) Run() (*ResultSet, error) {
 	interPingDelay := utils.MinOfDurations(1*time.Second, timeoutDuration/time.Duration(count))
 	perPingDuration := time.Duration((ch.Timeout*1000)/uint64(count)) * time.Millisecond
 
+	log.WithFields(log.Fields{
+		"prefix":          ch.GetLogPrefix(),
+		"targetIP":        targetIP,
+		"ipVersion":       ipVersion,
+		"interPingDelay":  interPingDelay,
+		"perPingDuration": perPingDuration,
+	}).Info("Running check")
+
 	rtts := make([]time.Duration, 0)
 	var pingErr error
 

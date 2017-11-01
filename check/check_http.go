@@ -144,7 +144,7 @@ func (ch *HTTPCheck) Run() (*ResultSet, error) {
 		"prefix": ch.GetLogPrefix(),
 		"method": method,
 		"url":    url,
-	}).Debug("Debug Request")
+	}).Info("Running check")
 
 	// Setup Request
 	req, err := http.NewRequest(method, url, nil)
