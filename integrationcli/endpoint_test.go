@@ -54,7 +54,7 @@ func TestStartEndpoint(t *testing.T) {
 					Msg:   "Endpoint is accepting connections from pollers",
 					BoundAddr: &utils.BoundAddress{
 						IP:   "::",
-						Port: 55000,
+						Port: 55001,
 						Zone: "",
 					},
 				},
@@ -85,7 +85,7 @@ func TestStartEndpoint(t *testing.T) {
 					Msg:   "Endpoint is accepting connections from pollers",
 					BoundAddr: &utils.BoundAddress{
 						IP:   "::",
-						Port: 55000,
+						Port: 55002,
 						Zone: "",
 					},
 				},
