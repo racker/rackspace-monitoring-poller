@@ -6,6 +6,7 @@ import (
 
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/stretchr/testify/assert"
+	"net/url"
 )
 
 type configFields struct {
@@ -171,6 +172,11 @@ func expectedConfigWithSrvQueries(guid string, useStaging bool, snetRegion strin
 }
 
 func TestConfig_ParseFields(t *testing.T) {
+	localhost3128url, err := url.Parse("http://localhost:3128")
+	if err != nil {
+		t.Error(err)
+	}
+
 	tests := []struct {
 		name        string
 		fields      configFields
@@ -205,18 +211,6 @@ func TestConfig_ParseFields(t *testing.T) {
 			args: []string{
 				"monitoring_id",
 			},
-			expected: &config.Config{
-				UseSrv:         true,
-				AgentName:      "remote_poller",
-				AgentId:        "-poller-",
-				ProcessVersion: "dev",
-				BundleVersion:  "dev",
-				Guid:           "some-guid",
-				TimeoutRead:    time.Duration(10 * time.Second),
-				TimeoutWrite:   time.Duration(10 * time.Second),
-				Token:          "",
-				Features:       make([]config.Feature, 0),
-			},
 			expectedErr: true,
 		},
 		{
@@ -245,18 +239,6 @@ func TestConfig_ParseFields(t *testing.T) {
 			fields: getConfigFields(),
 			args: []string{
 				"monitoring_token",
-			},
-			expected: &config.Config{
-				UseSrv:         true,
-				AgentName:      "remote_poller",
-				AgentId:        "-poller-",
-				ProcessVersion: "dev",
-				BundleVersion:  "dev",
-				Guid:           "some-guid",
-				TimeoutRead:    time.Duration(10 * time.Second),
-				TimeoutWrite:   time.Duration(10 * time.Second),
-				Token:          "",
-				Features:       make([]config.Feature, 0),
 			},
 			expectedErr: true,
 		},
@@ -290,18 +272,6 @@ func TestConfig_ParseFields(t *testing.T) {
 			fields: getConfigFields(),
 			args: []string{
 				"monitoring_endpoints",
-			},
-			expected: &config.Config{
-				UseSrv:         true,
-				AgentName:      "remote_poller",
-				AgentId:        "-poller-",
-				ProcessVersion: "dev",
-				BundleVersion:  "dev",
-				Guid:           "some-guid",
-				TimeoutRead:    time.Duration(10 * time.Second),
-				TimeoutWrite:   time.Duration(10 * time.Second),
-				Token:          "",
-				Features:       make([]config.Feature, 0),
 			},
 			expectedErr: true,
 		},
@@ -353,6 +323,14 @@ func TestConfig_ParseFields(t *testing.T) {
 			args: []string{
 				"monitoring_snet_region", "neverneverland",
 			},
+			expectedErr: true,
+		},
+		{
+			name:   "ValidProxyURL",
+			fields: getConfigFields(),
+			args: []string{
+				"monitoring_proxy_url", "http://localhost:3128",
+			},
 			expected: &config.Config{
 				UseSrv:         true,
 				AgentName:      "remote_poller",
@@ -364,7 +342,15 @@ func TestConfig_ParseFields(t *testing.T) {
 				TimeoutWrite:   time.Duration(10 * time.Second),
 				Token:          "",
 				Features:       make([]config.Feature, 0),
-				SnetRegion:     "",
+				ProxyUrl:       localhost3128url,
+			},
+			expectedErr: false,
+		},
+		{
+			name:   "InvalidProxyURL",
+			fields: getConfigFields(),
+			args: []string{
+				"monitoring_proxy_url", "not a URL",
 			},
 			expectedErr: true,
 		},
@@ -387,11 +373,11 @@ func TestConfig_ParseFields(t *testing.T) {
 				TimeoutWrite:   tt.fields.TimeoutWrite,
 			}
 			err := cfg.ParseFields(cfg.DefineConfigEntries(), tt.args)
-			assert.Equal(t, tt.expected, cfg)
 			if tt.expectedErr {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
+				assert.Equal(t, tt.expected, cfg)
 			}
 		})
 	}

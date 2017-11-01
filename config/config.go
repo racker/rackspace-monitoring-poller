@@ -31,6 +31,8 @@ import (
 	"fmt"
 	log "github.com/sirupsen/logrus"
 	"text/template"
+	"net/url"
+	errors2 "github.com/pkg/errors"
 )
 
 var (
@@ -61,6 +63,7 @@ type Config struct {
 	UseStaging bool
 	SrvQueries []string
 	Addresses  []string
+	ProxyUrl   *url.URL
 
 	// Agent Info
 	AgentId        string
@@ -238,6 +241,10 @@ func (cfg *Config) DefineConfigEntries() []configEntry {
 			Allowed:  ValidSnetRegions,
 		},
 		{
+			Name:     "monitoring_proxy_url",
+			ValuePtr: &cfg.ProxyUrl,
+		},
+		{
 			Name:     "prometheus_uri",
 			ValuePtr: &cfg.PrometheusUri,
 		},
@@ -278,6 +285,7 @@ func (cfg *Config) ParseFields(configEntries []configEntry, fields []string) err
 					"name":   entry.Name,
 					"value":  ApplyMask(&entry, *valuePtr),
 				}).Debug("Setting configuration field")
+
 			case *[]string:
 				rawParts := strings.Split(fields[1], ",")
 				parts := make([]string, len(rawParts))
@@ -294,6 +302,15 @@ func (cfg *Config) ParseFields(configEntries []configEntry, fields []string) err
 					"name":   entry.Name,
 					"value":  ApplyMask(&entry, *valuePtr),
 				}).Debug("Setting configuration field")
+
+			case **url.URL:
+				// using ParseRequestURI rather than Parse since it is stricter about absolute URI or paths
+				parsed, err := url.ParseRequestURI(fields[1])
+				if err != nil {
+					return errors2.WithMessage(err, fmt.Sprintf("%s is not a valid URL", entry.Name))
+				}
+				*valuePtr = parsed
+
 			default:
 				return fmt.Errorf("Unsupported config entry type for %s", entry.Name)
 			}

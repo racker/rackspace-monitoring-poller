@@ -96,6 +96,19 @@ or specify a custom confiuration file location:
 ./rackspace-monitoring-poller serve --config custom.cfg
 ```
 
+# Configuration options
+
+Parameter | Type | Description
+----------|------|------------
+monitoring_id | string | Optional. Specifies a user-provided id string that identifies this agent to the monitoring services.
+monitoring_token | string | Required. This token gives the poller access to the monitoring services for an account. See [the section below](#locate-or-create-a-monitoring-token).
+monitoring_private_zones | string | Required. A private monitoring zone that this poller supports. More than one poller can and should support a given monitoring zone. See [the section below](#allocate-a-private-zone).
+monitoring_endpoints | comma-delimited sets of ip:port values | Optional. Provides a series of endpoint IP addresses for the agent to connect to instead of the default endpoint addresses.
+monitoring_snet_region | string | Optional. This option tells the poller to connect to the agent endpoints over the Rackspace ServiceNet (instead of over the public Internet)
+monitoring_proxy_url | url | Optional. Provides a URL string to a HTTP Proxy service that supports the CONNECT command.
+prometheus_uri | url | Optional. A Prometheus gateway where internal poller operation metrics can be sent.
+statsd_endpoint | host:port | Optional. The address of a UDP statsd receiver that will receive all of the same metrics sent into the Rackspace agent endpoint.
+
 # Preparing your Rackspace Monitoring account
 
 The Rackspace Monitoring Poller is primarily intended to be used as part of 

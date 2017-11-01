@@ -131,3 +131,22 @@ from incomplete interface implementations.
 
 Please note that due to https://github.com/golang/mock/issues/30 you may need to manually scrub the imports of
 the generated file.
+
+## Publishing a pre-release
+
+A pre-release is actually mostly the same process for the git and Github portion. We just don't typically publish
+to the apt repository.
+
+1. [In Travis CI](https://travis-ci.org/racker/rackspace-monitoring-poller/builds) make sure that your local clone
+   is at the same commit that has successfully built.
+2. Locate [the most recent release](https://github.com/racker/rackspace-monitoring-poller/releases/latest)
+3. Determine the pre-release version by adding a 4th version slot to that latest release. 
+   For example, a pre-release of `0.2.32` would actually be `0.2.31.1` since `0.2.31` is the version actually published 
+   at that point. If more pre-releases are needed, just bump that 4th version slot.
+4. Execute a `git tag -s <VERSION> -m <MSG>` to create a signed+annotated tag
+5. Push that tag, such as `git push origin <VERSION>`
+6. Wait for [Travis CI to finish the tagged build](https://travis-ci.org/racker/rackspace-monitoring-poller)
+7. Assuming that succeeded, click 'Edit' on 
+   [the release it published](https://github.com/racker/rackspace-monitoring-poller/releases)
+   and enable the "This is a pre-release" option towards the bottom of the page.
+8. Click "Update release" and you have now published and designated a pre-release of the poller

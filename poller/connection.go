@@ -26,6 +26,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/racker/rackspace-monitoring-poller/config"
+	"github.com/rackerlabs/go-connect-tunnel"
 )
 
 var (
@@ -170,7 +171,6 @@ func (conn *EleConnection) Connect(ctx context.Context, config *config.Config, t
 		"prefix":  conn.GetLogPrefix(),
 		"timeout": conn.connectionTimeout,
 	}).Info("Connecting to agent/poller endpoint")
-	nd := net.Dialer{Timeout: conn.connectionTimeout}
 
 	counter, err := metricsConnectionsAttempt.GetMetricWithLabelValues(conn.address)
 	if err == nil {
@@ -179,7 +179,7 @@ func (conn *EleConnection) Connect(ctx context.Context, config *config.Config, t
 		log.WithField("err", err).Debug("Failed to get metricsConnectionsAttempt counter")
 	}
 
-	if err = conn.dial(&nd, tlsConfig); err != nil {
+	if err = conn.dial(config, tlsConfig); err != nil {
 		return err
 	}
 
@@ -199,16 +199,38 @@ func (conn *EleConnection) Connect(ctx context.Context, config *config.Config, t
 	return nil
 }
 
-func (conn *EleConnection) dial(nd *net.Dialer, tlsConfig *tls.Config) (err error) {
-	if tlsConfig != nil {
-		conn.conn, err = tls.DialWithDialer(nd, "tcp", conn.address, tlsConfig)
+func (conn *EleConnection) dial(config *config.Config, tlsConfig *tls.Config) (err error) {
+	nd := net.Dialer{Timeout: conn.connectionTimeout}
+
+	var proxyConn net.Conn
+	if config.ProxyUrl != nil {
+		log.WithFields(log.Fields{
+			"prefix": conn.GetLogPrefix(),
+			"proxy":  config.ProxyUrl,
+		}).Info("Connecting to agent/poller endpoint via proxy")
+		proxyConn, err = tunnel.DialViaProxy(config.ProxyUrl, conn.address)
 		if err != nil {
-			return
+			return err
+		}
+	}
+
+	if tlsConfig != nil {
+		if proxyConn != nil {
+			conn.conn = tls.Client(proxyConn, tlsConfig)
+		} else {
+			conn.conn, err = tls.DialWithDialer(&nd, "tcp", conn.address, tlsConfig)
+			if err != nil {
+				return err
+			}
 		}
 	} else {
-		conn.conn, err = nd.Dial("tcp", conn.address)
-		if err != nil {
-			return
+		if proxyConn != nil {
+			conn.conn = proxyConn;
+		} else {
+			conn.conn, err = nd.Dial("tcp", conn.address)
+			if err != nil {
+				return err
+			}
 		}
 	}
 

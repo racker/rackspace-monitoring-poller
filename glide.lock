@@ -1,5 +1,5 @@
-hash: 40feb3ec39841b0cb6b38889f3e96b5f0e8b4ead44778e31371f33481215b096
-updated: 2017-10-10T13:25:25.049139962-05:00
+hash: 4011f749e1f12caff9e9d72e959b4ef33fbdc1adaf20b973eb2cae948ffd9d65
+updated: 2017-10-31T12:20:25.883678-05:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -18,11 +18,11 @@ imports:
 - name: github.com/fsnotify/fsnotify
   version: 629574ca2a5df945712d3079857300b5e4da0236
 - name: github.com/go-ole/go-ole
-  version: 2ca6d5950a178eae0d0b51e0993facc42f3cefe2
+  version: 2ecd927eaf828c4fc088fae349b28eed1480ff56
   subpackages:
   - oleutil
 - name: github.com/golang/mock
-  version: 6e20fef50e74e443696bc32b693cf286b612d45b
+  version: 61503c535dc549c7ffc1ff07902345658a0f20a2
   subpackages:
   - gomock
   - mockgen
@@ -66,9 +66,11 @@ imports:
   - internal/bitbucket.org/ww/goautoneg
   - model
 - name: github.com/prometheus/procfs
-  version: e645f4e5aaa8506fc71d6edbc5c4ff02c04c46f2
+  version: a6e9df898b1336106c743392c48ee0b71f5c4efa
   subpackages:
   - xfs
+- name: github.com/rackerlabs/go-connect-tunnel
+  version: fbbb5e09a34b84a8527bb6a621892d3a26c1104e
 - name: github.com/satori/go.uuid
   version: 879c5887cd475cd7864858769793b2ceb0d44feb
 - name: github.com/shirou/gopsutil
@@ -86,9 +88,9 @@ imports:
 - name: github.com/sirupsen/logrus
   version: 0208149b40d863d2c1a2f8fe5753096a9cf2cc8b
 - name: github.com/spf13/cobra
-  version: 4d6af280c76ff7d266434f2dba207c4b75dfc076
+  version: 7b2c5ac9fc04fc5efafb60700713d4fa609b777b
 - name: github.com/spf13/pflag
-  version: a9789e855c7696159b7db0db7f440b449edf2b31
+  version: e57e3eeb33f795204c1ca35f56c44f83227c6e66
 - name: github.com/StackExchange/wmi
   version: ea383cf3ba6ec950874b8486cd72356d007c768f
 - name: github.com/stretchr/testify
@@ -99,20 +101,21 @@ imports:
 - name: github.com/x-cray/logrus-prefixed-formatter
   version: bb2702d423886830dee131692131d35648c382e2
 - name: golang.org/x/crypto
-  version: 9419663f5a44be8b34ca85f08abc5fe1be11f8a3
+  version: bd6f299fb381e4c3393d1c4b1f0b94f5e77650c8
   subpackages:
   - ssh/terminal
 - name: golang.org/x/net
-  version: a04bdaca5b32abe1c069418fb7088ae607de5bd0
+  version: c73622c77280266305273cb545f54516ced95b93
   subpackages:
   - bpf
+  - context
   - icmp
   - internal/iana
   - internal/socket
   - ipv4
   - ipv6
 - name: golang.org/x/sys
-  version: ebfc5b4631820b793c9010c87fd8fef0f39eb082
+  version: 8dbc5d05d6edcc104950cc299a1ce6641235bc86
   subpackages:
   - unix
   - windows
