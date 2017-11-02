@@ -101,7 +101,7 @@ package-deb: ${BUILD_DIR}/${PKG_BASE}.deb \
 
 package-deb-local: stage-deb-exe-local package-deb
 
-${BUILD_DIR}/${PKG_BASE}.deb : $(addprefix ${DEB_BUILD_DIR}/,${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES} ${UPSTART_CONF} ${SYSTEMD_CONF})
+${BUILD_DIR}/${PKG_BASE}.deb : $(addprefix ${DEB_BUILD_DIR}/,${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES} ${UPSTART_DEFAULT} ${UPSTART_CONF} ${SYSTEMD_CONF})
 	rm -f $@
 	${FPM} -p $@ -s dir -t deb \
 	  ${FPM_IDENTIFIERS} \
@@ -120,7 +120,7 @@ ${BUILD_DIR}/${PKG_BASE}_systemd.deb : $(addprefix ${DEB_BUILD_DIR}/,${PKGDIR_BI
 	  --no-deb-systemd-restart-after-upgrade \
 	  -C ${DEB_BUILD_DIR} ${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES}
 
-${BUILD_DIR}/${PKG_BASE}_upstart.deb : $(addprefix ${DEB_BUILD_DIR}/,${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES} ${UPSTART_CONF})
+${BUILD_DIR}/${PKG_BASE}_upstart.deb : $(addprefix ${DEB_BUILD_DIR}/,${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES} ${UPSTART_DEFAULT} ${UPSTART_CONF})
 	rm -f $@
 	${FPM} -p $@ -s dir -t deb \
 	  ${FPM_IDENTIFIERS} \
