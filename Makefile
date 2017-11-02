@@ -21,8 +21,6 @@ BIN_URL := https://github.com/racker/rackspace-monitoring-poller/releases/downlo
 VENDOR := Rackspace US, Inc.
 LICENSE := Apache v2
 
-PKG_BASE := ${APP_NAME}_${GIT_TAG}-${TAG_DISTANCE}_${ARCH}
-
 # TODO: should poller get its own specific file?
 APP_CFG := ${PKGDIR_ETC}/rackspace-monitoring-poller.cfg
 SYSTEMD_CONF := lib/systemd/system/${APP_NAME}.service
@@ -33,6 +31,12 @@ LOGROTATE_CFG := ${PKGDIR_ETC}/logrotate.d/${APP_NAME}
 OWNED_DIRS :=
 DEB_CONFIG_FILES := ${APP_CFG} ${LOGROTATE_CFG}
 DEB_ALL_FILES := ${DEB_CONFIG_FILES} ${UPSTART_CONF} ${UPSTART_DEFAULT} ${SYSTEMD_CONF}
+
+PKG_BASE := ${APP_NAME}_${GIT_TAG}-${TAG_DISTANCE}_${ARCH}
+FPM_IDENTIFIERS := -n ${APP_NAME} --license "${LICENSE}" --vendor "${VENDOR}" \
+                   	  -v ${GIT_TAG} --iteration ${TAG_DISTANCE}
+FPM_MANAGED_CONTENT := $(foreach d,${OWNED_DIRS},--directories ${d}) \
+                       	  $(foreach c,${DEB_CONFIG_FILES},--config-files ${c})
 
 MOCK_POLLER := LogPrefixGetter,ConnectionStream,Connection,Session,CheckScheduler,CheckExecutor,Scheduler,ChecksReconciler
 
@@ -94,21 +98,40 @@ package-upload-deb:
 reprepro-deb:
 	${REPREPRO} -b ${DEB_REPO_DIR} includedeb cloudmonitoring build/*.deb
 
-package-deb: ${BUILD_DIR}/${PKG_BASE}.deb
+package-deb: ${BUILD_DIR}/${PKG_BASE}.deb \
+	${BUILD_DIR}/${PKG_BASE}_systemd.deb \
+	${BUILD_DIR}/${PKG_BASE}_upstart.deb
 
 package-deb-local: stage-deb-exe-local package-deb
 
-${BUILD_DIR}/${PKG_BASE}.deb : ${DEB_BUILD_DIR}/${PKGDIR_BIN}/${EXE} $(addprefix ${DEB_BUILD_DIR}/,${DEB_ALL_FILES})
+${BUILD_DIR}/${PKG_BASE}.deb : $(addprefix ${DEB_BUILD_DIR}/,${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES})
 	rm -f $@
 	${FPM} -p $@ -s dir -t deb \
-	  -n ${APP_NAME} --license "${LICENSE}" --vendor "${VENDOR}" \
-	  -v ${GIT_TAG} --iteration ${TAG_DISTANCE} \
-	  $(foreach d,${OWNED_DIRS},--directories ${d}) \
-	  $(foreach c,${DEB_CONFIG_FILES},--config-files ${c}) \
+	  ${FPM_IDENTIFIERS} \
+	  ${FPM_MANAGED_CONTENT} \
 	  --deb-default ${DEB_BUILD_DIR}/${UPSTART_DEFAULT} \
 	  --deb-upstart ${DEB_BUILD_DIR}/${UPSTART_CONF} \
 	  --deb-systemd ${DEB_BUILD_DIR}/${SYSTEMD_CONF} \
 	  --no-deb-systemd-restart-after-upgrade \
+	  -C ${DEB_BUILD_DIR} ${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES}
+
+${BUILD_DIR}/${PKG_BASE}_systemd.deb : $(addprefix ${DEB_BUILD_DIR}/,${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES})
+	rm -f $@
+	${FPM} -p $@ -s dir -t deb \
+	  ${FPM_IDENTIFIERS} \
+	  ${FPM_MANAGED_CONTENT} \
+	  --deb-default ${DEB_BUILD_DIR}/${UPSTART_DEFAULT} \
+	  --deb-systemd ${DEB_BUILD_DIR}/${SYSTEMD_CONF} \
+	  --no-deb-systemd-restart-after-upgrade \
+	  -C ${DEB_BUILD_DIR} ${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES}
+
+${BUILD_DIR}/${PKG_BASE}_upstart.deb : $(addprefix ${DEB_BUILD_DIR}/,${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES})
+	rm -f $@
+	${FPM} -p $@ -s dir -t deb \
+	  ${FPM_IDENTIFIERS} \
+	  ${FPM_MANAGED_CONTENT} \
+	  --deb-default ${DEB_BUILD_DIR}/${UPSTART_DEFAULT} \
+	  --deb-upstart ${DEB_BUILD_DIR}/${UPSTART_CONF} \
 	  -C ${DEB_BUILD_DIR} ${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES}
 
 clean:
