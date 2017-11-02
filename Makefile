@@ -24,19 +24,16 @@ LICENSE := Apache v2
 # TODO: should poller get its own specific file?
 APP_CFG := ${PKGDIR_ETC}/rackspace-monitoring-poller.cfg
 SYSTEMD_CONF := lib/systemd/system/${APP_NAME}.service
-UPSTART_CONF := ${PKGDIR_ETC}/init/${APP_NAME}.conf
+UPSTART_CONF := ${PKGDIR_ETC}/init/${APP_NAME}
 UPSTART_DEFAULT := ${PKGDIR_ETC}/default/${APP_NAME}
 LOGROTATE_CFG := ${PKGDIR_ETC}/logrotate.d/${APP_NAME}
 
 OWNED_DIRS :=
 DEB_CONFIG_FILES := ${APP_CFG} ${LOGROTATE_CFG}
-DEB_ALL_FILES := ${DEB_CONFIG_FILES} ${UPSTART_CONF} ${UPSTART_DEFAULT} ${SYSTEMD_CONF}
 
 PKG_BASE := ${APP_NAME}_${GIT_TAG}-${TAG_DISTANCE}_${ARCH}
 FPM_IDENTIFIERS := -n ${APP_NAME} --license "${LICENSE}" --vendor "${VENDOR}" \
                    	  -v ${GIT_TAG} --iteration ${TAG_DISTANCE}
-FPM_MANAGED_CONTENT := $(foreach d,${OWNED_DIRS},--directories ${d}) \
-                       	  $(foreach c,${DEB_CONFIG_FILES},--config-files ${c})
 
 MOCK_POLLER := LogPrefixGetter,ConnectionStream,Connection,Session,CheckScheduler,CheckExecutor,Scheduler,ChecksReconciler
 
@@ -104,32 +101,29 @@ package-deb: ${BUILD_DIR}/${PKG_BASE}.deb \
 
 package-deb-local: stage-deb-exe-local package-deb
 
-${BUILD_DIR}/${PKG_BASE}.deb : $(addprefix ${DEB_BUILD_DIR}/,${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES})
+${BUILD_DIR}/${PKG_BASE}.deb : $(addprefix ${DEB_BUILD_DIR}/,${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES} ${UPSTART_CONF} ${SYSTEMD_CONF})
 	rm -f $@
 	${FPM} -p $@ -s dir -t deb \
 	  ${FPM_IDENTIFIERS} \
-	  ${FPM_MANAGED_CONTENT} \
 	  --deb-default ${DEB_BUILD_DIR}/${UPSTART_DEFAULT} \
 	  --deb-upstart ${DEB_BUILD_DIR}/${UPSTART_CONF} \
 	  --deb-systemd ${DEB_BUILD_DIR}/${SYSTEMD_CONF} \
 	  --no-deb-systemd-restart-after-upgrade \
 	  -C ${DEB_BUILD_DIR} ${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES}
 
-${BUILD_DIR}/${PKG_BASE}_systemd.deb : $(addprefix ${DEB_BUILD_DIR}/,${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES})
+${BUILD_DIR}/${PKG_BASE}_systemd.deb : $(addprefix ${DEB_BUILD_DIR}/,${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES} ${SYSTEMD_CONF})
 	rm -f $@
 	${FPM} -p $@ -s dir -t deb \
 	  ${FPM_IDENTIFIERS} \
-	  ${FPM_MANAGED_CONTENT} \
 	  --deb-default ${DEB_BUILD_DIR}/${UPSTART_DEFAULT} \
 	  --deb-systemd ${DEB_BUILD_DIR}/${SYSTEMD_CONF} \
 	  --no-deb-systemd-restart-after-upgrade \
 	  -C ${DEB_BUILD_DIR} ${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES}
 
-${BUILD_DIR}/${PKG_BASE}_upstart.deb : $(addprefix ${DEB_BUILD_DIR}/,${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES})
+${BUILD_DIR}/${PKG_BASE}_upstart.deb : $(addprefix ${DEB_BUILD_DIR}/,${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES} ${UPSTART_CONF})
 	rm -f $@
 	${FPM} -p $@ -s dir -t deb \
 	  ${FPM_IDENTIFIERS} \
-	  ${FPM_MANAGED_CONTENT} \
 	  --deb-default ${DEB_BUILD_DIR}/${UPSTART_DEFAULT} \
 	  --deb-upstart ${DEB_BUILD_DIR}/${UPSTART_CONF} \
 	  -C ${DEB_BUILD_DIR} ${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES}
@@ -137,7 +131,7 @@ ${BUILD_DIR}/${PKG_BASE}_upstart.deb : $(addprefix ${DEB_BUILD_DIR}/,${PKGDIR_BI
 clean:
 	rm -rf $(BUILD_DIR)
 
-stage-deb-exe-local:
+stage-deb-exe-local: build
 	mkdir -p ${DEB_BUILD_DIR}/${PKGDIR_BIN}
 	cp -p ${BUILD_DIR}/${APP_NAME}_${OS}_${ARCH} ${DEB_BUILD_DIR}/${PKGDIR_BIN}/${EXE}
 
