@@ -3,21 +3,11 @@
 start on (local-filesystems and net-device-up IFACE!=lo)
 stop on runlevel [016]
 
-pre-start script
-    . /etc/default/rackspace-monitoring-poller
-
-    if [ x"$ENABLED" != xtrue ]; then
-      echo "Not enabled"
-      stop
-      exit 0
-    fi
-end script
-
 respawn
 
 script
     . /etc/default/rackspace-monitoring-poller
-    start-stop-daemon --make-pidfile --pidfile /var/run/rackspace-monitoring-poller.pid \
-      --exec /usr/bin/rackspace-monitoring-poller \
-      --start -- serve --config $CONFIG_FILE $POLLER_SERVE_OPTS
+    if [ "x$ENABLED" = xtrue ]; then
+        exec /usr/bin/rackspace-monitoring-poller serve --config $CONFIG_FILE $POLLER_SERVE_OPTS
+    fi
 end script
