@@ -42,7 +42,7 @@ FPM := fpm
 REPREPRO := reprepro
 
 .PHONY: default repackage package package-deb package-repo-upload package-upload-deb package-deb-local \
-	clean generate-mocks stage-deb-exe-local build \
+	clean generate-mocks stage-deb-exe-local build test test-integrationcli coverage install-fpm \
 	generate-callgraphs regenerate-callgraphs clean-callgraphs
 
 default: clean package
@@ -54,19 +54,34 @@ generate-mocks:
 	sed -i '' s,$(PROJECT_VENDOR)/,, check/pinger_mock_test.go
 	mockgen -destination mock_golang/mock_conn.go -package mock_golang net Conn
 
-vendor: ${GOPATH}/bin/glide glide.yaml glide.lock
-	${GOPATH}/bin/glide install
+test: vendor
+	go test -short -v $(glide novendor)
+
+test-integrationcli: build
+	go test -v github.com/racker/rackspace-monitoring-poller/integrationcli
 
 build: ${GOPATH}/bin/gox vendor
 	CGO_ENABLED=0 ${GOPATH}/bin/gox \
 	  -osarch "linux/386 linux/amd64 darwin/amd64 windows/386 windows/amd64" \
 	  -output="build/{{.Dir}}_{{.OS}}_{{.Arch}}"
 
+coverage: ${GOPATH}/bin/goveralls
+    contrib/combine-coverage.sh --coveralls
+
+vendor: ${GOPATH}/bin/glide glide.yaml glide.lock
+	${GOPATH}/bin/glide install
+
+install-fpm:
+	gem install --no-ri --no-rdoc fpm
+
 ${GOPATH}/bin/glide :
 	curl https://glide.sh/get | sh
 
 ${GOPATH}/bin/gox :
 	go get -v github.com/mitchellh/gox
+
+${GOPATH}/bin/goveralls :
+	go get -v github.com/mattn/goveralls
 
 regenerate-callgraphs : clean-callgraphs generate-callgraphs
 
