@@ -55,7 +55,7 @@ generate-mocks:
 	mockgen -destination mock_golang/mock_conn.go -package mock_golang net Conn
 
 test: vendor
-	go test -short -v $(glide novendor)
+	go test -short -v $(shell glide novendor)
 
 test-integrationcli: build
 	go test -v github.com/racker/rackspace-monitoring-poller/integrationcli
@@ -66,7 +66,7 @@ build: ${GOPATH}/bin/gox vendor
 	  -output="build/{{.Dir}}_{{.OS}}_{{.Arch}}"
 
 coverage: ${GOPATH}/bin/goveralls
-    contrib/combine-coverage.sh --coveralls
+	contrib/combine-coverage.sh --coveralls
 
 vendor: ${GOPATH}/bin/glide glide.yaml glide.lock
 	${GOPATH}/bin/glide install
