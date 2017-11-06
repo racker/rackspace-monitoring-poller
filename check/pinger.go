@@ -51,6 +51,10 @@ const (
 	pingLogPrefix = "pinger"
 
 	GooglePingLimit = 64
+
+	// Ping by default pads the ICMP payload out to 64 bytes, but need to subtract 8 bytes for the ICMP header.
+	// The "-s" option of ping in most man pages seems to unofficially document this.
+	PadUpTo = 64 - 8
 )
 
 // Pinger represents the facility to send out a single ping packet and provides the response via the returned channel.
@@ -264,7 +268,17 @@ recvLoop:
 			identifier = identifier[:len(identifier)-1]
 
 			var sent time.Time
-			err = sent.UnmarshalBinary(rbuf.Bytes())
+			timeLen, err := rbuf.ReadByte()
+			if err != nil {
+				log.WithFields(log.Fields{
+					"prefix": pingLogPrefix,
+					"id":     id,
+					"seq":    seq,
+					"data":   pkt.Data,
+				}).Debug("Failed to decode time length from echo reply payload")
+				continue recvLoop
+			}
+			err = sent.UnmarshalBinary(rbuf.Next(int(timeLen)))
 			if err != nil {
 				log.WithFields(log.Fields{
 					"prefix": pingLogPrefix,
@@ -450,7 +464,16 @@ func (p *pingerBase) ping(seq int, messageType icmp.Type) <-chan *PingResponse {
 	var buffer bytes.Buffer
 	buffer.WriteString(p.identifier)
 	buffer.WriteByte(0)
+
+	// time.Time marshaled preceded by the length of that
+	buffer.WriteByte(byte(len(nowBytes)))
 	buffer.Write(nowBytes)
+
+	var padByte byte = 1;
+	for buffer.Len() < PadUpTo {
+		buffer.WriteByte(padByte)
+		padByte++
+	}
 
 	wm := icmp.Message{
 		Type: messageType,
