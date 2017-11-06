@@ -52,6 +52,8 @@ const (
 
 	GooglePingLimit = 64
 
+	// Ping by default pads the ICMP payload out to 64 bytes, but need to subtract 8 bytes for the ICMP header.
+	// The "-s" option of ping in most man pages seems to unofficially document this.
 	PadUpTo = 64 - 8
 )
 
