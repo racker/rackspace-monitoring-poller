@@ -31,7 +31,8 @@ LOGROTATE_CFG := ${PKGDIR_ETC}/logrotate.d/${APP_NAME}
 OWNED_DIRS :=
 DEB_CONFIG_FILES := ${APP_CFG} ${LOGROTATE_CFG}
 
-PKG_BASE := ${APP_NAME}_${GIT_TAG}-${TAG_DISTANCE}_${ARCH}
+PKG_VERSION := ${GIT_TAG}-${TAG_DISTANCE}
+PKG_BASE := ${APP_NAME}_${PKG_VERSION}_${ARCH}
 FPM_IDENTIFIERS := -n ${APP_NAME} --license "${LICENSE}" --vendor "${VENDOR}" \
                    	  -v ${GIT_TAG} --iteration ${TAG_DISTANCE}
 
@@ -41,7 +42,7 @@ WGET := wget
 FPM := fpm
 REPREPRO := reprepro
 
-.PHONY: default repackage package package-deb package-repo-upload package-upload-deb package-deb-local \
+.PHONY: default repackage package package-debs package-repo-upload package-upload-deb package-debs-local reprepro-debs \
 	clean generate-mocks stage-deb-exe-local build test test-integrationcli coverage install-fpm \
 	generate-callgraphs regenerate-callgraphs clean-callgraphs
 
@@ -99,22 +100,35 @@ clean-callgraphs :
 ${GOPATH}/bin/go-callvis :
 	go get -u github.com/TrueFurby/go-callvis
 
-package: package-deb
+package: package-debs
 
-package-repo-upload: package-deb reprepro-deb package-upload-deb
+package-repo-upload: package-debs reprepro-debs package-upload-deb
 
 package-upload-deb:
-	rclone mkdir rackspace:${CLOUDFILES_REPO_NAME}/debian
-	rclone copy ${DEB_REPO_DIR}/ rackspace:${CLOUDFILES_REPO_NAME}/debian
+	rclone mkdir rackspace:${CLOUDFILES_REPO_NAME}/repos
+	rclone copy build/repos/ rackspace:${CLOUDFILES_REPO_NAME}/repos
 
-reprepro-deb:
-	${REPREPRO} -b ${DEB_REPO_DIR} includedeb cloudmonitoring build/*.deb
+reprepro-debs: \
+	build/repos/ubuntu-14.04-x86_64 \
+	build/repos/ubuntu-16.04-x86_64
 
-package-deb: ${BUILD_DIR}/${PKG_BASE}.deb \
+define buildReprepro =
+ 	mkdir -p $@/conf
+ 	cp pkg/debian/repo/conf/distributions $@/conf
+ 	${REPREPRO} -b $@ includedeb cloudmonitoring $<
+endef
+
+build/repos/ubuntu-14.04-x86_64 : build/rackspace-monitoring-poller_${PKG_VERSION}_${ARCH}_upstart.deb
+	$(buildReprepro)
+
+build/repos/ubuntu-16.04-x86_64 : build/rackspace-monitoring-poller_${PKG_VERSION}_${ARCH}_systemd.deb
+	$(buildReprepro)
+
+package-debs: ${BUILD_DIR}/${PKG_BASE}.deb \
 	${BUILD_DIR}/${PKG_BASE}_systemd.deb \
 	${BUILD_DIR}/${PKG_BASE}_upstart.deb
 
-package-deb-local: stage-deb-exe-local package-deb
+package-debs-local: stage-deb-exe-local package-debs
 
 ${BUILD_DIR}/${PKG_BASE}.deb : $(addprefix ${DEB_BUILD_DIR}/,${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES} ${UPSTART_DEFAULT} ${UPSTART_CONF} ${SYSTEMD_CONF})
 	rm -f $@
