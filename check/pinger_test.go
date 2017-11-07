@@ -77,16 +77,17 @@ func TestPinger_ValidLocalhostIPv6(t *testing.T) {
 }
 
 func TestPinger_Concurrent(t *testing.T) {
+	if os.Getenv("CI") == "true" {
+		// Sometimes was getting
+		// - Received unexpected error socket: permission denied
+		t.SkipNow()
+	}
+
 	if testing.Verbose() {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
 
-	var concurrency = 20
-	if os.Getenv("CI") == "true" {
-		// scale back concurrency for shared/CI environments
-		concurrency = 2
-	}
-
+	const concurrency = 20
 	const pings = 10
 	var wg sync.WaitGroup
 
