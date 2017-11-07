@@ -97,6 +97,8 @@ func (ch *PingCheck) Run() (*ResultSet, error) {
 
 	var pingErr error
 
+	// It's very unlikely, but ping responses could technically arrive out of order. This
+	// slice will be a place to capture the responses in whatever order we get them.
 	responses := make([]*PingResponse, count)
 
 packetLoop:
@@ -136,6 +138,8 @@ packetLoop:
 				continue packetLoop
 			}
 
+			// Check if the response slot already is occupied
+
 			if responses[resp.Seq-1] != nil {
 				log.WithFields(log.Fields{
 					"prefix":   ch.GetLogPrefix(),
@@ -144,6 +148,8 @@ packetLoop:
 				}).Warn("Duplicate response sequence")
 				continue packetLoop
 			}
+
+			// ...but if not, save it for post-processing outside the loop
 
 			responses[resp.Seq-1] = &resp;
 

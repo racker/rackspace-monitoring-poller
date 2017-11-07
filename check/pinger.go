@@ -64,6 +64,7 @@ var (
 		IcmpNetIP6:  ProtocolIPv6ICMP,
 	}
 
+	// this is set during unit testing to enable very verbose logging of ping packet processing
 	VerbosePinger = false
 )
 
@@ -83,6 +84,16 @@ type PingResponse struct {
 	Rtt     time.Duration
 	Timeout bool
 	Err     error
+}
+
+// pingerBase is the base implementation for both IPv4 and IPv6 flavors
+type pingerBase struct {
+	packetConn *icmp.PacketConn
+	id         int
+	identifier string
+	remoteAddr net.Addr
+	// proto is one of Protocol*Icmp from the icmp package
+	proto int
 }
 
 // PingerFactory creates and returns a new pinger that is initialized to a standard implementation, but can be
@@ -145,18 +156,77 @@ func createPacketConn(network string, bindAddr string) (*icmp.PacketConn, error)
 	return packetConn, nil
 }
 
-// receive runs in a go routine and processes responses from requests initiated in pingerBase.ping
+func (p *pingerBase) ping(seq int, messageType icmp.Type, perPingDuration time.Duration) PingResponse {
+	// google.com truncates any ping bodies greater than 64 bytes, so hand-encoding the timestamp
+	nowBytes, err := time.Now().MarshalBinary()
+	if err != nil {
+		return PingResponse{Err: err}
+	}
+	// ...and the identifier, which is typically the check's ID
+	var buffer bytes.Buffer
+	buffer.WriteString(p.identifier)
+	buffer.WriteByte(0)
+
+	// time.Time marshaled preceded by the length of that
+	buffer.WriteByte(byte(len(nowBytes)))
+	buffer.Write(nowBytes)
+
+	// a common convention seems to be padding out the ICMP packet with non-zero bytes
+	var padByte byte = 1;
+	for buffer.Len() < PadUpTo {
+		buffer.WriteByte(padByte)
+		padByte++
+	}
+
+	wm := icmp.Message{
+		Type: messageType,
+		Code: 0,
+		Body: &icmp.Echo{
+			// The ICMP ID allows for filtering/correlation of the response
+			ID: p.id,
+			// ...and the response will also include the sequence we set here
+			Seq:  seq,
+			Data: buffer.Bytes(),
+		},
+	}
+
+	wb, err := wm.Marshal(nil)
+	if err != nil {
+		return PingResponse{Err: err}
+	}
+
+	log.WithFields(log.Fields{
+		"prefix":     pingLogPrefix,
+		"identifier": p.identifier,
+		"id":         p.id,
+		"seq":        seq,
+		"remoteAddr": p.remoteAddr,
+	}).Debug("Sending ping packet")
+
+	p.packetConn.SetWriteDeadline(time.Now().Add(pingWriteDeadlineDuration))
+	if _, err = p.packetConn.WriteTo(wb, p.remoteAddr); err != nil {
+		return PingResponse{Err: err}
+	}
+
+	// now wait for the response packet matching our ID and remoteAddr
+	return p.receive(perPingDuration)
+}
+
+//noinspection GoBoolExpressions
 func (p *pingerBase) receive(perPingDuration time.Duration) PingResponse {
 
 	buffer := make([]byte, PingReceiveBufferSize)
 
-	// continuations at recvLoop are due to observing ICMP response packets that are not ours
+	// Use go's deadline concept to implement ping timeout handling. Since deadlines are an absolute time, we
+	// can set it here once even though several foreign packets could get read and discarded in the recvLoop, below.
+	err := p.packetConn.SetReadDeadline(time.Now().Add(perPingDuration))
+	if err != nil {
+		return PingResponse{Err: err}
+	}
+
+	// continuations here at recvLoop are due to observing ICMP response packets that are not ours
 recvLoop:
 	for {
-		err := p.packetConn.SetReadDeadline(time.Now().Add(perPingDuration))
-		if err != nil {
-			return PingResponse{Err: err}
-		}
 
 		if VerbosePinger {
 			log.WithFields(log.Fields{
@@ -164,6 +234,8 @@ recvLoop:
 				"identifier": p.identifier,
 			}).Debug("Waiting for ICMP response")
 		}
+
+		// read a raw ICMP, but since ICMP is a broadcast protocol we don't know if it is ours yet...
 		n, peerAddr, err := p.packetConn.ReadFrom(buffer)
 		if err != nil {
 			if netErr, ok := err.(net.Error); ok {
@@ -191,6 +263,8 @@ recvLoop:
 			}).Debug("Read packet")
 		}
 
+		// Is it even from the address we pinged? BTW net.Addr is an interface so we can do a plain old != on the
+		// two addrs. Comparing String() rendering is cheesy but works reliably.
 		if peerAddr.String() != p.remoteAddr.String() {
 			continue recvLoop
 		}
@@ -216,6 +290,7 @@ recvLoop:
 			}).Debug("Read ICMP message")
 		}
 
+		// Is the ICMP message type an expected reply type?
 		switch m.Type {
 		case ipv4.ICMPTypeEchoReply:
 		case ipv6.ICMPTypeEchoReply:
@@ -231,8 +306,11 @@ recvLoop:
 			continue recvLoop
 		}
 
+		// Cast and act upon the known/expected ICMP message body types
 		switch pkt := m.Body.(type) {
 		case *icmp.Echo:
+			// An echo reply...just what we wanted
+
 			log.WithFields(log.Fields{
 				"prefix":     pingLogPrefix,
 				"identifier": p.identifier,
@@ -243,6 +321,7 @@ recvLoop:
 				"rxSeq":      pkt.Seq,
 			}).Debug("Received echo reply")
 
+			// Is it our 16-bit random ID we included when sending out the packet
 			id := pkt.ID
 			if id != p.id {
 				continue recvLoop;
@@ -254,6 +333,7 @@ recvLoop:
 				rbuf.Truncate(GooglePingLimit)
 			}
 
+			// We stored off the check's id within the ping request, so we'll extract and check
 			identifier, err := rbuf.ReadString(0)
 			if err != nil {
 				log.WithFields(log.Fields{
@@ -268,6 +348,7 @@ recvLoop:
 			// trim off the delimiter
 			identifier = identifier[:len(identifier)-1]
 
+			// Next, we stored the timestamp in the ping request. Extract that and use it for round trip time (RTT) computation
 			var sent time.Time
 			timeLen, err := rbuf.ReadByte()
 			if err != nil {
@@ -292,7 +373,7 @@ recvLoop:
 				continue recvLoop
 			}
 
-			// FINALLY, the normal exit criteria
+			// FINALLY...its ours, has a valid identifier, timestamp, so return the results
 
 			pingResponse := PingResponse{
 				Seq: seq,
@@ -302,6 +383,7 @@ recvLoop:
 			return pingResponse
 
 		case *icmp.DstUnreach:
+			// Eventually we may need to further process these, but can be treated as a missed/timed out response
 			log.WithFields(log.Fields{
 				"prefix":     pingLogPrefix,
 				"identifier": p.identifier,
@@ -330,15 +412,6 @@ recvLoop:
 		}
 
 	}
-}
-
-type pingerBase struct {
-	packetConn *icmp.PacketConn
-	id         int
-	identifier string
-	remoteAddr net.Addr
-	// proto is one of Protocol*Icmp from the icmp package
-	proto int
 }
 
 func newPingerBase(identifier string, packetConn *icmp.PacketConn, remoteAddr net.Addr, network string) *pingerBase {
@@ -423,57 +496,6 @@ func resolvePingAddr(addrNetwork string, icmpNetwork string, remoteAddr string) 
 	}
 
 	return pingAddr, nil
-}
-
-func (p *pingerBase) ping(seq int, messageType icmp.Type, perPingDuration time.Duration) PingResponse {
-	// google.com truncates any ping bodies greater than 64 bytes, so hand-encoding our two fields
-	nowBytes, err := time.Now().MarshalBinary()
-	if err != nil {
-		return PingResponse{Err: err}
-	}
-	var buffer bytes.Buffer
-	buffer.WriteString(p.identifier)
-	buffer.WriteByte(0)
-
-	// time.Time marshaled preceded by the length of that
-	buffer.WriteByte(byte(len(nowBytes)))
-	buffer.Write(nowBytes)
-
-	var padByte byte = 1;
-	for buffer.Len() < PadUpTo {
-		buffer.WriteByte(padByte)
-		padByte++
-	}
-
-	wm := icmp.Message{
-		Type: messageType,
-		Code: 0,
-		Body: &icmp.Echo{
-			ID:   p.id,
-			Seq:  seq,
-			Data: buffer.Bytes(),
-		},
-	}
-
-	wb, err := wm.Marshal(nil)
-	if err != nil {
-		return PingResponse{Err: err}
-	}
-
-	log.WithFields(log.Fields{
-		"prefix":     pingLogPrefix,
-		"identifier": p.identifier,
-		"id":         p.id,
-		"seq":        seq,
-		"remoteAddr": p.remoteAddr,
-	}).Debug("Sending ping packet")
-
-	p.packetConn.SetWriteDeadline(time.Now().Add(pingWriteDeadlineDuration))
-	if _, err = p.packetConn.WriteTo(wb, p.remoteAddr); err != nil {
-		return PingResponse{Err: err}
-	}
-
-	return p.receive(perPingDuration)
 }
 
 func (p *pingerV4) Ping(seq int, perPingDuration time.Duration) PingResponse {
