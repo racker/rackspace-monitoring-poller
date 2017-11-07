@@ -6,7 +6,10 @@ RUN apt-get update && \
         git \
         ruby \
         ruby-dev \
-        ruby-ffi && \
+        ruby-ffi \
+        binutils \
+        reprepro \
+        && \
     apt-get clean
 
 RUN gem install --no-ri --no-rdoc fpm
