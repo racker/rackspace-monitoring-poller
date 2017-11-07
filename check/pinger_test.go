@@ -93,6 +93,8 @@ func TestPinger_Concurrent(t *testing.T) {
 	for i := 0; i < concurrency; i++ {
 		wg.Add(1)
 		go func(checkId string) {
+			defer wg.Done()
+
 			t.Logf("Starting %s", checkId)
 			pinger, err := check.NewPinger(checkId, check.IcmpNetUDP4, "127.0.0.1")
 			require.NoError(t, err)
@@ -114,7 +116,6 @@ func TestPinger_Concurrent(t *testing.T) {
 
 			}
 
-			wg.Done()
 		}(fmt.Sprintf("test-%d", i))
 	}
 
