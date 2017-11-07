@@ -85,7 +85,7 @@ func (ch *PingCheck) Run() (*ResultSet, error) {
 		count = defaultPingCount
 	}
 	interPingDelay := utils.MinOfDurations(1*time.Second, timeoutDuration/time.Duration(count))
-	perPingDuration := time.Duration((ch.Timeout*1000)/uint64(count)) * time.Millisecond
+	perPingDuration := timeoutDuration / time.Duration(count)
 
 	log.WithFields(log.Fields{
 		"prefix":          ch.GetLogPrefix(),
@@ -95,15 +95,25 @@ func (ch *PingCheck) Run() (*ResultSet, error) {
 		"perPingDuration": perPingDuration,
 	}).Info("Running check")
 
-	rtts := make([]time.Duration, 0)
 	var pingErr error
+
+	responses := make([]*PingResponse, count)
 
 packetLoop:
 	for i := 0; i < count; i++ {
 		seq := i + 1
 
 		select {
-		case resp := <-pinger.Ping(seq):
+		case <-overallTimeout:
+			log.WithFields(log.Fields{
+				"prefix":   ch.GetLogPrefix(),
+				"targetIP": targetIP,
+			}).Debug("Reached overall timeout")
+
+			break packetLoop
+
+		default:
+			resp := pinger.Ping(seq, perPingDuration)
 			log.WithFields(log.Fields{
 				"prefix":  ch.GetLogPrefix(),
 				"resp":    resp,
@@ -112,57 +122,71 @@ packetLoop:
 
 			if resp.Err != nil {
 				pingErr = resp.Err
-				break packetLoop
+				if !resp.Timeout {
+					break packetLoop
+				}
 			}
-			if resp.Seq != seq {
+
+			if resp.Seq <= 0 || resp.Seq > len(responses) {
 				log.WithFields(log.Fields{
-					"prefix": ch.GetLogPrefix(),
-					"seq":    resp.Seq,
-				}).Debug("Incorrect packet seq received")
-			} else {
-				rtts = append(rtts, resp.Rtt)
+					"prefix":   ch.GetLogPrefix(),
+					"seq":      resp.Seq,
+					"targetIP": targetIP,
+				}).Warn("Invalid response sequence")
+				continue packetLoop
 			}
+
+			if responses[resp.Seq-1] != nil {
+				log.WithFields(log.Fields{
+					"prefix":   ch.GetLogPrefix(),
+					"seq":      resp.Seq,
+					"targetIP": targetIP,
+				}).Warn("Duplicate response sequence")
+				continue packetLoop
+			}
+
+			responses[resp.Seq-1] = &resp;
+
 			time.Sleep(interPingDelay)
-
-		case <-time.After(perPingDuration):
-			log.WithFields(log.Fields{
-				"prefix":   ch.GetLogPrefix(),
-				"targetIP": targetIP,
-				"seq":      seq,
-			}).Debug("Timed out getting response")
-
-		case <-overallTimeout:
-			log.WithFields(log.Fields{
-				"prefix":   ch.GetLogPrefix(),
-				"targetIP": targetIP,
-			}).Debug("Reached overall timeout")
-
-			break packetLoop
 		}
 
 	}
 
 	sent := count
-	recv := len(rtts)
+
+	initialDuration := true
 	var minRTT time.Duration
 	var maxRTT time.Duration
 	var avgRTT time.Duration
+	var totalRTT time.Duration
 
-	if recv > 0 {
-		minRTT = rtts[0]
-		maxRTT = rtts[0]
-		var totalRTT time.Duration
-		for _, rtt := range rtts {
+	var recv int
+	for i := 0; i < count; i++ {
+		if responses[i] != nil {
+			recv++
+
+			rtt := responses[i].Rtt
 			totalRTT += rtt
-			if rtt > maxRTT {
-				maxRTT = rtt
-			}
-			if rtt < minRTT {
+
+			if initialDuration {
 				minRTT = rtt
+				maxRTT = rtt
+				minRTT = rtt
+				initialDuration = false
+			} else {
+				if rtt > maxRTT {
+					maxRTT = rtt
+				}
+				if rtt < minRTT {
+					minRTT = rtt
+				}
 			}
 		}
+	}
+	if recv > 0 {
 		avgRTT = totalRTT / time.Duration(recv)
 	}
+
 	log.WithFields(log.Fields{
 		"prefix":   ch.GetLogPrefix(),
 		"checkId":  ch.Id,
