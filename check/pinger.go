@@ -105,7 +105,7 @@ var PingerFactory PingerFactorySpec = func(identifier string, remoteAddr string,
 		case "darwin", "linux":
 			// supported
 		default:
-			return nil, fmt.Errorf("Non-privileged ping is not supported on %v", runtime.GOOS)
+			return nil, fmt.Errorf("non-privileged ping is not supported on %v", runtime.GOOS)
 		}
 	}
 
@@ -172,7 +172,7 @@ func (p *pingerBase) ping(seq int, messageType icmp.Type, perPingDuration time.D
 	buffer.Write(nowBytes)
 
 	// a common convention seems to be padding out the ICMP packet with non-zero bytes
-	var padByte byte = 1;
+	var padByte byte = 1
 	for buffer.Len() < PadUpTo {
 		buffer.WriteByte(padByte)
 		padByte++
@@ -324,7 +324,7 @@ recvLoop:
 			// Is it our 16-bit random ID we included when sending out the packet
 			id := pkt.ID
 			if id != p.id {
-				continue recvLoop;
+				continue recvLoop
 			}
 			seq := pkt.Seq
 			rbuf := bytes.NewBuffer(pkt.Data)
@@ -479,7 +479,7 @@ func NewPinger(identifier string, icmpNetwork string, remoteAddr string) (Pinger
 		return &pingerV6{pingerBase: *newPingerBase(identifier, packetConn, addr, icmpNetwork)}, nil
 	}
 
-	return nil, fmt.Errorf("Unsupported network type: %v", icmpNetwork)
+	return nil, fmt.Errorf("unsupported network type: %v", icmpNetwork)
 }
 
 func resolvePingAddr(addrNetwork string, icmpNetwork string, remoteAddr string) (net.Addr, error) {

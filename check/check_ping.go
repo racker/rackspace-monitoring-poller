@@ -123,6 +123,7 @@ packetLoop:
 			}).Debug("Got ping response")
 
 			if resp.Err != nil {
+				// Latch the error for consideration and inclusion in the final check result
 				pingErr = resp.Err
 				if !resp.Timeout {
 					break packetLoop
@@ -151,7 +152,7 @@ packetLoop:
 
 			// ...but if not, save it for post-processing outside the loop
 
-			responses[resp.Seq-1] = &resp;
+			responses[resp.Seq-1] = &resp
 
 			time.Sleep(interPingDelay)
 		}
@@ -213,9 +214,12 @@ packetLoop:
 	)
 	crs := NewResultSet(ch, cr)
 
-	if pingErr == nil && recv > 0 {
+	if pingErr == nil && recv == count {
 		crs.SetStatusSuccess()
 		crs.SetStateAvailable()
+	} else if pingErr == nil && recv > 0 {
+		crs.SetStateUnavailable()
+		crs.SetStatus("Partial responses received")
 	} else if pingErr == nil && recv == 0 {
 		crs.SetStateUnavailable()
 		crs.SetStatus("No responses received")
