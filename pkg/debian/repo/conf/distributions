@@ -3,4 +3,4 @@ Components: main
 Architectures: amd64 source
 Origin: Rackspace
 Description: Rackspace Cloud Monitoring Poller
-#SignWith: D05AB914
+SignWith: D05AB914

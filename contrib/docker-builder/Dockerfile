@@ -9,6 +9,7 @@ RUN apt-get update && \
         ruby-ffi \
         binutils \
         reprepro \
+        wget \
         && \
     apt-get clean
 

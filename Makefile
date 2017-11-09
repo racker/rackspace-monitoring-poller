@@ -5,11 +5,18 @@ SRC_DIR := pkg
 GENERIC_SRC_DIR := ${SRC_DIR}/generic
 DEB_SRC_DIR := ${SRC_DIR}/debian
 DEB_REPO_DIR := ${DEB_SRC_DIR}/repo
-CLOUDFILES_REPO_NAME := poller-$(GIT_TAG)
 BUILD_DIR := build
+BUILD_REPOS_DIR := build/repos
 DEB_BUILD_DIR := ${BUILD_DIR}/debian
 EXE := rackspace-monitoring-poller
 APP_NAME := rackspace-monitoring-poller
+
+CLOUDFILES_REPO_NAME := poller-$(GIT_TAG)
+# switching new, per-distro repos to all be organized under a consolidated swift container `poller-repos`
+# ...a container per version is unweildy especially in the MyCloud UI
+CF_POLLER_CONTAINER := poller-repos
+RCLONE_ARGS := --dry-run
+
 PROJECT_VENDOR := github.com/racker/rackspace-monitoring-poller/vendor
 
 PKGDIR_BIN := usr/bin
@@ -36,15 +43,17 @@ PKG_BASE := ${APP_NAME}_${PKG_VERSION}_${ARCH}
 FPM_IDENTIFIERS := -n ${APP_NAME} --license "${LICENSE}" --vendor "${VENDOR}" \
                    	  -v ${GIT_TAG} --iteration ${TAG_DISTANCE}
 
+ifdef DONT_SIGN
+  SED_DISTRIBUTIONS = -e "/SignWith/ d" -e "p"
+else
+  SED_DISTRIBUTIONS = -e "p"
+endif
+
 MOCK_POLLER := LogPrefixGetter,ConnectionStream,Connection,Session,CheckScheduler,CheckExecutor,Scheduler,ChecksReconciler
 
 WGET := wget
 FPM := fpm
 REPREPRO := reprepro
-
-.PHONY: default repackage package package-debs package-repo-upload package-upload-deb package-debs-local reprepro-debs \
-	clean generate-mocks stage-deb-exe-local build test test-integrationcli coverage install-fpm \
-	generate-callgraphs regenerate-callgraphs clean-callgraphs
 
 default: clean package
 
@@ -64,7 +73,7 @@ test-integrationcli: build
 build: ${GOPATH}/bin/gox vendor
 	CGO_ENABLED=0 ${GOPATH}/bin/gox \
 	  -osarch "linux/386 linux/amd64 darwin/amd64 windows/386 windows/amd64" \
-	  -output="build/{{.Dir}}_{{.OS}}_{{.Arch}}"
+	  -output="${BUILD_DIR}/{{.Dir}}_{{.OS}}_{{.Arch}}"
 
 coverage: ${GOPATH}/bin/goveralls
 	contrib/combine-coverage.sh --coveralls
@@ -105,23 +114,33 @@ package: package-debs
 package-repo-upload: package-debs reprepro-debs package-upload-deb
 
 package-upload-deb:
-	rclone mkdir rackspace:${CLOUDFILES_REPO_NAME}/repos
-	rclone copy build/repos/ rackspace:${CLOUDFILES_REPO_NAME}/repos
+	rclone ${RCLONE_ARGS} mkdir rackspace:${CF_POLLER_CONTAINER}/${GIT_TAG}
+	rclone ${RCLONE_ARGS} copy ${BUILD_REPOS_DIR} rackspace:${CF_POLLER_CONTAINER}/${GIT_TAG}
+	# retain "old" structure to enable incrementally converting over the repo web servicing
+	rclone ${RCLONE_ARGS} mkdir rackspace:${CLOUDFILES_REPO_NAME}/debian
+	rclone ${RCLONE_ARGS} copy ${BUILD_REPOS_DIR}/debian rackspace:${CLOUDFILES_REPO_NAME}/debian
 
 reprepro-debs: \
-	build/repos/ubuntu-14.04-x86_64 \
-	build/repos/ubuntu-16.04-x86_64
+	${BUILD_REPOS_DIR}/ubuntu-14.04-x86_64 \
+	${BUILD_REPOS_DIR}/ubuntu-16.04-x86_64 \
+	${BUILD_REPOS_DIR}/debian
+
+clean-repos:
+	rm -rf ${BUILD_REPOS_DIR}
 
 define buildReprepro =
  	mkdir -p $@/conf
- 	cp pkg/debian/repo/conf/distributions $@/conf
+ 	sed -n ${SED_DISTRIBUTIONS} pkg/debian/repo/conf/distributions > $@/conf/distributions
  	${REPREPRO} -b $@ includedeb cloudmonitoring $<
 endef
 
-build/repos/ubuntu-14.04-x86_64 : build/rackspace-monitoring-poller_${PKG_VERSION}_${ARCH}_upstart.deb
+${BUILD_REPOS_DIR}/ubuntu-14.04-x86_64 : ${BUILD_DIR}/${PKG_BASE}_upstart.deb
 	$(buildReprepro)
 
-build/repos/ubuntu-16.04-x86_64 : build/rackspace-monitoring-poller_${PKG_VERSION}_${ARCH}_systemd.deb
+${BUILD_REPOS_DIR}/ubuntu-16.04-x86_64 : ${BUILD_DIR}/${PKG_BASE}_systemd.deb
+	$(buildReprepro)
+
+${BUILD_REPOS_DIR}/debian : ${BUILD_DIR}/${PKG_BASE}.deb
 	$(buildReprepro)
 
 package-debs: ${BUILD_DIR}/${PKG_BASE}.deb \
@@ -185,3 +204,8 @@ ${DEB_BUILD_DIR}/${UPSTART_CONF} :
 	mkdir -p $(@D)
 	cp $< $@
 	chmod +x $@
+
+# .PHONY tells make to not expect these goals to be actual files produced by the rule
+.PHONY: default repackage package package-debs package-repo-upload package-upload-deb package-debs-local reprepro-debs \
+	clean clean-repos generate-mocks stage-deb-exe-local build test test-integrationcli coverage install-fpm \
+	generate-callgraphs regenerate-callgraphs clean-callgraphs
