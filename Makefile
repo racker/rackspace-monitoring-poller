@@ -15,7 +15,7 @@ CLOUDFILES_REPO_NAME := poller-$(GIT_TAG)
 # switching new, per-distro repos to all be organized under a consolidated swift container `poller-repos`
 # ...a container per version is unweildy especially in the MyCloud UI
 CF_POLLER_CONTAINER := poller-repos
-RCLONE_ARGS := --dry-run
+RCLONE_ARGS :=
 
 PROJECT_VENDOR := github.com/racker/rackspace-monitoring-poller/vendor
 
@@ -111,7 +111,7 @@ ${GOPATH}/bin/go-callvis :
 
 package: package-debs
 
-package-repo-upload: clean package reprepro-debs package-upload-deb
+package-repo-upload: package reprepro-debs package-upload-deb
 
 package-upload-deb:
 	rclone ${RCLONE_ARGS} mkdir rackspace:${CF_POLLER_CONTAINER}/${GIT_TAG}
