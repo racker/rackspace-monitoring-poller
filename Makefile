@@ -111,7 +111,7 @@ ${GOPATH}/bin/go-callvis :
 
 package: package-debs
 
-package-repo-upload: package-debs reprepro-debs package-upload-deb
+package-repo-upload: clean package reprepro-debs package-upload-deb
 
 package-upload-deb:
 	rclone ${RCLONE_ARGS} mkdir rackspace:${CF_POLLER_CONTAINER}/${GIT_TAG}

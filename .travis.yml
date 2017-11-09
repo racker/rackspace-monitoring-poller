@@ -5,7 +5,7 @@ go:
 install:
 - make install-fpm
 script:
-- make test build test-integrationcli package-deb-local
+- make test build test-integrationcli package-debs-local
 after_script:
 - make coverage
 deploy:

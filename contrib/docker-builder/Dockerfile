@@ -14,3 +14,5 @@ RUN apt-get update && \
     apt-get clean
 
 RUN gem install --no-ri --no-rdoc fpm
+
+WORKDIR /home
