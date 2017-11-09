@@ -128,7 +128,9 @@ reprepro-debs: \
 clean-repos:
 	rm -rf ${BUILD_REPOS_DIR}
 
-define buildReprepro =
+# NOTE make 4.1 supports the proper syntax, which is
+# define buildReprepro =
+define buildReprepro
  	mkdir -p $@/conf
  	sed -n ${SED_DISTRIBUTIONS} pkg/debian/repo/conf/distributions > $@/conf/distributions
  	${REPREPRO} -b $@ includedeb cloudmonitoring $<
