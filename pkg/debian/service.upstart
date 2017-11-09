@@ -9,5 +9,7 @@ script
     . /etc/default/rackspace-monitoring-poller
     if [ "x$ENABLED" = xtrue ]; then
         exec /usr/bin/rackspace-monitoring-poller serve --config $CONFIG_FILE $POLLER_SERVE_OPTS
+    else
+        echo "Not enabled"
     fi
 end script
