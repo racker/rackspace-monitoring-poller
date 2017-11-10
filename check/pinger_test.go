@@ -26,7 +26,6 @@ import (
 	"sync"
 	"fmt"
 	"github.com/sirupsen/logrus"
-	"os"
 )
 
 func TestPinger_ValidLocalhost(t *testing.T) {
@@ -77,14 +76,15 @@ func TestPinger_ValidLocalhostIPv6(t *testing.T) {
 }
 
 func TestPinger_Concurrent(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("Only runs without extra config on MacOS")
+	}
+
 	if testing.Verbose() {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
 
-	var concurrency = 50
-	if os.Getenv("CI") == "true" {
-		concurrency = 2
-	}
+	const concurrency = 50
 	const pings = 5
 	var wg sync.WaitGroup
 
