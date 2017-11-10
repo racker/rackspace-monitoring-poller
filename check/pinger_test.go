@@ -80,30 +80,32 @@ func TestPinger_Concurrent(t *testing.T) {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
 
-	const concurrency = 2
+	const concurrency = 50
 	const pings = 5
 	var wg sync.WaitGroup
 
 	for i := 0; i < concurrency; i++ {
 		wg.Add(1)
 		go func(checkId string) {
+			time.Sleep(10 * time.Millisecond)
 			defer wg.Done()
 
 			t.Logf("Starting %s", checkId)
-			pinger, err := check.NewPinger(checkId, check.IcmpNetUDP4, "127.0.0.1")
+			pinger, err := check.PingerFactory(checkId, "127.0.0.1", check.PingerIPv4)
 			require.NoError(t, err)
 
 			responses := make([]*check.PingResponse, pings)
 
 			for p := 0; p < pings; p++ {
 				resp := pinger.Ping(p+1, 1*time.Second)
+				require.False(t, resp.Timeout, "not expecting timeout for seq=%d, checkId=%s", p+1, checkId)
 				require.True(t, resp.Seq > 0 && resp.Seq <= pings, "invalid seq from resp=%v", resp)
 				responses[resp.Seq-1] = &resp
-				time.Sleep(1 * time.Millisecond)
+				time.Sleep(10 * time.Millisecond)
 			}
 
 			for p := 0; p < pings; p++ {
-				require.NotNil(t, responses[p], "Missing ping seq=%d", p+1)
+				require.NotNil(t, responses[p], "Missing ping seq=%d,checkId=%s", p+1, checkId)
 				assert.True(t, responses[p].Rtt > 0, "Zero RTT seq=%d", p+1)
 				assert.NoError(t, responses[p].Err, "seq=%d", p+1)
 				assert.False(t, responses[p].Timeout, "seq=%d", p+1)
