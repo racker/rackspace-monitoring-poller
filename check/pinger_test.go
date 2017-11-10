@@ -29,6 +29,9 @@ import (
 )
 
 func TestPinger_ValidLocalhost(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("Only runs without extra config on MacOS")
+	}
 	pinger, err := check.NewPinger("test1", check.IcmpNetUDP4, "127.0.0.1")
 	require.NoError(t, err)
 	require.NotNil(t, pinger)
@@ -42,6 +45,9 @@ func TestPinger_ValidLocalhost(t *testing.T) {
 }
 
 func TestPinger_Invalid127(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("Only runs without extra config on MacOS")
+	}
 	pinger, err := check.NewPinger("test1", check.IcmpNetUDP4, "127.0.0.2")
 	require.NoError(t, err)
 	require.NotNil(t, pinger)
@@ -53,6 +59,9 @@ func TestPinger_Invalid127(t *testing.T) {
 }
 
 func TestPinger_ValidLocalhostIPv6(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("Only runs without extra config on MacOS")
+	}
 	pinger, err := check.NewPinger("test1", check.IcmpNetUDP6, "::1")
 	require.NoError(t, err)
 	require.NotNil(t, pinger)
@@ -67,6 +76,10 @@ func TestPinger_ValidLocalhostIPv6(t *testing.T) {
 }
 
 func TestPinger_Concurrent(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("Only runs without extra config on MacOS")
+	}
+
 	if testing.Verbose() {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
