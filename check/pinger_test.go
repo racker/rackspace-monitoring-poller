@@ -26,7 +26,6 @@ import (
 	"sync"
 	"fmt"
 	"github.com/sirupsen/logrus"
-	"os"
 )
 
 func TestPinger_ValidLocalhost(t *testing.T) {
