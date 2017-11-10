@@ -26,6 +26,7 @@ import (
 	"sync"
 	"fmt"
 	"github.com/sirupsen/logrus"
+	"os"
 )
 
 func TestPinger_ValidLocalhost(t *testing.T) {
@@ -80,7 +81,10 @@ func TestPinger_Concurrent(t *testing.T) {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
 
-	const concurrency = 50
+	var concurrency = 50
+	if os.Getenv("CI") == "true" {
+		concurrency = 2
+	}
 	const pings = 5
 	var wg sync.WaitGroup
 
