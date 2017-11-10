@@ -1,5 +1,5 @@
 language: go
-sudo: false
+sudo: true
 go:
 - 1.9.1
 install:
@@ -17,6 +17,7 @@ script:
   -ldflags="-X github.com/racker/rackspace-monitoring-poller/version.Version=$(git
   symbolic-ref -q --short HEAD || git describe --tags --exact-match)"
 - go test -v github.com/racker/rackspace-monitoring-poller/integrationcli
+- sudo sysctl -w net.ipv4.ping_group_range="0 2147483647"
 - make package-deb-local
 after_script:
 - go get github.com/mattn/goveralls
