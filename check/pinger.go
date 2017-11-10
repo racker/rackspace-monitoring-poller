@@ -178,7 +178,7 @@ func (p *pingerBase) ping(seq int, messageType icmp.Type, perPingDuration time.D
 		padByte++
 	}
 
-	wm := icmp.Message{
+	reqMessage := icmp.Message{
 		Type: messageType,
 		Code: 0,
 		Body: &icmp.Echo{
@@ -190,7 +190,7 @@ func (p *pingerBase) ping(seq int, messageType icmp.Type, perPingDuration time.D
 		},
 	}
 
-	wb, err := wm.Marshal(nil)
+	reqEncoded, err := reqMessage.Marshal(nil)
 	if err != nil {
 		return PingResponse{Err: err}
 	}
@@ -204,7 +204,7 @@ func (p *pingerBase) ping(seq int, messageType icmp.Type, perPingDuration time.D
 	}).Debug("Sending ping packet")
 
 	p.packetConn.SetWriteDeadline(time.Now().Add(pingWriteDeadlineDuration))
-	if _, err = p.packetConn.WriteTo(wb, p.remoteAddr); err != nil {
+	if _, err = p.packetConn.WriteTo(reqEncoded, p.remoteAddr); err != nil {
 		return PingResponse{Err: err}
 	}
 

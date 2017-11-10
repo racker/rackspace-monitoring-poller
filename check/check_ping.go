@@ -214,12 +214,9 @@ packetLoop:
 	)
 	crs := NewResultSet(ch, cr)
 
-	if pingErr == nil && recv == count {
+	if pingErr == nil && recv > 0 {
 		crs.SetStatusSuccess()
 		crs.SetStateAvailable()
-	} else if pingErr == nil && recv > 0 {
-		crs.SetStateUnavailable()
-		crs.SetStatus("Partial responses received")
 	} else if pingErr == nil && recv == 0 {
 		crs.SetStateUnavailable()
 		crs.SetStatus("No responses received")
