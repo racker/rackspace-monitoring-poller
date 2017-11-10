@@ -23,6 +23,9 @@ import (
 	"runtime"
 	"testing"
 	"time"
+	"sync"
+	"fmt"
+	"github.com/sirupsen/logrus"
 )
 
 func TestPinger_ValidLocalhost(t *testing.T) {
@@ -34,15 +37,11 @@ func TestPinger_ValidLocalhost(t *testing.T) {
 	require.NotNil(t, pinger)
 	defer pinger.Close()
 
-	respCh := pinger.Ping(1)
-
-	select {
-	case resp := <-respCh:
-		assert.Equal(t, 1, resp.Seq)
-		assert.True(t, resp.Rtt > 0)
-	case <-time.After(50 * time.Millisecond):
-		assert.Fail(t, "Timed out waiting for response")
-	}
+	resp := pinger.Ping(1, 1*time.Second)
+	assert.NoError(t, resp.Err)
+	assert.False(t, resp.Timeout)
+	assert.Equal(t, 1, resp.Seq)
+	assert.True(t, resp.Rtt > 0)
 }
 
 func TestPinger_Invalid127(t *testing.T) {
@@ -54,13 +53,9 @@ func TestPinger_Invalid127(t *testing.T) {
 	require.NotNil(t, pinger)
 	defer pinger.Close()
 
-	respCh := pinger.Ping(1)
-
-	select {
-	case <-respCh:
-		assert.Fail(t, "Should not have gotten a response")
-	case <-time.After(10 * time.Millisecond):
-	}
+	resp := pinger.Ping(1, 1*time.Second)
+	assert.True(t, resp.Timeout)
+	assert.Error(t, resp.Err)
 }
 
 func TestPinger_ValidLocalhostIPv6(t *testing.T) {
@@ -72,13 +67,57 @@ func TestPinger_ValidLocalhostIPv6(t *testing.T) {
 	require.NotNil(t, pinger)
 	defer pinger.Close()
 
-	respCh := pinger.Ping(1)
+	resp := pinger.Ping(1, 1*time.Second)
 
-	select {
-	case resp := <-respCh:
-		assert.Equal(t, 1, resp.Seq)
-		assert.True(t, resp.Rtt > 0)
-	case <-time.After(50 * time.Millisecond):
-		assert.Fail(t, "Timed out waiting for response")
+	assert.NoError(t, resp.Err)
+	assert.False(t, resp.Timeout)
+	assert.Equal(t, 1, resp.Seq)
+	assert.True(t, resp.Rtt > 0)
+}
+
+func TestPinger_Concurrent(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("Only runs without extra config on MacOS")
 	}
+
+	if testing.Verbose() {
+		logrus.SetLevel(logrus.DebugLevel)
+	}
+
+	const concurrency = 50
+	const pings = 5
+	var wg sync.WaitGroup
+
+	for i := 0; i < concurrency; i++ {
+		wg.Add(1)
+		go func(checkId string) {
+			time.Sleep(10 * time.Millisecond)
+			defer wg.Done()
+
+			t.Logf("Starting %s", checkId)
+			pinger, err := check.PingerFactory(checkId, "127.0.0.1", check.PingerIPv4)
+			require.NoError(t, err)
+
+			responses := make([]*check.PingResponse, pings)
+
+			for p := 0; p < pings; p++ {
+				resp := pinger.Ping(p+1, 1*time.Second)
+				require.False(t, resp.Timeout, "not expecting timeout for seq=%d, checkId=%s", p+1, checkId)
+				require.True(t, resp.Seq > 0 && resp.Seq <= pings, "invalid seq from resp=%v", resp)
+				responses[resp.Seq-1] = &resp
+				time.Sleep(10 * time.Millisecond)
+			}
+
+			for p := 0; p < pings; p++ {
+				require.NotNil(t, responses[p], "Missing ping seq=%d,checkId=%s", p+1, checkId)
+				assert.True(t, responses[p].Rtt > 0, "Zero RTT seq=%d", p+1)
+				assert.NoError(t, responses[p].Err, "seq=%d", p+1)
+				assert.False(t, responses[p].Timeout, "seq=%d", p+1)
+
+			}
+
+		}(fmt.Sprintf("test-%d", i))
+	}
+
+	wg.Wait()
 }

@@ -31,14 +31,13 @@ import (
 	"net"
 	"runtime"
 	"strings"
-	"sync"
 )
 
 const (
 	ProtocolICMP              = 1
 	ProtocolIPv6ICMP          = 58
 	pingWriteDeadlineDuration = 1 * time.Minute
-	pingReadDeadlineDuration  = 3 * time.Minute
+	PingReceiveBufferSize     = 1500
 
 	PingerIPv4 = "v4"
 	PingerIPv6 = "v6"
@@ -57,9 +56,21 @@ const (
 	PadUpTo = 64 - 8
 )
 
+var (
+	pingNetworkToProto = map[string]int{
+		IcmpNetUDP4: ProtocolICMP,
+		IcmpNetUDP6: ProtocolIPv6ICMP,
+		IcmpNetIP4:  ProtocolICMP,
+		IcmpNetIP6:  ProtocolIPv6ICMP,
+	}
+
+	// this is set during unit testing to enable very verbose logging of ping packet processing
+	VerbosePinger = false
+)
+
 // Pinger represents the facility to send out a single ping packet and provides the response via the returned channel.
 type Pinger interface {
-	Ping(seq int) <-chan *PingResponse
+	Ping(seq int, perPingDuration time.Duration) PingResponse
 	Close()
 }
 
@@ -69,21 +80,20 @@ type Pinger interface {
 type PingerFactorySpec func(identifier string, remoteAddr string, ipVersion string) (Pinger, error)
 
 type PingResponse struct {
-	Seq int
-	Rtt time.Duration
-	Err error
+	Seq     int
+	Rtt     time.Duration
+	Timeout bool
+	Err     error
 }
 
-type pingRoutingKey struct {
-	identifier string
+// pingerBase is the base implementation for both IPv4 and IPv6 flavors
+type pingerBase struct {
+	packetConn *icmp.PacketConn
 	id         int
-}
-
-type pingRouter struct {
-	mu sync.Mutex
-	// key is "network"
-	packetConns map[string]*icmp.PacketConn
-	consumers   map[pingRoutingKey]chan *PingResponse
+	identifier string
+	remoteAddr net.Addr
+	// proto is one of Protocol*Icmp from the icmp package
+	proto int
 }
 
 // PingerFactory creates and returns a new pinger that is initialized to a standard implementation, but can be
@@ -95,7 +105,7 @@ var PingerFactory PingerFactorySpec = func(identifier string, remoteAddr string,
 		case "darwin", "linux":
 			// supported
 		default:
-			return nil, fmt.Errorf("Non-privileged ping is not supported on %v", runtime.GOOS)
+			return nil, fmt.Errorf("non-privileged ping is not supported on %v", runtime.GOOS)
 		}
 	}
 
@@ -136,100 +146,151 @@ var PingerFactory PingerFactorySpec = func(identifier string, remoteAddr string,
 	return NewPinger(identifier, network, remoteAddr)
 }
 
-var (
-	defaultPingRouter  *pingRouter
-	pingNetworkToProto = map[string]int{
-		IcmpNetUDP4: ProtocolICMP,
-		IcmpNetUDP6: ProtocolIPv6ICMP,
-		IcmpNetIP4:  ProtocolICMP,
-		IcmpNetIP6:  ProtocolIPv6ICMP,
-	}
-)
-
-func init() {
-	defaultPingRouter = &pingRouter{
-		packetConns: make(map[string]*icmp.PacketConn, 4),
-		consumers:   make(map[pingRoutingKey]chan *PingResponse),
-	}
-}
-
-// getPacketConn ensures that a PacketConn is created if needed for the requested ICMP network type and will also
-// ensure a receiver is running for that PacketConn
-func (pr *pingRouter) getPacketConn(network string, bindAddr string) (*icmp.PacketConn, error) {
-	pr.mu.Lock()
-	defer pr.mu.Unlock()
-
-	packetConn, ok := pr.packetConns[network]
-	if ok {
-		return packetConn, nil
-	}
-
-	log.WithFields(log.Fields{
-		"prefix":   pingLogPrefix,
-		"network":  network,
-		"bindAddr": bindAddr,
-	}).Debug("Creating ICMP packet connection")
+func createPacketConn(network string, bindAddr string) (*icmp.PacketConn, error) {
 
 	packetConn, err := icmp.ListenPacket(network, bindAddr)
 	if err != nil {
 		return nil, errors.Wrap(err, "Unable to create ICMP listener")
 	}
-	pr.packetConns[network] = packetConn
-
-	go pr.receive(network, packetConn)
 
 	return packetConn, nil
 }
 
-// receive runs in a go routine and processes responses from requests initiated in pingerBase.ping
-func (pr *pingRouter) receive(network string, packetConn *icmp.PacketConn) {
+func (p *pingerBase) ping(seq int, messageType icmp.Type, perPingDuration time.Duration) PingResponse {
+	// google.com truncates any ping bodies greater than 64 bytes, so hand-encoding the timestamp
+	nowBytes, err := time.Now().MarshalBinary()
+	if err != nil {
+		return PingResponse{Err: err}
+	}
+	// ...and the identifier, which is typically the check's ID
+	var buffer bytes.Buffer
+	buffer.WriteString(p.identifier)
+	buffer.WriteByte(0)
+
+	// time.Time marshaled preceded by the length of that
+	buffer.WriteByte(byte(len(nowBytes)))
+	buffer.Write(nowBytes)
+
+	// a common convention seems to be padding out the ICMP packet with non-zero bytes
+	var padByte byte = 1
+	for buffer.Len() < PadUpTo {
+		buffer.WriteByte(padByte)
+		padByte++
+	}
+
+	reqMessage := icmp.Message{
+		Type: messageType,
+		Code: 0,
+		Body: &icmp.Echo{
+			// The ICMP ID allows for filtering/correlation of the response
+			ID: p.id,
+			// ...and the response will also include the sequence we set here
+			Seq:  seq,
+			Data: buffer.Bytes(),
+		},
+	}
+
+	reqEncoded, err := reqMessage.Marshal(nil)
+	if err != nil {
+		return PingResponse{Err: err}
+	}
+
 	log.WithFields(log.Fields{
-		"prefix":  pingLogPrefix,
-		"network": network,
-	}).Debug("Starting ICMP receiver")
-	defer log.WithFields(log.Fields{
-		"prefix":  pingLogPrefix,
-		"network": network,
-	}).Debug("Stopping ICMP receiver")
+		"prefix":     pingLogPrefix,
+		"identifier": p.identifier,
+		"id":         p.id,
+		"seq":        seq,
+		"remoteAddr": p.remoteAddr,
+	}).Debug("Sending ping packet")
 
-	buffer := make([]byte, 1500)
+	p.packetConn.SetWriteDeadline(time.Now().Add(pingWriteDeadlineDuration))
+	if _, err = p.packetConn.WriteTo(reqEncoded, p.remoteAddr); err != nil {
+		return PingResponse{Err: err}
+	}
 
+	// now wait for the response packet matching our ID and remoteAddr
+	return p.receive(perPingDuration)
+}
+
+//noinspection GoBoolExpressions
+func (p *pingerBase) receive(perPingDuration time.Duration) PingResponse {
+
+	buffer := make([]byte, PingReceiveBufferSize)
+
+	// Use go's deadline concept to implement ping timeout handling. Since deadlines are an absolute time, we
+	// can set it here once even though several foreign packets could get read and discarded in the recvLoop, below.
+	err := p.packetConn.SetReadDeadline(time.Now().Add(perPingDuration))
+	if err != nil {
+		return PingResponse{Err: err}
+	}
+
+	// continuations here at recvLoop are due to observing ICMP response packets that are not ours
 recvLoop:
 	for {
-		packetConn.SetReadDeadline(time.Now().Add(pingReadDeadlineDuration))
-		n, peerAddr, err := packetConn.ReadFrom(buffer)
+
+		if VerbosePinger {
+			log.WithFields(log.Fields{
+				"prefix":     pingLogPrefix,
+				"identifier": p.identifier,
+			}).Debug("Waiting for ICMP response")
+		}
+
+		// read a raw ICMP, but since ICMP is a broadcast protocol we don't know if it is ours yet...
+		n, peerAddr, err := p.packetConn.ReadFrom(buffer)
 		if err != nil {
 			if netErr, ok := err.(net.Error); ok {
 				if netErr.Timeout() {
-					continue recvLoop
+					return PingResponse{Err: err, Timeout: true}
 				}
 			}
 
 			log.WithFields(log.Fields{
-				"prefix":  pingLogPrefix,
-				"err":     err,
-				"network": network,
+				"prefix":     pingLogPrefix,
+				"identifier": p.identifier,
+				"err":        err,
 			}).Warn("Reading from ICMP connection")
 
-			pr.mu.Lock()
-			packetConn.Close()
-			delete(pr.packetConns, network)
-			pr.mu.Unlock()
-			return
+			p.packetConn.Close()
+			return PingResponse{Err: err}
 		}
 
-		proto := pingNetworkToProto[network]
-		m, err := icmp.ParseMessage(proto, buffer[:n])
+		if VerbosePinger {
+			log.WithFields(log.Fields{
+				"prefix":     pingLogPrefix,
+				"identifier": p.identifier,
+				"peerAddr":   peerAddr,
+				"len":        n,
+			}).Debug("Read packet")
+		}
+
+		// Is it even from the address we pinged? BTW net.Addr is an interface so we can do a plain old != on the
+		// two addrs. Comparing String() rendering is cheesy but works reliably.
+		if peerAddr.String() != p.remoteAddr.String() {
+			continue recvLoop
+		}
+
+		m, err := icmp.ParseMessage(p.proto, buffer[:n])
 		if err != nil {
 			log.WithFields(log.Fields{
-				"prefix":   pingLogPrefix,
-				"err":      err,
-				"network":  network,
-				"peerAddr": peerAddr,
+				"prefix":     pingLogPrefix,
+				"identifier": p.identifier,
+				"err":        err,
+				"peerAddr":   peerAddr,
 			}).Warn("Failed to parse ICMP message")
-			continue
+			continue recvLoop
 		}
 
+		if VerbosePinger {
+			log.WithFields(log.Fields{
+				"prefix":     pingLogPrefix,
+				"identifier": p.identifier,
+				"peerAddr":   peerAddr,
+				"len":        n,
+				"message":    m,
+			}).Debug("Read ICMP message")
+		}
+
+		// Is the ICMP message type an expected reply type?
 		switch m.Type {
 		case ipv4.ICMPTypeEchoReply:
 		case ipv6.ICMPTypeEchoReply:
@@ -237,16 +298,34 @@ recvLoop:
 		case ipv6.ICMPTypeDestinationUnreachable:
 		default:
 			log.WithFields(log.Fields{
-				"prefix":   pingLogPrefix,
-				"type":     m.Type,
-				"peerAddr": peerAddr,
+				"prefix":     pingLogPrefix,
+				"identifier": p.identifier,
+				"type":       m.Type,
+				"peerAddr":   peerAddr,
 			}).Debug("Received non echo reply")
 			continue recvLoop
 		}
 
+		// Cast and act upon the known/expected ICMP message body types
 		switch pkt := m.Body.(type) {
 		case *icmp.Echo:
+			// An echo reply...just what we wanted
+
+			log.WithFields(log.Fields{
+				"prefix":     pingLogPrefix,
+				"identifier": p.identifier,
+				"ourId":      p.id,
+				"type":       m.Type,
+				"peerAddr":   peerAddr,
+				"rxId":       pkt.ID,
+				"rxSeq":      pkt.Seq,
+			}).Debug("Received echo reply")
+
+			// Is it our 16-bit random ID we included when sending out the packet
 			id := pkt.ID
+			if id != p.id {
+				continue recvLoop
+			}
 			seq := pkt.Seq
 			rbuf := bytes.NewBuffer(pkt.Data)
 			// This could be a cross-chatter echo reply, so need to constrain the amount of string reading below
@@ -254,51 +333,60 @@ recvLoop:
 				rbuf.Truncate(GooglePingLimit)
 			}
 
+			// We stored off the check's id within the ping request, so we'll extract and check
 			identifier, err := rbuf.ReadString(0)
 			if err != nil {
 				log.WithFields(log.Fields{
-					"prefix": pingLogPrefix,
-					"id":     id,
-					"seq":    seq,
-					"data":   pkt.Data,
+					"prefix":     pingLogPrefix,
+					"identifier": p.identifier,
+					"id":         id,
+					"seq":        seq,
+					"data":       pkt.Data,
 				}).Debug("Failed to decode identifier from echo reply payload")
 				continue recvLoop
 			}
 			// trim off the delimiter
 			identifier = identifier[:len(identifier)-1]
 
+			// Next, we stored the timestamp in the ping request. Extract that and use it for round trip time (RTT) computation
 			var sent time.Time
 			timeLen, err := rbuf.ReadByte()
 			if err != nil {
 				log.WithFields(log.Fields{
-					"prefix": pingLogPrefix,
-					"id":     id,
-					"seq":    seq,
-					"data":   pkt.Data,
+					"prefix":     pingLogPrefix,
+					"identifier": p.identifier,
+					"id":         id,
+					"seq":        seq,
+					"data":       pkt.Data,
 				}).Debug("Failed to decode time length from echo reply payload")
 				continue recvLoop
 			}
 			err = sent.UnmarshalBinary(rbuf.Next(int(timeLen)))
 			if err != nil {
 				log.WithFields(log.Fields{
-					"prefix": pingLogPrefix,
-					"id":     id,
-					"seq":    seq,
-					"data":   pkt.Data,
+					"prefix":     pingLogPrefix,
+					"identifier": p.identifier,
+					"id":         id,
+					"seq":        seq,
+					"data":       pkt.Data,
 				}).Debug("Failed to decode sent time from echo reply payload")
 				continue recvLoop
 			}
 
-			pingResponse := &PingResponse{
+			// FINALLY...its ours, has a valid identifier, timestamp, so return the results
+
+			pingResponse := PingResponse{
 				Seq: seq,
 				Rtt: time.Since(sent),
 			}
 
-			pr.routeResponse(identifier, id, seq, pkt.Data, pingResponse)
+			return pingResponse
 
 		case *icmp.DstUnreach:
+			// Eventually we may need to further process these, but can be treated as a missed/timed out response
 			log.WithFields(log.Fields{
 				"prefix":     pingLogPrefix,
+				"identifier": p.identifier,
 				"peerAddr":   peerAddr,
 				"data":       pkt.Data,
 				"extensions": pkt.Extensions,
@@ -314,9 +402,10 @@ recvLoop:
 
 		default:
 			log.WithFields(log.Fields{
-				"prefix":   pingLogPrefix,
-				"body":     m.Body,
-				"peerAddr": peerAddr,
+				"prefix":     pingLogPrefix,
+				"identifier": p.identifier,
+				"body":       m.Body,
+				"peerAddr":   peerAddr,
 			}).Warn("Received non echo body")
 
 			continue recvLoop
@@ -325,66 +414,27 @@ recvLoop:
 	}
 }
 
-func (pr *pingRouter) routeResponse(identifier string, id int, seq int, data []byte, pingResponse *PingResponse) {
-	pr.mu.Lock()
-	ch, ok := pr.consumers[pingRoutingKey{identifier: identifier, id: id}]
-	if !ok {
-		log.WithFields(log.Fields{
-			"prefix":     pingLogPrefix,
-			"identifier": identifier,
-			"id":         id,
-			"seq":        seq,
-			"data":       data,
-		}).Debug("Unable to find ping routing consumer")
-		return
-	}
-	pr.mu.Unlock()
-
-	ch <- pingResponse
-
-}
-
-func (pr *pingRouter) register(identifier string, id int, responses chan *PingResponse) {
-	pr.mu.Lock()
-
-	pr.consumers[pingRoutingKey{identifier: identifier, id: id}] = responses
-
-	pr.mu.Unlock()
-}
-
-func (pr *pingRouter) deregister(identifier string, id int) {
-	pr.mu.Lock()
-
-	delete(pr.consumers, pingRoutingKey{identifier: identifier, id: id})
-
-	pr.mu.Unlock()
-}
-
-type pingerBase struct {
-	packetConn *icmp.PacketConn
-	id         int
-	identifier string
-	remoteAddr net.Addr
-	responses  chan *PingResponse
-}
-
-func newPingerBase(identifier string, packetConn *icmp.PacketConn, remoteAddr net.Addr) *pingerBase {
+func newPingerBase(identifier string, packetConn *icmp.PacketConn, remoteAddr net.Addr, network string) *pingerBase {
 	id := rand.Intn(0xffff)
-	responses := make(chan *PingResponse, 1)
 
-	defaultPingRouter.register(identifier, id, responses)
+	log.WithFields(log.Fields{
+		"prefix":     pingLogPrefix,
+		"identifier": identifier,
+		"remoteAddr": remoteAddr,
+		"id":         id,
+	}).Debug("Created new pinger")
 
 	return &pingerBase{
 		packetConn: packetConn,
 		id:         id,
 		identifier: identifier,
 		remoteAddr: remoteAddr,
-		responses:  responses,
+		proto:      pingNetworkToProto[network],
 	}
 }
 
 func (p *pingerBase) Close() {
-	defaultPingRouter.deregister(p.identifier, p.id)
+	p.packetConn.Close()
 }
 
 type pingerV4 struct {
@@ -398,18 +448,12 @@ type pingerV6 struct {
 // NewPinger directly creates a new instance with the given details.
 // icmpNetwork should be one of IcmpNetIP4, IcmpNetUDP4, IcmpNetIP6, IcmpNetUDP6
 func NewPinger(identifier string, icmpNetwork string, remoteAddr string) (Pinger, error) {
-	log.WithFields(log.Fields{
-		"prefix":     pingLogPrefix,
-		"identifier": identifier,
-		"network":    icmpNetwork,
-		"remoteAddr": remoteAddr,
-	}).Debug("Creating new pinger")
 
 	var bindAddr string
 	switch icmpNetwork {
 	case IcmpNetIP4, IcmpNetUDP4:
 		bindAddr = "0.0.0.0"
-		packetConn, err := defaultPingRouter.getPacketConn(icmpNetwork, bindAddr)
+		packetConn, err := createPacketConn(icmpNetwork, bindAddr)
 		if err != nil {
 			return nil, err
 		}
@@ -419,10 +463,10 @@ func NewPinger(identifier string, icmpNetwork string, remoteAddr string) (Pinger
 			return nil, errors.Wrapf(err, "Trying to resolve %v", remoteAddr)
 		}
 
-		return &pingerV4{pingerBase: *newPingerBase(identifier, packetConn, addr)}, nil
+		return &pingerV4{pingerBase: *newPingerBase(identifier, packetConn, addr, icmpNetwork)}, nil
 	case IcmpNetIP6, IcmpNetUDP6:
 		bindAddr = "::"
-		packetConn, err := defaultPingRouter.getPacketConn(icmpNetwork, bindAddr)
+		packetConn, err := createPacketConn(icmpNetwork, bindAddr)
 		if err != nil {
 			return nil, err
 		}
@@ -432,10 +476,10 @@ func NewPinger(identifier string, icmpNetwork string, remoteAddr string) (Pinger
 			return nil, errors.Wrapf(err, "Trying to resolve %v", remoteAddr)
 		}
 
-		return &pingerV6{pingerBase: *newPingerBase(identifier, packetConn, addr)}, nil
+		return &pingerV6{pingerBase: *newPingerBase(identifier, packetConn, addr, icmpNetwork)}, nil
 	}
 
-	return nil, fmt.Errorf("Unsupported network type: %v", icmpNetwork)
+	return nil, fmt.Errorf("unsupported network type: %v", icmpNetwork)
 }
 
 func resolvePingAddr(addrNetwork string, icmpNetwork string, remoteAddr string) (net.Addr, error) {
@@ -454,64 +498,10 @@ func resolvePingAddr(addrNetwork string, icmpNetwork string, remoteAddr string) 
 	return pingAddr, nil
 }
 
-func (p *pingerBase) ping(seq int, messageType icmp.Type) <-chan *PingResponse {
-	// google.com truncates any ping bodies greater than 64 bytes, so hand-encoding our two fields
-	nowBytes, err := time.Now().MarshalBinary()
-	if err != nil {
-		p.responses <- &PingResponse{Err: err}
-		return p.responses
-	}
-	var buffer bytes.Buffer
-	buffer.WriteString(p.identifier)
-	buffer.WriteByte(0)
-
-	// time.Time marshaled preceded by the length of that
-	buffer.WriteByte(byte(len(nowBytes)))
-	buffer.Write(nowBytes)
-
-	var padByte byte = 1;
-	for buffer.Len() < PadUpTo {
-		buffer.WriteByte(padByte)
-		padByte++
-	}
-
-	wm := icmp.Message{
-		Type: messageType,
-		Code: 0,
-		Body: &icmp.Echo{
-			ID:   p.id,
-			Seq:  seq,
-			Data: buffer.Bytes(),
-		},
-	}
-
-	wb, err := wm.Marshal(nil)
-	if err != nil {
-		p.responses <- &PingResponse{Err: err}
-		return p.responses
-	}
-
-	log.WithFields(log.Fields{
-		"prefix":     pingLogPrefix,
-		"identifier": p.identifier,
-		"id":         p.id,
-		"seq":        seq,
-		"remoteAddr": p.remoteAddr,
-	}).Debug("Sending ping packet")
-
-	p.packetConn.SetWriteDeadline(time.Now().Add(pingWriteDeadlineDuration))
-	if _, err = p.packetConn.WriteTo(wb, p.remoteAddr); err != nil {
-		p.responses <- &PingResponse{Err: err}
-		return p.responses
-	}
-
-	return p.responses
+func (p *pingerV4) Ping(seq int, perPingDuration time.Duration) PingResponse {
+	return p.ping(seq, ipv4.ICMPTypeEcho, perPingDuration)
 }
 
-func (p *pingerV4) Ping(seq int) <-chan *PingResponse {
-	return p.ping(seq, ipv4.ICMPTypeEcho)
-}
-
-func (p *pingerV6) Ping(seq int) <-chan *PingResponse {
-	return p.ping(seq, ipv6.ICMPTypeEchoRequest)
+func (p *pingerV6) Ping(seq int, perPingDuration time.Duration) PingResponse {
+	return p.ping(seq, ipv6.ICMPTypeEchoRequest, perPingDuration)
 }
