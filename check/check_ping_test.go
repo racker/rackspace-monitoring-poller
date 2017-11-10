@@ -26,6 +26,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
+	"github.com/pkg/errors"
 )
 
 const checkDataTemplate = `{
@@ -67,18 +68,15 @@ func TestPingCheck_Success(t *testing.T) {
 	defer ctrl.Finish()
 	mock := setup(ctrl)
 
-	responses := make(chan *check.PingResponse, 5)
-	responses <- &check.PingResponse{Seq: 1, Rtt: 1 * time.Millisecond}
-	responses <- &check.PingResponse{Seq: 2, Rtt: 10 * time.Millisecond}
-	responses <- &check.PingResponse{Seq: 3, Rtt: 5 * time.Millisecond}
-	responses <- &check.PingResponse{Seq: 4, Rtt: 5 * time.Millisecond}
-	responses <- &check.PingResponse{Seq: 5, Rtt: 5 * time.Millisecond}
-
-	mock.EXPECT().Ping(gomock.Any()).AnyTimes().Return(responses)
-	mock.EXPECT().Close()
-
 	const count = 5
 	const timeout = 15
+
+	mock.EXPECT().Ping(1, 3*time.Second).AnyTimes().Return(check.PingResponse{Seq: 1, Rtt: 1 * time.Millisecond})
+	mock.EXPECT().Ping(2, 3*time.Second).AnyTimes().Return(check.PingResponse{Seq: 2, Rtt: 10 * time.Millisecond})
+	mock.EXPECT().Ping(3, 3*time.Second).AnyTimes().Return(check.PingResponse{Seq: 3, Rtt: 5 * time.Millisecond})
+	mock.EXPECT().Ping(4, 3*time.Second).AnyTimes().Return(check.PingResponse{Seq: 4, Rtt: 5 * time.Millisecond})
+	mock.EXPECT().Ping(5, 3*time.Second).AnyTimes().Return(check.PingResponse{Seq: 5, Rtt: 5 * time.Millisecond})
+	mock.EXPECT().Close()
 
 	checkData := fmt.Sprintf(checkDataTemplate, count, timeout)
 	c, err := check.NewCheck(context.Background(), []byte(checkData))
@@ -99,4 +97,78 @@ func TestPingCheck_Success(t *testing.T) {
 	assert.Equal(t, 1, crs.Length())
 	AssertMetrics(t, expected, crs.Get(0).Metrics)
 	assert.True(t, crs.Available)
+}
+
+func TestPingCheck_OutOfOrderResponse(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mock := setup(ctrl)
+
+	const count = 5
+	const timeout = 15
+
+	// NOTE: the seq in the mocked response is "out of order"
+	mock.EXPECT().Ping(1, 3*time.Second).AnyTimes().Return(check.PingResponse{Seq: 1, Rtt: 1 * time.Millisecond})
+	mock.EXPECT().Ping(2, 3*time.Second).AnyTimes().Return(check.PingResponse{Seq: 3, Rtt: 5 * time.Millisecond})
+	mock.EXPECT().Ping(3, 3*time.Second).AnyTimes().Return(check.PingResponse{Seq: 2, Rtt: 10 * time.Millisecond})
+	mock.EXPECT().Ping(4, 3*time.Second).AnyTimes().Return(check.PingResponse{Seq: 5, Rtt: 5 * time.Millisecond})
+	mock.EXPECT().Ping(5, 3*time.Second).AnyTimes().Return(check.PingResponse{Seq: 4, Rtt: 5 * time.Millisecond})
+	mock.EXPECT().Close()
+
+	checkData := fmt.Sprintf(checkDataTemplate, count, timeout)
+	c, err := check.NewCheck(context.Background(), []byte(checkData))
+	require.NoError(t, err)
+
+	// Run check
+	crs, err := c.Run()
+	require.NoError(t, err)
+
+	expected := []*ExpectedMetric{
+		ExpectMetric("average", "", metric.MetricFloat, 0.0052, metric.UnitSeconds),
+		ExpectMetric("maximum", "", metric.MetricFloat, 0.010, metric.UnitSeconds),
+		ExpectMetric("minimum", "", metric.MetricFloat, 0.001, metric.UnitSeconds),
+		ExpectMetric("available", "", metric.MetricFloat, 100.0, metric.UnitPercent),
+		ExpectMetric("count", "", metric.MetricNumber, count, ""),
+	}
+
+	assert.Equal(t, 1, crs.Length())
+	AssertMetrics(t, expected, crs.Get(0).Metrics)
+	assert.True(t, crs.Available)
+}
+
+func TestPingCheck_PartialResponses(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mock := setup(ctrl)
+
+	const count = 5
+	const timeout = 15
+
+	// NOTE: the seq in the mocked response is "out of order"
+	mock.EXPECT().Ping(1, 3*time.Second).AnyTimes().Return(check.PingResponse{Seq: 1, Rtt: 2 * time.Millisecond})
+	mock.EXPECT().Ping(2, 3*time.Second).AnyTimes().Return(check.PingResponse{Seq: 3, Rtt: 5 * time.Millisecond})
+	mock.EXPECT().Ping(3, 3*time.Second).AnyTimes().Return(check.PingResponse{Err: errors.New("timeout"), Timeout: true})
+	mock.EXPECT().Ping(4, 3*time.Second).AnyTimes().Return(check.PingResponse{Seq: 5, Rtt: 5 * time.Millisecond})
+	mock.EXPECT().Ping(5, 3*time.Second).AnyTimes().Return(check.PingResponse{Err: errors.New("timeout"), Timeout: true})
+	mock.EXPECT().Close()
+
+	checkData := fmt.Sprintf(checkDataTemplate, count, timeout)
+	c, err := check.NewCheck(context.Background(), []byte(checkData))
+	require.NoError(t, err)
+
+	// Run check
+	crs, err := c.Run()
+	require.NoError(t, err)
+
+	expected := []*ExpectedMetric{
+		ExpectMetric("average", "", metric.MetricFloat, 0.004, metric.UnitSeconds),
+		ExpectMetric("maximum", "", metric.MetricFloat, 0.005, metric.UnitSeconds),
+		ExpectMetric("minimum", "", metric.MetricFloat, 0.002, metric.UnitSeconds),
+		ExpectMetric("available", "", metric.MetricFloat, 60.0, metric.UnitPercent),
+		ExpectMetric("count", "", metric.MetricNumber, count, ""),
+	}
+
+	assert.Equal(t, 1, crs.Length())
+	AssertMetrics(t, expected, crs.Get(0).Metrics)
+	assert.False(t, crs.Available)
 }
