@@ -128,6 +128,7 @@ packetLoop:
 				if !resp.Timeout {
 					break packetLoop
 				}
+				continue packetLoop
 			}
 
 			if resp.Seq <= 0 || resp.Seq > len(responses) {

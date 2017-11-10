@@ -84,14 +84,14 @@ func TestPinger_Concurrent(t *testing.T) {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
 
-	const concurrency = 50
+	const concurrency = 30
 	const pings = 5
 	var wg sync.WaitGroup
 
 	for i := 0; i < concurrency; i++ {
 		wg.Add(1)
 		go func(checkId string) {
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(time.Duration(i) * time.Millisecond)
 			defer wg.Done()
 
 			t.Logf("Starting %s", checkId)
