@@ -205,11 +205,30 @@ func (p *pingerBase) ping(seq int, messageType icmp.Type, perPingDuration time.D
 
 	p.packetConn.SetWriteDeadline(time.Now().Add(pingWriteDeadlineDuration))
 	if _, err = p.packetConn.WriteTo(reqEncoded, p.remoteAddr); err != nil {
+		log.WithError(err).WithFields(log.Fields{
+			"prefix":     pingLogPrefix,
+			"identifier": p.identifier,
+			"id":         p.id,
+			"seq":        seq,
+			"remoteAddr": p.remoteAddr,
+		}).Warn("Trying to send ping packet")
+
+		if isNetTimeoutError(err) {
+			return PingResponse{Err: err, Timeout: true}
+		}
 		return PingResponse{Err: err}
 	}
 
 	// now wait for the response packet matching our ID and remoteAddr
 	return p.receive(perPingDuration)
+}
+
+func isNetTimeoutError(err error) bool {
+	if netErr, ok := err.(net.Error); ok {
+		return netErr.Timeout()
+	} else {
+		return false
+	}
 }
 
 //noinspection GoBoolExpressions
@@ -238,10 +257,8 @@ recvLoop:
 		// read a raw ICMP, but since ICMP is a broadcast protocol we don't know if it is ours yet...
 		n, peerAddr, err := p.packetConn.ReadFrom(buffer)
 		if err != nil {
-			if netErr, ok := err.(net.Error); ok {
-				if netErr.Timeout() {
-					return PingResponse{Err: err, Timeout: true}
-				}
+			if isNetTimeoutError(err) {
+				return PingResponse{Err: err, Timeout: true}
 			}
 
 			log.WithFields(log.Fields{
