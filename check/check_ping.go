@@ -23,6 +23,7 @@ import (
 	protocol "github.com/racker/rackspace-monitoring-poller/protocol/check"
 	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
 	"github.com/racker/rackspace-monitoring-poller/utils"
+	"github.com/sparrc/go-ping"
 )
 
 const (
@@ -67,7 +68,7 @@ func (ch *PingCheck) Run() (*ResultSet, error) {
 		ipVersion = "v4"
 	}
 
-	pinger, err := PingerFactory(ch.GetID(), targetIP, ipVersion)
+	pinger, err := ping.NewPinger(targetIP)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"prefix":   ch.GetLogPrefix(),
@@ -75,10 +76,8 @@ func (ch *PingCheck) Run() (*ResultSet, error) {
 		}).Error("Failed to create pinger")
 		return nil, err
 	}
-	defer pinger.Close()
 
 	timeoutDuration := time.Duration(ch.Timeout) * time.Second
-	overallTimeout := time.After(timeoutDuration)
 
 	count := int(ch.Details.Count)
 	if count <= 0 {
@@ -95,134 +94,40 @@ func (ch *PingCheck) Run() (*ResultSet, error) {
 		"perPingDuration": perPingDuration,
 	}).Info("Running check")
 
-	var pingErr error
+	pinger.Count = count
+	pinger.Timeout = timeoutDuration
+	pinger.Interval = perPingDuration
 
-	// It's very unlikely, but ping responses could technically arrive out of order. This
-	// slice will be a place to capture the responses in whatever order we get them.
-	responses := make([]*PingResponse, count)
+	pinger.Run()
 
-packetLoop:
-	for i := 0; i < count; i++ {
-		seq := i + 1
+	stats := pinger.Statistics()
 
-		select {
-		case <-overallTimeout:
-			log.WithFields(log.Fields{
-				"prefix":   ch.GetLogPrefix(),
-				"targetIP": targetIP,
-			}).Debug("Reached overall timeout")
-
-			break packetLoop
-
-		default:
-			resp := pinger.Ping(seq, perPingDuration)
-			log.WithFields(log.Fields{
-				"prefix":  ch.GetLogPrefix(),
-				"resp":    resp,
-				"checkId": ch.Id,
-			}).Debug("Got ping response")
-
-			if resp.Err != nil {
-				if !resp.Timeout {
-					// Latch non-timeout errors for consideration and inclusion in the final check result
-					pingErr = resp.Err
-				}
-				continue packetLoop
-			}
-
-			if resp.Seq <= 0 || resp.Seq > len(responses) {
-				log.WithFields(log.Fields{
-					"prefix":   ch.GetLogPrefix(),
-					"seq":      resp.Seq,
-					"targetIP": targetIP,
-				}).Warn("Invalid response sequence")
-				continue packetLoop
-			}
-
-			// Check if the response slot already is occupied
-
-			if responses[resp.Seq-1] != nil {
-				log.WithFields(log.Fields{
-					"prefix":   ch.GetLogPrefix(),
-					"seq":      resp.Seq,
-					"targetIP": targetIP,
-				}).Warn("Duplicate response sequence")
-				continue packetLoop
-			}
-
-			// ...but if not, save it for post-processing outside the loop
-
-			responses[resp.Seq-1] = &resp
-
-			time.Sleep(interPingDelay)
-		}
-
-	}
-
-	sent := count
-
-	initialDuration := true
-	var minRTT time.Duration
-	var maxRTT time.Duration
-	var avgRTT time.Duration
 	var totalRTT time.Duration
-
-	var recv int
-	for i := 0; i < count; i++ {
-		if responses[i] != nil {
-			recv++
-
-			rtt := responses[i].Rtt
-			totalRTT += rtt
-
-			if initialDuration {
-				minRTT = rtt
-				maxRTT = rtt
-				minRTT = rtt
-				initialDuration = false
-			} else {
-				if rtt > maxRTT {
-					maxRTT = rtt
-				}
-				if rtt < minRTT {
-					minRTT = rtt
-				}
-			}
-		}
-	}
-	if recv > 0 {
-		avgRTT = totalRTT / time.Duration(recv)
+	for _, rtt := range stats.Rtts {
+		totalRTT += rtt
 	}
 
 	log.WithFields(log.Fields{
 		"prefix":   ch.GetLogPrefix(),
 		"checkId":  ch.Id,
 		"targetIP": targetIP,
-		"sent":     sent,
-		"recv":     recv,
-		"minRTT":   minRTT,
-		"maxRTT":   maxRTT,
-		"avgRTT":   avgRTT,
+		"stats":    stats,
 	}).Debug("Computed overall ping results")
 
 	cr := NewResult(
-		metric.NewMetric("count", "", metric.MetricNumber, sent, ""),
-		metric.NewPercentMetricFromInt("available", "", recv, sent),
-		metric.NewMetric("average", "", metric.MetricFloat, utils.ScaleFractionalDuration(avgRTT, time.Second), metric.UnitSeconds),
-		metric.NewMetric("maximum", "", metric.MetricFloat, utils.ScaleFractionalDuration(maxRTT, time.Second), metric.UnitSeconds),
-		metric.NewMetric("minimum", "", metric.MetricFloat, utils.ScaleFractionalDuration(minRTT, time.Second), metric.UnitSeconds),
+		metric.NewMetric("count", "", metric.MetricNumber, stats.PacketsSent, ""),
+		metric.NewPercentMetricFromInt("available", "", stats.PacketsRecv, stats.PacketsSent),
+		metric.NewMetric("average", "", metric.MetricFloat, utils.ScaleFractionalDuration(stats.AvgRtt, time.Second), metric.UnitSeconds),
+		metric.NewMetric("maximum", "", metric.MetricFloat, utils.ScaleFractionalDuration(stats.MaxRtt, time.Second), metric.UnitSeconds),
+		metric.NewMetric("minimum", "", metric.MetricFloat, utils.ScaleFractionalDuration(stats.MinRtt, time.Second), metric.UnitSeconds),
 	)
 	crs := NewResultSet(ch, cr)
 
-	if pingErr == nil && recv > 0 {
-		crs.SetStatusSuccess()
-		crs.SetStateAvailable()
-	} else if pingErr == nil && recv == 0 {
+	if stats.PacketsRecv == 0 {
 		crs.SetStateUnavailable()
 		crs.SetStatus("No responses received")
 	} else {
-		crs.SetStateUnavailable()
-		crs.SetStatusFromError(pingErr)
+		crs.SetStateAvailable()
 	}
 
 	return crs, nil

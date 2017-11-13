@@ -37,3 +37,4 @@ import:
   - statsd
 - package: github.com/rackerlabs/go-connect-tunnel
   version: ^1.0.0
+- package: github.com/sparrc/go-ping
