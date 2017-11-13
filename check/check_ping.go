@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	defaultPingCount = 5
+	defaultPingCount = 6
 )
 
 // PingCheck conveys Ping checks
