@@ -123,10 +123,9 @@ packetLoop:
 			}).Debug("Got ping response")
 
 			if resp.Err != nil {
-				// Latch the error for consideration and inclusion in the final check result
-				pingErr = resp.Err
 				if !resp.Timeout {
-					break packetLoop
+					// Latch non-timeout errors for consideration and inclusion in the final check result
+					pingErr = resp.Err
 				}
 				continue packetLoop
 			}
