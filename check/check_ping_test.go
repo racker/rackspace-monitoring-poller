@@ -178,5 +178,5 @@ func TestPingCheck_PartialResponses(t *testing.T) {
 
 	assert.Equal(t, 1, crs.Length())
 	AssertMetrics(t, expected, crs.Get(0).Metrics)
-	assert.False(t, crs.Available)
+	assert.True(t, crs.Available)
 }
