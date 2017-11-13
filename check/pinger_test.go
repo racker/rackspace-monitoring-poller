@@ -85,7 +85,7 @@ func TestPinger_Concurrent(t *testing.T) {
 	}
 
 	const concurrency = 75
-	const pings = 5
+	const pings = 6
 	var wg sync.WaitGroup
 
 	for i := 0; i < concurrency; i++ {
