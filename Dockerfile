@@ -1,6 +1,6 @@
-FROM golang:1.7-alpine
+FROM golang:1.9.2-alpine
 
-ENV GLIDE_VER=0.12.3
+ENV GLIDE_VER=0.13.1
 
 RUN apk update && apk upgrade && \
     apk add --no-cache --virtual .build-deps \
