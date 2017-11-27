@@ -22,6 +22,7 @@ import (
 	"net"
 	"strings"
 	"testing"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/racker/rackspace-monitoring-poller/check"
@@ -36,6 +37,12 @@ func ValidateMetrics(t *testing.T, metrics []string, cr *check.Result) {
 		}
 	}
 
+}
+// IsInRange returns true if the time xvalue is within buffer seconds of
+// yvalue,
+func IsInRange(xvalue int64, yvalue int64, buffer int) bool {
+    delta := int(xvalue - yvalue)
+    return -buffer < delta && delta < buffer
 }
 
 func TestTCP_TLSRunSuccess(t *testing.T) {
@@ -94,6 +101,12 @@ func TestTCP_TLSRunSuccess(t *testing.T) {
 	cert_end, _ := cr.GetMetric("cert_end").ToInt64()
 	if cert_end != 3600000000 {
 		t.Fatal("invalid end time")
+	}
+	cert_end_in, _ := cr.GetMetric("cert_end_in").ToInt64()
+	expectedTime := cert_end - time.Now().Unix()
+	// Since thie metric compares against current time, allow a 2s buffer
+	if !IsInRange(cert_end_in, expectedTime, 2) {
+		t.Fatal("invalid end in time")
 	}
 	cert_dns_names, _ := cr.GetMetric("cert_subject_alternate_names").ToString()
 	if cert_dns_names != "example.com" {

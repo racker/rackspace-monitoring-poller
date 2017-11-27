@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	defaultPingCount = 5
+	defaultPingCount = 6
 )
 
 // PingCheck conveys Ping checks
@@ -123,11 +123,11 @@ packetLoop:
 			}).Debug("Got ping response")
 
 			if resp.Err != nil {
-				// Latch the error for consideration and inclusion in the final check result
-				pingErr = resp.Err
 				if !resp.Timeout {
-					break packetLoop
+					// Latch non-timeout errors for consideration and inclusion in the final check result
+					pingErr = resp.Err
 				}
+				continue packetLoop
 			}
 
 			if resp.Seq <= 0 || resp.Seq > len(responses) {

@@ -44,12 +44,17 @@ const checkDataTemplate = `{
 	  "disabled":false
 	  }`
 
-func setup(ctrl *gomock.Controller) *MockPinger {
+func setup(ctrl *gomock.Controller) (*MockPinger, check.PingerFactorySpec) {
 	mockPinger := NewMockPinger(ctrl)
+	originalFactory := check.PingerFactory
 	check.PingerFactory = func(identifier string, remoteAddr string, ipVersion string) (check.Pinger, error) {
 		return mockPinger, nil
 	}
-	return mockPinger
+	return mockPinger, originalFactory
+}
+
+func teardown(originalFactory check.PingerFactorySpec) {
+	check.PingerFactory = originalFactory
 }
 
 func TestPingCheck_ConfirmType(t *testing.T) {
@@ -66,7 +71,8 @@ func TestPingCheck_ConfirmType(t *testing.T) {
 func TestPingCheck_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	mock := setup(ctrl)
+	mock, originalFactory := setup(ctrl)
+	defer teardown(originalFactory)
 
 	const count = 5
 	const timeout = 15
@@ -102,7 +108,8 @@ func TestPingCheck_Success(t *testing.T) {
 func TestPingCheck_OutOfOrderResponse(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	mock := setup(ctrl)
+	mock, originalFactory := setup(ctrl)
+	defer teardown(originalFactory)
 
 	const count = 5
 	const timeout = 15
@@ -139,7 +146,8 @@ func TestPingCheck_OutOfOrderResponse(t *testing.T) {
 func TestPingCheck_PartialResponses(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	mock := setup(ctrl)
+	mock, originalFactory := setup(ctrl)
+	defer teardown(originalFactory)
 
 	const count = 5
 	const timeout = 15
@@ -170,5 +178,5 @@ func TestPingCheck_PartialResponses(t *testing.T) {
 
 	assert.Equal(t, 1, crs.Length())
 	AssertMetrics(t, expected, crs.Get(0).Metrics)
-	assert.False(t, crs.Available)
+	assert.True(t, crs.Available)
 }

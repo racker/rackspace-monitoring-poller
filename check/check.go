@@ -355,7 +355,9 @@ func (ch *Base) AddTLSMetrics(cr *Result, state tls.ConnectionState) *TLSMetrics
 	cr.AddMetric(metric.NewMetric("cert_subject_alternate_names", "", metric.MetricString, strings.Join(cert.DNSNames, ", "), ""))
 	// START TIME
 	cr.AddMetric(metric.NewMetric("cert_start", "", metric.MetricNumber, cert.NotBefore.Unix(), ""))
-	cr.AddMetric(metric.NewMetric("cert_end", "", metric.MetricNumber, cert.NotAfter.Unix(), ""))
+	certExpiry := cert.NotAfter.Unix()
+	cr.AddMetric(metric.NewMetric("cert_end", "", metric.MetricNumber, certExpiry, ""))
+	cr.AddMetric(metric.NewMetric("cert_end_in", "", metric.MetricNumber, certExpiry - time.Now().Unix(), ""))
 	return tlsMetrics
 }
 
