@@ -12,9 +12,6 @@ EXE := rackspace-monitoring-poller
 APP_NAME := rackspace-monitoring-poller
 
 CLOUDFILES_REPO_NAME := poller-$(GIT_TAG)
-# switching new, per-distro repos to all be organized under a consolidated swift container `poller-repos`
-# ...a container per version is unweildy especially in the MyCloud UI
-CF_POLLER_CONTAINER := poller-repos
 RCLONE_ARGS :=
 
 PROJECT_VENDOR := github.com/racker/rackspace-monitoring-poller/vendor
@@ -117,11 +114,8 @@ package: package-debs
 package-repo-upload: package reprepro-debs package-upload-deb
 
 package-upload-deb:
-	rclone ${RCLONE_ARGS} mkdir rackspace:${CF_POLLER_CONTAINER}/${GIT_TAG}
-	rclone ${RCLONE_ARGS} copy ${BUILD_REPOS_DIR} rackspace:${CF_POLLER_CONTAINER}/${GIT_TAG}
-	# retain "old" structure to enable incrementally converting over the repo web servicing
-	rclone ${RCLONE_ARGS} mkdir rackspace:${CLOUDFILES_REPO_NAME}/debian
-	rclone ${RCLONE_ARGS} copy ${BUILD_REPOS_DIR}/debian rackspace:${CLOUDFILES_REPO_NAME}/debian
+	rclone ${RCLONE_ARGS} mkdir rackspace:${CLOUDFILES_REPO_NAME}
+	rclone ${RCLONE_ARGS} copy ${BUILD_REPOS_DIR} rackspace:${CLOUDFILES_REPO_NAME}
 
 reprepro-debs: \
 	${BUILD_REPOS_DIR}/ubuntu-14.04-x86_64 \
