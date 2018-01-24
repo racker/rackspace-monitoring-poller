@@ -127,8 +127,9 @@ func (ch *HTTPCheck) Run() (*ResultSet, error) {
 	var netClient *http.Client
 	tlsConfig := &tls.Config{InsecureSkipVerify: true, ServerName: host}
 	transport := &http.Transport{
-		TLSClientConfig: tlsConfig,
-		DialContext:     NewCustomDialContext(ch.TargetResolver),
+		DisableKeepAlives: true,
+		TLSClientConfig:   tlsConfig,
+		DialContext:       NewCustomDialContext(ch.TargetResolver),
 	}
 	netClient = &http.Client{Transport: transport}
 
@@ -153,6 +154,7 @@ func (ch *HTTPCheck) Run() (*ResultSet, error) {
 		crs.SetStateUnavailable()
 		return crs, nil
 	}
+
 	// Setup Auth
 	if len(ch.Details.AuthUser) > 0 && len(ch.Details.AuthPassword) > 0 {
 		req.SetBasicAuth(ch.Details.AuthUser, ch.Details.AuthPassword)
