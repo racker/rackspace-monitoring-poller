@@ -1,5 +1,5 @@
-hash: 4011f749e1f12caff9e9d72e959b4ef33fbdc1adaf20b973eb2cae948ffd9d65
-updated: 2017-10-31T12:20:25.883678-05:00
+hash: 7a0e90dc463970501c5e12ed6b70ab31439d7f372972f6ab59c89d2f31a6fab2
+updated: 2018-03-21T08:43:59.282902-05:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -14,9 +14,9 @@ imports:
   subpackages:
   - spew
 - name: github.com/deckarep/golang-set
-  version: fc8930a5e645572ee00bf66358ed3414f3c13b90
+  version: 1d4478f51bed434f1dadf96dcd9b43aabac66795
 - name: github.com/fsnotify/fsnotify
-  version: 629574ca2a5df945712d3079857300b5e4da0236
+  version: c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9
 - name: github.com/go-ole/go-ole
   version: 2ecd927eaf828c4fc088fae349b28eed1480ff56
   subpackages:
@@ -74,7 +74,7 @@ imports:
 - name: github.com/satori/go.uuid
   version: 879c5887cd475cd7864858769793b2ceb0d44feb
 - name: github.com/shirou/gopsutil
-  version: 6e221c482653ef05c9f6a7bf71ddceea0e40bac5
+  version: 5776ff9c7c5d063d574ef53d740f75c68b448e53
   subpackages:
   - cpu
   - disk
@@ -94,7 +94,7 @@ imports:
 - name: github.com/StackExchange/wmi
   version: ea383cf3ba6ec950874b8486cd72356d007c768f
 - name: github.com/stretchr/testify
-  version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
+  version: 12b6f73e6084dad08a7c6e575284b177ecafbc71
   subpackages:
   - assert
   - require
