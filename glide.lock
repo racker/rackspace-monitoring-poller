@@ -1,5 +1,5 @@
-hash: 4011f749e1f12caff9e9d72e959b4ef33fbdc1adaf20b973eb2cae948ffd9d65
-updated: 2018-03-21T08:40:12.27962-05:00
+hash: 7a0e90dc463970501c5e12ed6b70ab31439d7f372972f6ab59c89d2f31a6fab2
+updated: 2018-03-21T08:43:59.282902-05:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -74,7 +74,7 @@ imports:
 - name: github.com/satori/go.uuid
   version: 879c5887cd475cd7864858769793b2ceb0d44feb
 - name: github.com/shirou/gopsutil
-  version: 7ec06ec280df1dd1f08befc535049d49d63ae18a
+  version: 5776ff9c7c5d063d574ef53d740f75c68b448e53
   subpackages:
   - cpu
   - disk
