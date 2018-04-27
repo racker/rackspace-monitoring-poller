@@ -147,6 +147,7 @@ install-nfpm:
 	wget -O ${BUILD_DIR}/nfpm.tar.gz https://github.com/goreleaser/nfpm/releases/download/v0.8.2/nfpm_0.8.2_Linux_x86_64.tar.gz
 	tar -C ${BUILD_DIR} -xzf ${BUILD_DIR}/nfpm.tar.gz
 
+${NFPM}: install-nfpm
 
 ${GOPATH}/bin/glide :
 	curl https://glide.sh/get | sh
