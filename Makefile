@@ -39,7 +39,7 @@ PKG_VERSION := ${GIT_TAG}-${TAG_DISTANCE}
 PKG_BASE := ${APP_NAME}_${PKG_VERSION}_${ARCH}
 
 
-define DEB_YAML
+define YAML_HDR
 name: ${APP_NAME}
 arch: ${ARCH}
 platform: ${OS}
@@ -49,24 +49,61 @@ priority: extra
 vendor: ${VENDOR}
 license: ${LICENSE}
 bindir: /${PKGDIR_BIN}
+endef
+
+define SYSTEMD_YAML_FILES
+  ${DEB_BUILD_DIR}/${SYSTEMD_CONF}: /${SYSTEMD_CONF} 
+endef
+
+define YAML_FILES
 files:
   ${DEB_BUILD_DIR}/${PKGDIR_BIN}/${EXE}: /${PKGDIR_BIN}/${EXE}
-  ${DEB_BUILD_DIR}/${SYSTEMD_CONF}: /${SYSTEMD_CONF} 
+endef
+
+define YAML_CONFIG_FILES
 config_files:
-  ${DEB_BUILD_DIR}/${UPSTART_CONF}: /${UPSTART_CONF}.conf
   ${DEB_BUILD_DIR}/${UPSTART_DEFAULT}: /${UPSTART_DEFAULT}
   ${DEB_BUILD_DIR}/${APP_CFG}: /${APP_CFG}
   ${DEB_BUILD_DIR}/${LOGROTATE_CFG}: /${LOGROTATE_CFG}
+endef
+
+define UPSTART_YAML_CONFIG_FILES
+  ${DEB_BUILD_DIR}/${UPSTART_CONF}: /${UPSTART_CONF}.conf
+endef
+
+define YAML_SCRIPTS
 scripts:
         postinstall: ${DEB_SRC_DIR}/postinst
         preremove: ${DEB_SRC_DIR}/prerm
 endef
 
+define DEB_YAML
+${YAML_HDR}
+${YAML_FILES}
+${SYSTEMD_YAML_FILES}
+${YAML_CONFIG_FILES}
+${UPSTART_YAML_CONFIG_FILES}
+${YAML_SCRIPTS}
+endef
+
+define SYSTEMD_DEB_YAML
+${YAML_HDR}
+${YAML_FILES}
+${SYSTEMD_YAML_FILES}
+${YAML_CONFIG_FILES}
+${YAML_SCRIPTS}
+endef
+
+define UPSTART_DEB_YAML
+${YAML_HDR}
+${YAML_FILES}
+${YAML_CONFIG_FILES}
+${UPSTART_YAML_CONFIG_FILES}
+endef
+
 export DEB_YAML
-
-gbjtest:
-	echo "$$DEB_YAML" > ${BUILD_DIR}/deb.yaml
-
+export SYSTEMD_DEB_YAML
+export UPSTART_DEB_YAML
 
 ifdef DONT_SIGN
   SED_DISTRIBUTIONS = -e "/SignWith/ d" -e "p"
@@ -185,20 +222,13 @@ ${BUILD_DIR}/${PKG_BASE}.deb : $(addprefix ${DEB_BUILD_DIR}/,${PKGDIR_BIN}/${EXE
 
 ${BUILD_DIR}/${PKG_BASE}_systemd.deb : $(addprefix ${DEB_BUILD_DIR}/,${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES} ${SYSTEMD_CONF})
 	rm -f $@
-	${FPM} -p $@ -s dir -t deb \
-	  ${FPM_IDENTIFIERS} \
-	  --deb-default ${DEB_BUILD_DIR}/${UPSTART_DEFAULT} \
-	  --deb-systemd ${DEB_BUILD_DIR}/${SYSTEMD_CONF} \
-	  --no-deb-systemd-restart-after-upgrade \
-	  -C ${DEB_BUILD_DIR} ${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES}
+	echo "$$SYSTEMD_DEB_YAML" > ${BUILD_DIR}/systemd_deb.yaml
+	${NFPM} -f ${BUILD_DIR}/systemd_deb.yaml pkg -t $@
 
 ${BUILD_DIR}/${PKG_BASE}_upstart.deb : $(addprefix ${DEB_BUILD_DIR}/,${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES} ${UPSTART_DEFAULT} ${UPSTART_CONF})
 	rm -f $@
-	${FPM} -p $@ -s dir -t deb \
-	  ${FPM_IDENTIFIERS} \
-	  --deb-default ${DEB_BUILD_DIR}/${UPSTART_DEFAULT} \
-	  --deb-upstart ${DEB_BUILD_DIR}/${UPSTART_CONF} \
-	  -C ${DEB_BUILD_DIR} ${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES}
+	echo "$$UPSTART_DEB_YAML" > ${BUILD_DIR}/upstart_deb.yaml
+	${NFPM} -f ${BUILD_DIR}/upstart_deb.yaml pkg -t $@
 
 clean:
 	rm -rf $(BUILD_DIR)
