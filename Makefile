@@ -37,8 +37,36 @@ DEB_CONFIG_FILES := ${APP_CFG} ${LOGROTATE_CFG}
 
 PKG_VERSION := ${GIT_TAG}-${TAG_DISTANCE}
 PKG_BASE := ${APP_NAME}_${PKG_VERSION}_${ARCH}
-FPM_IDENTIFIERS := -n ${APP_NAME} --license "${LICENSE}" --vendor "${VENDOR}" \
-                   	  -v ${GIT_TAG} --iteration ${TAG_DISTANCE}
+
+
+define DEB_YAML
+name: ${APP_NAME}
+arch: ${ARCH}
+platform: ${OS}
+version: ${PKG_VERSION}
+section: default 
+priority: extra 
+vendor: ${VENDOR}
+license: ${LICENSE}
+bindir: /${PKGDIR_BIN}
+files:
+  ${DEB_BUILD_DIR}/${PKGDIR_BIN}/${EXE}: /${PKGDIR_BIN}/${EXE}
+  ${DEB_BUILD_DIR}/${SYSTEMD_CONF}: /${SYSTEMD_CONF} 
+config_files:
+  ${DEB_BUILD_DIR}/${UPSTART_CONF}: /${UPSTART_CONF}.conf
+  ${DEB_BUILD_DIR}/${UPSTART_DEFAULT}: /${UPSTART_DEFAULT}
+  ${DEB_BUILD_DIR}/${APP_CFG}: /${APP_CFG}
+  ${DEB_BUILD_DIR}/${LOGROTATE_CFG}: /${LOGROTATE_CFG}
+scripts:
+        postinstall: ${DEB_SRC_DIR}/postinst
+        preremove: ${DEB_SRC_DIR}/prerm
+endef
+
+export DEB_YAML
+
+gbjtest:
+	echo "$$DEB_YAML" > ${BUILD_DIR}/deb.yaml
+
 
 ifdef DONT_SIGN
   SED_DISTRIBUTIONS = -e "/SignWith/ d" -e "p"
@@ -49,7 +77,7 @@ endif
 MOCK_POLLER := LogPrefixGetter,ConnectionStream,Connection,Session,CheckScheduler,CheckExecutor,Scheduler,ChecksReconciler
 
 WGET := wget
-FPM := fpm
+NFPM := ${BUILD_DIR}/nfpm
 REPREPRO := reprepro
 
 default: clean package
@@ -78,8 +106,10 @@ coverage: ${GOPATH}/bin/goveralls
 vendor: ${GOPATH}/bin/glide glide.yaml glide.lock
 	${GOPATH}/bin/glide install
 
-install-fpm:
-	gem install --no-ri --no-rdoc fpm
+install-nfpm:
+	wget -O ${BUILD_DIR}/nfpm.tar.gz https://github.com/goreleaser/nfpm/releases/download/v0.8.2/nfpm_0.8.2_Linux_x86_64.tar.gz
+	tar -C ${BUILD_DIR} -xzf ${BUILD_DIR}/nfpm.tar.gz
+
 
 ${GOPATH}/bin/glide :
 	curl https://glide.sh/get | sh
@@ -128,9 +158,9 @@ clean-repos:
 # NOTE make 4.1 supports the proper syntax, which is
 # define buildReprepro =
 define buildReprepro
- 	mkdir -p $@/conf
- 	sed -n ${SED_DISTRIBUTIONS} pkg/debian/repo/conf/distributions > $@/conf/distributions
- 	${REPREPRO} -b $@ includedeb cloudmonitoring $<
+	mkdir -p $@/conf
+	sed -n ${SED_DISTRIBUTIONS} pkg/debian/repo/conf/distributions > $@/conf/distributions
+	${REPREPRO} -b $@ includedeb cloudmonitoring $<
 endef
 
 ${BUILD_REPOS_DIR}/ubuntu-14.04-x86_64 : ${BUILD_DIR}/${PKG_BASE}_upstart.deb
@@ -150,13 +180,8 @@ package-debs-local: stage-deb-exe-local package-debs
 
 ${BUILD_DIR}/${PKG_BASE}.deb : $(addprefix ${DEB_BUILD_DIR}/,${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES} ${UPSTART_DEFAULT} ${UPSTART_CONF} ${SYSTEMD_CONF})
 	rm -f $@
-	${FPM} -p $@ -s dir -t deb \
-	  ${FPM_IDENTIFIERS} \
-	  --deb-default ${DEB_BUILD_DIR}/${UPSTART_DEFAULT} \
-	  --deb-upstart ${DEB_BUILD_DIR}/${UPSTART_CONF} \
-	  --deb-systemd ${DEB_BUILD_DIR}/${SYSTEMD_CONF} \
-	  --no-deb-systemd-restart-after-upgrade \
-	  -C ${DEB_BUILD_DIR} ${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES}
+	echo "$$DEB_YAML" > ${BUILD_DIR}/deb.yaml
+	${NFPM} -f ${BUILD_DIR}/deb.yaml pkg -t $@
 
 ${BUILD_DIR}/${PKG_BASE}_systemd.deb : $(addprefix ${DEB_BUILD_DIR}/,${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES} ${SYSTEMD_CONF})
 	rm -f $@
@@ -206,5 +231,5 @@ ${DEB_BUILD_DIR}/${UPSTART_CONF} :
 
 # .PHONY tells make to not expect these goals to be actual files produced by the rule
 .PHONY: default repackage package package-debs package-repo-upload package-upload-deb package-debs-local reprepro-debs \
-	clean clean-repos generate-mocks stage-deb-exe-local build test test-integrationcli coverage install-fpm \
+	clean clean-repos generate-mocks stage-deb-exe-local build test test-integrationcli coverage install-nfpm \
 	generate-callgraphs regenerate-callgraphs clean-callgraphs
