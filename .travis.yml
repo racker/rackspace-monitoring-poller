@@ -3,7 +3,7 @@ sudo: true
 go:
 - 1.9.4
 install:
-- make install-fpm
+- make install-nfpm
 script:
 - make test build test-integrationcli package-debs-local
 after_script:
