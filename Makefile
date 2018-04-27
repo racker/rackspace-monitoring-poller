@@ -216,17 +216,17 @@ package-debs: ${BUILD_DIR}/${PKG_BASE}.deb \
 
 package-debs-local: stage-deb-exe-local package-debs
 
-${BUILD_DIR}/${PKG_BASE}.deb : $(addprefix ${DEB_BUILD_DIR}/,${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES} ${UPSTART_DEFAULT} ${UPSTART_CONF} ${SYSTEMD_CONF})
+${BUILD_DIR}/${PKG_BASE}.deb : $(addprefix ${DEB_BUILD_DIR}/,${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES} ${UPSTART_DEFAULT} ${UPSTART_CONF} ${SYSTEMD_CONF}) ${NFPM}
 	rm -f $@
 	echo "$$DEB_YAML" > ${BUILD_DIR}/deb.yaml
 	${NFPM} -f ${BUILD_DIR}/deb.yaml pkg -t $@
 
-${BUILD_DIR}/${PKG_BASE}_systemd.deb : $(addprefix ${DEB_BUILD_DIR}/,${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES} ${SYSTEMD_CONF})
+${BUILD_DIR}/${PKG_BASE}_systemd.deb : $(addprefix ${DEB_BUILD_DIR}/,${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES} ${SYSTEMD_CONF}) ${NFPM}
 	rm -f $@
 	echo "$$SYSTEMD_DEB_YAML" > ${BUILD_DIR}/systemd_deb.yaml
 	${NFPM} -f ${BUILD_DIR}/systemd_deb.yaml pkg -t $@
 
-${BUILD_DIR}/${PKG_BASE}_upstart.deb : $(addprefix ${DEB_BUILD_DIR}/,${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES} ${UPSTART_DEFAULT} ${UPSTART_CONF})
+${BUILD_DIR}/${PKG_BASE}_upstart.deb : $(addprefix ${DEB_BUILD_DIR}/,${PKGDIR_BIN}/${EXE} ${DEB_CONFIG_FILES} ${UPSTART_DEFAULT} ${UPSTART_CONF}) ${NFPM}
 	rm -f $@
 	echo "$$UPSTART_DEB_YAML" > ${BUILD_DIR}/upstart_deb.yaml
 	${NFPM} -f ${BUILD_DIR}/upstart_deb.yaml pkg -t $@
