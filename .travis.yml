@@ -2,10 +2,8 @@ language: go
 sudo: true
 go:
 - 1.9.4
-install:
-- make install-fpm
 script:
-- make test build test-integrationcli package-debs-local
+- make test build install-nfpm test-integrationcli package-debs-local
 after_script:
 - make coverage
 deploy:
