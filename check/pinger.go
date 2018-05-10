@@ -99,7 +99,8 @@ type pingerBase struct {
 // PingerFactory creates and returns a new pinger that is initialized to a standard implementation, but can be
 // swapped out for unit testing, etc.
 var PingerFactory PingerFactorySpec = func(identifier string, remoteAddr string, ipVersion string) (Pinger, error) {
-	privileged := os.Geteuid() == 0
+	// ICMP on Windows only works as an admin user, so force priviledged mode as such
+	privileged := os.Geteuid() == 0 || runtime.GOOS == "windows"
 	if !privileged {
 		switch runtime.GOOS {
 		case "darwin", "linux":
