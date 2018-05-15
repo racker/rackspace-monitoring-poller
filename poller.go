@@ -114,5 +114,7 @@ func main() {
 	pollerCmd.AddCommand(commands.EndpointCmd)
 	pollerCmd.AddCommand(commands.VerifyCmd)
 	pollerCmd.AddCommand(commands.PingCmd)
+	pollerCmd.AddCommand(commands.InstallServiceCmd)
+	pollerCmd.AddCommand(commands.UninstallServiceCmd)
 	pollerCmd.Execute()
 }

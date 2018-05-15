@@ -18,20 +18,21 @@ package poller
 
 import (
 	"context"
-	log "github.com/sirupsen/logrus"
+	"crypto/x509"
+	"os"
+	"time"
+
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/utils"
 	"github.com/satori/go.uuid"
-	"os"
-	"time"
-	"crypto/x509"
+	log "github.com/sirupsen/logrus"
 )
 
 func generatePollerGuid() string {
 	return uuid.NewV4().String()
 }
 
-func Run(configFilePath string, insecure bool) {
+func Run(outerContext context.Context, configFilePath string, insecure bool) {
 	utils.CheckFDLimit()
 
 	guid := generatePollerGuid()
@@ -56,7 +57,10 @@ func Run(configFilePath string, insecure bool) {
 	}
 
 	signalNotify := utils.HandleInterrupts()
-	ctx, cancel := context.WithCancel(context.Background())
+	if outerContext == nil {
+		outerContext = context.Background()
+	}
+	ctx, cancel := context.WithCancel(outerContext)
 	StartMetricsPusher(ctx, cfg)
 	for {
 		stream := NewConnectionStream(ctx, cfg, rootCAs)
