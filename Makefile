@@ -135,6 +135,7 @@ test-integrationcli: build
 
 build: ${GOPATH}/bin/gox vendor
 	CGO_ENABLED=0 ${GOPATH}/bin/gox \
+	  -ldflags "-s -w -X main.version=${PKG_VERSION}" \
 	  -osarch "linux/386 linux/amd64 darwin/amd64 windows/386 windows/amd64" \
 	  -output="${BUILD_DIR}/{{.Dir}}_{{.OS}}_{{.Arch}}"
 

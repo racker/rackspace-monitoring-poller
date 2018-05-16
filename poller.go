@@ -53,13 +53,15 @@ var (
 		LogfileName string
 		JsonLogger  bool
 	}
+
+	version = "dev"
 )
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Prints version information",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(version.Version)
+		fmt.Println(version)
 	},
 }
 
