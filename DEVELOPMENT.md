@@ -16,13 +16,8 @@ cd $GOPATH/src/github.com/racker
 git clone https://github.com/racker/rackspace-monitoring-poller.git
 ```
 
-With this repository cloned into your `$GOPATH`, populate the external dependencies before building/running:
-
-```
-glide install
-```
-
-or setup/upgrade Glide and install dependencies with make:
+With this repository cloned into your `$GOPATH`, install required tools and populate the external dependencies 
+before building/running:
 
 ```
 make prep
@@ -33,6 +28,21 @@ Finally, you can build an instance of the `rackspace-monitoring-poller` executab
 ```
 go build
 ```
+
+## Building like CI does
+
+If you would like to build like the CI build does it, then you can perform a `make build` invocation inside
+of a Go container:
+
+```bash
+docker run --rm \
+  -v ${PWD}:/go/src/github.com/racker/rackspace-monitoring-poller \
+  -w /go/src/github.com/racker/rackspace-monitoring-poller \
+  golang:1.10.2 \
+  make build
+```
+
+Since it volume-attaches the workspace, the result of the build will be placed in the `build` sub-directory.
 
 ## Running Simple Endpoint Server for development
 
