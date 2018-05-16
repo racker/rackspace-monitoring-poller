@@ -33,8 +33,8 @@ import (
 	prefixed "github.com/x-cray/logrus-prefixed-formatter"
 
 	"github.com/racker/rackspace-monitoring-poller/commands"
-	"github.com/racker/rackspace-monitoring-poller/version"
 	"github.com/spf13/cobra"
+	"github.com/racker/rackspace-monitoring-poller/config"
 )
 
 const (
@@ -111,6 +111,9 @@ func setLogOutput() {
 }
 
 func main() {
+	// propagate version to the config package since it needs it for connection announcement
+	config.Version = version
+
 	pollerCmd.AddCommand(versionCmd)
 	pollerCmd.AddCommand(commands.ServeCmd)
 	pollerCmd.AddCommand(commands.EndpointCmd)

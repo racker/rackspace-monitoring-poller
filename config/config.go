@@ -25,8 +25,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/racker/rackspace-monitoring-poller/version"
-
 	"bytes"
 	"fmt"
 	log "github.com/sirupsen/logrus"
@@ -39,6 +37,8 @@ var (
 	ErrorNoZones = errors.New("No zones are defined")
 	ErrorNoToken = errors.New("No token is defined")
 	prefix       = "config"
+
+	Version = "dev"
 )
 
 const (
@@ -123,8 +123,8 @@ func NewConfig(guid string, useStaging bool, features []Feature) *Config {
 	cfg.Token = os.Getenv("AGENT_TOKEN")
 	cfg.AgentId = os.Getenv("AGENT_ID")
 	cfg.AgentName = "remote_poller"
-	cfg.ProcessVersion = version.Version
-	cfg.BundleVersion = version.Version
+	cfg.ProcessVersion = Version
+	cfg.BundleVersion = Version
 	cfg.ReconnectMinBackoff = DefaultReconnectMinBackoff
 	cfg.ReconnectMaxBackoff = DefaultReconnectMaxBackoff
 	cfg.ReconnectFactorBackoff = DefaultReconnectFactorBackoff
