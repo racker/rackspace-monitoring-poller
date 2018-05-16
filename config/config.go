@@ -1,18 +1,20 @@
-//
-// Copyright 2016 Rackspace
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS-IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+ *
+ * Copyright 2018 Rackspace
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS-IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
 
 // Package config declares the data structures used for all execution entry points
 package config
@@ -24,8 +26,6 @@ import (
 	"regexp"
 	"strings"
 	"time"
-
-	"github.com/racker/rackspace-monitoring-poller/version"
 
 	"bytes"
 	"fmt"
@@ -39,6 +39,8 @@ var (
 	ErrorNoZones = errors.New("No zones are defined")
 	ErrorNoToken = errors.New("No token is defined")
 	prefix       = "config"
+
+	Version = "dev"
 )
 
 const (
@@ -123,8 +125,8 @@ func NewConfig(guid string, useStaging bool, features []Feature) *Config {
 	cfg.Token = os.Getenv("AGENT_TOKEN")
 	cfg.AgentId = os.Getenv("AGENT_ID")
 	cfg.AgentName = "remote_poller"
-	cfg.ProcessVersion = version.Version
-	cfg.BundleVersion = version.Version
+	cfg.ProcessVersion = Version
+	cfg.BundleVersion = Version
 	cfg.ReconnectMinBackoff = DefaultReconnectMinBackoff
 	cfg.ReconnectMaxBackoff = DefaultReconnectMaxBackoff
 	cfg.ReconnectFactorBackoff = DefaultReconnectFactorBackoff

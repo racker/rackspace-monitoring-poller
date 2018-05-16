@@ -1,18 +1,20 @@
-//
-// Copyright 2016 Rackspace
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS-IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+ *
+ * Copyright 2018 Rackspace
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS-IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
 
 // Main entry point for the Rackspace Monitoring Poller application.
 //
@@ -33,8 +35,8 @@ import (
 	prefixed "github.com/x-cray/logrus-prefixed-formatter"
 
 	"github.com/racker/rackspace-monitoring-poller/commands"
-	"github.com/racker/rackspace-monitoring-poller/version"
 	"github.com/spf13/cobra"
+	"github.com/racker/rackspace-monitoring-poller/config"
 )
 
 const (
@@ -53,13 +55,15 @@ var (
 		LogfileName string
 		JsonLogger  bool
 	}
+
+	version = "dev"
 )
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Prints version information",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(version.Version)
+		fmt.Println(version)
 	},
 }
 
@@ -109,10 +113,15 @@ func setLogOutput() {
 }
 
 func main() {
+	// propagate version to the config package since it needs it for connection announcement
+	config.Version = version
+
 	pollerCmd.AddCommand(versionCmd)
 	pollerCmd.AddCommand(commands.ServeCmd)
 	pollerCmd.AddCommand(commands.EndpointCmd)
 	pollerCmd.AddCommand(commands.VerifyCmd)
 	pollerCmd.AddCommand(commands.PingCmd)
+	pollerCmd.AddCommand(commands.InstallServiceCmd)
+	pollerCmd.AddCommand(commands.UninstallServiceCmd)
 	pollerCmd.Execute()
 }

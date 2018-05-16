@@ -1,7 +1,7 @@
 language: go
 sudo: true
 go:
-- 1.9.4
+- 1.10.2
 script:
 - make test build install-nfpm test-integrationcli package-debs-local
 after_script:

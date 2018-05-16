@@ -1,37 +1,40 @@
-//
-// Copyright 2017 Rackspace
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS-IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
+/*
+ *
+ * Copyright 2018 Rackspace
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS-IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ */
 
 package poller
 
 import (
 	"context"
-	log "github.com/sirupsen/logrus"
+	"crypto/x509"
+	"os"
+	"time"
+
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/utils"
 	"github.com/satori/go.uuid"
-	"os"
-	"time"
-	"crypto/x509"
+	log "github.com/sirupsen/logrus"
 )
 
 func generatePollerGuid() string {
 	return uuid.NewV4().String()
 }
 
-func Run(configFilePath string, insecure bool) {
+func Run(outerContext context.Context, configFilePath string, insecure bool) {
 	utils.CheckFDLimit()
 
 	guid := generatePollerGuid()
@@ -56,7 +59,10 @@ func Run(configFilePath string, insecure bool) {
 	}
 
 	signalNotify := utils.HandleInterrupts()
-	ctx, cancel := context.WithCancel(context.Background())
+	if outerContext == nil {
+		outerContext = context.Background()
+	}
+	ctx, cancel := context.WithCancel(outerContext)
 	StartMetricsPusher(ctx, cfg)
 	for {
 		stream := NewConnectionStream(ctx, cfg, rootCAs)

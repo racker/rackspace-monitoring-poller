@@ -96,6 +96,31 @@ or specify a custom confiuration file location:
 ./rackspace-monitoring-poller serve --config custom.cfg
 ```
 
+## Installing as a Windows service
+
+The rackspace-monitoring-poller executable includes a pair of commands to manage running the poller as a Windows
+service.
+
+To install the Windows service run the following in a terminal with administrator privileges:
+
+```
+.\rackspace-monitoring-poller_windows_amd64.exe install-service --config CONFIG_PATH --logfile LOG_FILE_PATH
+```
+
+where you will need to replace the `CONFIG_PATH` and `LOG_FILE_PATH` with absolute paths to the respective location.
+After you have populated the specified configuration file, according to the next section, then you can start the
+Windows service:
+
+```
+net start "Rackspace Monitoring Poller"
+```
+
+To uninstall the service, run the following:
+
+```
+.\rackspace-monitoring-poller_windows_amd64.exe uninstall-service
+```
+
 # Configuration options
 
 Parameter | Type | Description
