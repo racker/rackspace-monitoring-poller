@@ -7,15 +7,16 @@
 # you're doing.
 Vagrant.configure("2") do |config|
 
-  config.vm.provision "shell", path: "provision.sh"
   config.vm.synced_folder "../../build", "/packages"
 
   config.vm.define "14_04" do |m|
     m.vm.box = "ubuntu/trusty64"
+    m.vm.provision "shell", path: "provision.sh"
   end
 
   config.vm.define "16_04" do |m|
     m.vm.box = "ubuntu/xenial64"
+    m.vm.provision "shell", path: "provision.sh"
   end
 
 end

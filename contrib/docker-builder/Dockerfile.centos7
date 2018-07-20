@@ -1,0 +1,18 @@
+FROM centos:7
+
+RUN yum install -y \
+  make \
+  git \
+  wget \
+  rpm-build
+
+VOLUME ["/go"]
+ENV GOPATH=/go
+
+ARG GOLANG_VERSION=1.10.2
+
+ADD https://dl.google.com/go/go${GOLANG_VERSION}.linux-amd64.tar.gz /tmp/go${GOLANG_VERSION}.linux-amd64.tar.gz
+
+RUN tar xf /tmp/go${GOLANG_VERSION}.linux-amd64.tar.gz -C /usr/local && \
+    rm /tmp/go${GOLANG_VERSION}.linux-amd64.tar.gz && \
+    ln -s /usr/local/go/bin/* /usr/bin
