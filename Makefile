@@ -117,8 +117,8 @@ config_files:
   ${RPM_BUILD_DIR}/${APP_CFG}: /${APP_CFG}
   ${RPM_BUILD_DIR}/${LOGROTATE_CFG}: /${LOGROTATE_CFG}
 scripts:
-  postinstall: ${RPM_SRC_DIR}/postinst
-  preremove: ${RPM_SRC_DIR}/prerm
+  postinstall: ${RPM_SRC_DIR}/post
+  preremove: ${RPM_SRC_DIR}/preun
 endef
 
 export DEB_YAML
