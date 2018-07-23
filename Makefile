@@ -23,11 +23,28 @@ PROJECT_VENDOR := github.com/racker/rackspace-monitoring-poller/vendor
 PKGDIR_BIN := usr/bin
 PKGDIR_ETC := etc
 
-OS := linux
-ARCH := amd64
-BIN_URL := https://github.com/racker/rackspace-monitoring-poller/releases/download/$(GIT_TAG)/$(EXE)_$(OS)_$(ARCH)
+# OS can be overridden by env variable
+OS ?= linux
+
+# ARCH can be overridden by env variable
+ARCH ?= x86_64
+ifeq (${ARCH}, x86_64)
+# Go uses a GOARCH value of amd64 instead of the standard kernel/packaging convention
+BIN_ARCH := amd64
+else ifeq (${ARCH}, x86)
+# ...and similarly for 386
+BIN_ARCH := 386
+else
+BIN_ARCH := ${ARCH}
+endif
+
+BIN_NAME := ${EXE}_${OS}_${BIN_ARCH}
+BIN_URL := https://github.com/racker/rackspace-monitoring-poller/releases/download/${GIT_TAG}/${BIN_NAME}
 VENDOR := Rackspace US, Inc.
 LICENSE := Apache v2
+
+# Set the variable here, but variables get asserted within goals below, such as yum-repo
+REPO_PATH := ${BUILD_REPOS_DIR}/${DISTRIBUTION}-${RELEASE}-${ARCH}
 
 # TODO: should poller get its own specific file?
 APP_CFG := ${PKGDIR_ETC}/rackspace-monitoring-poller.cfg
@@ -138,7 +155,21 @@ WGET := wget
 NFPM := ${BUILD_DIR}/nfpm
 REPREPRO := reprepro
 
-default: clean package
+default: clean build
+
+ifeq (${PACKAGING}, deb)
+
+package: package-debs
+package-repo-upload: package-debs reprepro-debs repo-upload
+
+else ifeq (${PACKAGING}, rpm)
+
+package: package-rpms
+package-repo-upload: package-rpms yum-repo repo-upload
+
+else
+$(warning "Some goals are disabled due to missing PACKAGING type")
+endif
 
 generate-mocks: ${GOPATH}/bin/mockgen
 	${GOPATH}/bin/mockgen -package=poller_test -destination=poller/poller_mock_test.go github.com/racker/rackspace-monitoring-poller/poller ${MOCK_POLLER}
@@ -199,11 +230,7 @@ clean-callgraphs :
 ${GOPATH}/bin/go-callvis :
 	go get -u github.com/TrueFurby/go-callvis
 
-package: package-debs
-
-package-repo-upload: package reprepro-debs package-upload-deb
-
-package-upload-deb:
+repo-upload:
 	rclone ${RCLONE_ARGS} mkdir rackspace:${CLOUDFILES_REPO_NAME}
 	rclone ${RCLONE_ARGS} copy ${BUILD_REPOS_DIR} rackspace:${CLOUDFILES_REPO_NAME}
 
@@ -231,6 +258,17 @@ ${BUILD_REPOS_DIR}/ubuntu-16.04-x86_64 : ${BUILD_DIR}/${PKG_BASE}_systemd.deb
 
 ${BUILD_REPOS_DIR}/debian : ${BUILD_DIR}/${PKG_BASE}.deb
 	$(buildReprepro)
+
+yum-repo:
+	$(if ${DISTRIBUTION},,$(error "Missing required DISTRIBUTION"))
+	$(if ${RELEASE},,$(error "Missing required RELEASE"))
+	mkdir -p ${REPO_PATH}
+	cp ${BUILD_DIR}/${PKG_BASE}.rpm ${REPO_PATH}
+	if [ x${GPG_KEYID} != x ]; then rpm --addsign ${REPO_PATH}/*.rpm; fi
+	createrepo ${REPO_PATH}
+	if [ x${GPG_KEYID} != x ]; then gpg --detach-sign --armor ${REPO_PATH}/repodata/repomd.xml; fi
+
+package-upload-rpm:
 
 package-debs: ${BUILD_DIR}/${PKG_BASE}.deb \
 	${BUILD_DIR}/${PKG_BASE}_systemd.deb \
@@ -275,16 +313,17 @@ ${BUILD_DIR}/${PKG_BASE}.rpm : $(addprefix ${RPM_BUILD_DIR}/,${PKGDIR_BIN}/${EXE
 clean:
 	rm -rf $(BUILD_DIR)
 
-stage-deb-exe-local: ${BUILD_DIR}/${APP_NAME}_${OS}_${ARCH}
+stage-deb-exe-local: ${BUILD_DIR}/${BIN_NAME}
 	mkdir -p ${DEB_BUILD_DIR}/${PKGDIR_BIN}
-	cp -p ${BUILD_DIR}/${APP_NAME}_${OS}_${ARCH} ${DEB_BUILD_DIR}/${PKGDIR_BIN}/${EXE}
+	cp -p $< ${DEB_BUILD_DIR}/${PKGDIR_BIN}/${EXE}
 
-stage-rpm-exe-local: ${BUILD_DIR}/${APP_NAME}_${OS}_${ARCH}
+stage-rpm-exe-local: ${BUILD_DIR}/${BIN_NAME}
 	mkdir -p ${RPM_BUILD_DIR}/${PKGDIR_BIN}
-	cp -p ${BUILD_DIR}/${APP_NAME}_${OS}_${ARCH} ${RPM_BUILD_DIR}/${PKGDIR_BIN}/${EXE}
+	cp -p $< ${RPM_BUILD_DIR}/${PKGDIR_BIN}/${EXE}
 
-${DEB_BUILD_DIR}/${PKGDIR_BIN}/${EXE} :
-	mkdir -p ${DEB_BUILD_DIR}/${PKGDIR_BIN}
+${DEB_BUILD_DIR}/${PKGDIR_BIN}/${EXE} \
+${RPM_BUILD_DIR}/${PKGDIR_BIN}/${EXE} :
+	mkdir -p $(dir $@)
 	$(WGET) -q --no-use-server-timestamps -O $@ $(BIN_URL)
 	chmod +x $@
 
@@ -314,6 +353,7 @@ ${DEB_BUILD_DIR}/${UPSTART_CONF} :
 	chmod +x $@
 
 # .PHONY tells make to not expect these goals to be actual files produced by the rule
-.PHONY: default repackage package package-debs package-repo-upload package-upload-deb package-debs-local reprepro-debs \
+.PHONY: default repackage package package-debs package-repo-upload repo-upload package-debs-local reprepro-debs \
 	clean clean-repos generate-mocks stage-deb-exe-local build test test-integrationcli coverage install-nfpm \
-	generate-callgraphs regenerate-callgraphs clean-callgraphs
+	generate-callgraphs regenerate-callgraphs clean-callgraphs \
+	yum-repo package-upload-rpm

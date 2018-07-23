@@ -4,7 +4,8 @@ RUN yum install -y \
   make \
   git \
   wget \
-  rpm-build
+  rpm-build \
+  createrepo
 
 VOLUME ["/go"]
 ENV GOPATH=/go
