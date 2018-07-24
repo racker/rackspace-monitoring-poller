@@ -268,8 +268,6 @@ yum-repo:
 	createrepo ${REPO_PATH}
 	if [ x${GPG_KEYID} != x ]; then gpg --detach-sign --armor ${REPO_PATH}/repodata/repomd.xml; fi
 
-package-upload-rpm:
-
 package-debs: ${BUILD_DIR}/${PKG_BASE}.deb \
 	${BUILD_DIR}/${PKG_BASE}_systemd.deb \
 	${BUILD_DIR}/${PKG_BASE}_upstart.deb
