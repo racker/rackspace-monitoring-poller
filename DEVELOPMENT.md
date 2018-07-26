@@ -44,6 +44,21 @@ docker run --rm \
 
 Since it volume-attaches the workspace, the result of the build will be placed in the `build` sub-directory.
 
+## Environment required for RPM packaging
+
+The RPM packaging in the [Makefile](Makefile) requires specific environment variables be set:
+* `PACKAGING=rpm`
+* `DISTRIBUTION` set to the appropriate value, such as `centos` or `redhat`. The value needs to conform
+  to the naming convention used in the [agent repo](http://stable.packages.cloudmonitoring.rackspace.com/)
+* `RELEASE` set to the appropriate value relative to the `DISTRIBUTION`. For example, `centos` and `redhat` tend to
+  use the single digit convetion like `7`. Again, the choice of value needs to align with the convention used in
+  the [agent repo](http://stable.packages.cloudmonitoring.rackspace.com/).
+* `GPG_KEYID` set to indicate the GPG key to use for signing the rpm and the yum repository metadata
+
+Other than the above environment variables, the build environment needs `rpm-build` and `createrepo` packages
+installed above and beyond the usual development packages of `git` and `make`. 
+A [Dockerfile is available](contrib/docker-builder/Dockerfile.centos7) that comes with those packages.
+
 ## Running Simple Endpoint Server for development
 
 In the workspace, generate self-signed client/server certificates and keys. In the following examples, the files
