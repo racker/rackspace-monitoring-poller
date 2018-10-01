@@ -1,0 +1,5 @@
+build
+vendor
+rackspace-monitoring-poller
+docs
+.git
