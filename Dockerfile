@@ -25,8 +25,8 @@ RUN openssl req \
 COPY Gopkg.* $GOPATH/src/github.com/racker/rackspace-monitoring-poller/
 RUN dep ensure -vendor-only
 COPY . $GOPATH/src/github.com/racker/rackspace-monitoring-poller
-RUN ls -l
-RUN go build
+
+RUN CGO_ENABLED=0 go build
 
 EXPOSE 55000
 
