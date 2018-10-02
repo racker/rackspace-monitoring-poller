@@ -1,4 +1,4 @@
-FROM golang:1.9.2-alpine
+FROM golang:1.11-alpine AS build
 
 ARG DEP_VERSION=0.5.0
 
@@ -12,24 +12,18 @@ RUN chmod +x /usr/local/bin/dep
 
 WORKDIR $GOPATH/src/github.com/racker/rackspace-monitoring-poller
 
-RUN openssl req \
-    -new \
-    -newkey rsa:2048 \
-    -nodes \
-    -keyout key.pem \
-    -x509 \
-    -days 365 \
-    -out cert.pem \
-    -subj "/C=US/ST=Texas/L=Rackspace/O=Dis/CN=www.example.com"
-
 COPY Gopkg.* $GOPATH/src/github.com/racker/rackspace-monitoring-poller/
 RUN dep ensure -vendor-only
 COPY . $GOPATH/src/github.com/racker/rackspace-monitoring-poller
 
 RUN CGO_ENABLED=0 go build
+RUN cp rackspace-monitoring-poller /usr/local/bin
 
+FROM ubuntu
+
+COPY --from=build /usr/local/bin/rackspace-monitoring-poller /usr/local/bin/
 EXPOSE 55000
 
-ENTRYPOINT ["./rackspace-monitoring-poller"]
+ENTRYPOINT ["/usr/local/bin/rackspace-monitoring-poller"]
 
-CMD ["serve", "--config", "contrib/local-docker-endpoint.cfg", "--insecure", "--debug"]
+CMD ["serve", "--debug"]

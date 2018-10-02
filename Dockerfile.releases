@@ -1,0 +1,9 @@
+FROM ubuntu
+
+ARG POLLER_VERSION=0.2.40
+
+ADD https://github.com/racker/rackspace-monitoring-poller/releases/download/$POLLER_VERSION/rackspace-monitoring-poller_linux_amd64 /usr/local/bin/rackspace-monitoring-poller
+RUN chmod +x /usr/local/bin/rackspace-monitoring-poller
+
+ENTRYPOINT ["/usr/local/bin/rackspace-monitoring-poller"]
+CMD ["serve", "--debug"]
