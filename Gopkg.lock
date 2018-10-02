@@ -79,6 +79,12 @@
   revision = "615a14ed75099c9eaac6949e22ac2341bf9d3197"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/konsorten/go-windows-terminal-sequences"
+  packages = ["."]
+  revision = "b729f2633dfe35f4d1d8a32385f6685610ce1cb5"
+
+[[projects]]
   name = "github.com/mattn/go-colorable"
   packages = ["."]
   revision = "ad5389df28cdac544c99bd7b9161a0b5b6ca9d1b"
@@ -178,8 +184,8 @@
 [[projects]]
   name = "github.com/sirupsen/logrus"
   packages = ["."]
-  revision = "0208149b40d863d2c1a2f8fe5753096a9cf2cc8b"
-  version = "v0.11.4"
+  revision = "a67f783a3814b8729bd2dac5780b5f78f8dbd64d"
+  version = "v1.1.0"
 
 [[projects]]
   name = "github.com/spf13/cobra"
@@ -241,6 +247,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e20612fdc8650cdca8a7c0a51d402c9e6b23b469698c61f3cceb68d8f9e9df00"
+  inputs-digest = "6ae52ac349bdba5e90bf1851a6727763d65904cd501c7180787420233db87f10"
   solver-name = "gps-cdcl"
   solver-version = 1
