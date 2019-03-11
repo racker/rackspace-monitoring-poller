@@ -344,10 +344,12 @@ reconnect:
 		// Successful connection. reset backoff
 		b.Reset()
 
-		if cs.config.MaxConnectionAge > 0 {
+		if cs.config.ProxyUrl != nil && cs.config.MaxConnectionAge > 0 {
 			maxConnectionAge := cs.config.MaxConnectionAge +
 				time.Duration(float64(cs.config.MaxConnectionAgeJitter)*rand.Float64())
 			maxConnectionAgeChan = time.After(maxConnectionAge)
+
+			log.WithField("maxConnectionAge", maxConnectionAge).Debug("Limiting max connection age for proxied connection")
 		}
 
 		for {

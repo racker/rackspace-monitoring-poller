@@ -1,6 +1,7 @@
 package poller_test
 
 import (
+	"net/url"
 	"testing"
 
 	"context"
@@ -142,7 +143,12 @@ func TestEleConnectionStream_ReConnectOldOnes(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	proxyUrl, err := url.Parse("http://localhost:5555")
+	require.NoError(t, err)
+
 	cs := poller.NewCustomConnectionStream(ctx, &config.Config{
+		ProxyUrl:               proxyUrl,
 		MaxConnectionAge:       100 * time.Millisecond,
 		MaxConnectionAgeJitter: 10 * time.Millisecond,
 		ReconnectMinBackoff:    1 * time.Millisecond,
