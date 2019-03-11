@@ -23,12 +23,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"math/rand"
 	"net"
 	"sync"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/jpillora/backoff"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/config"
@@ -305,6 +306,7 @@ func (cs *EleConnectionStream) connectBySrv(qry string) {
 }
 
 func (cs *EleConnectionStream) runHostConnection(addr string) {
+
 	log.WithFields(log.Fields{
 		"prefix": cs.GetLogPrefix(),
 		"addr":   addr,
@@ -321,6 +323,8 @@ func (cs *EleConnectionStream) runHostConnection(addr string) {
 		Factor: cs.config.ReconnectFactorBackoff,
 		Jitter: true,
 	}
+
+	var maxConnectionAgeChan <-chan time.Time
 
 reconnect:
 	for {
@@ -340,6 +344,12 @@ reconnect:
 		// Successful connection. reset backoff
 		b.Reset()
 
+		if cs.config.MaxConnectionAge > 0 {
+			maxConnectionAge := cs.config.MaxConnectionAge +
+				time.Duration(float64(cs.config.MaxConnectionAgeJitter)*rand.Float64())
+			maxConnectionAgeChan = time.After(maxConnectionAge)
+		}
+
 		for {
 			select {
 			case <-pendingAuth:
@@ -355,6 +365,9 @@ reconnect:
 				// external cancellation
 				conn.Close()
 				return
+
+			case <-maxConnectionAgeChan:
+				conn.Close()
 
 			case <-conn.Done():
 				// connection closed

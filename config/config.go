@@ -29,10 +29,10 @@ import (
 
 	"bytes"
 	"fmt"
-	log "github.com/sirupsen/logrus"
-	"text/template"
-	"net/url"
 	errors2 "github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"net/url"
+	"text/template"
 )
 
 var (
@@ -52,6 +52,8 @@ const (
 	DefaultReconnectMinBackoff    = 25 * time.Second
 	DefaultReconnectMaxBackoff    = 180 * time.Second
 	DefaultReconnectFactorBackoff = 2
+	DefaultMaxConnectionAge       = 2 * 24 * time.Hour
+	DefaultMaxConnectionAgeJitter = 1 * 24 * time.Hour
 )
 
 type Feature struct {
@@ -95,6 +97,9 @@ type Config struct {
 	// is reset upon receipt of each poller.prepare.block.
 	TimeoutPrepareEnd time.Duration
 
+	MaxConnectionAge       time.Duration
+	MaxConnectionAgeJitter time.Duration
+
 	// If configured, then metrics will be pushed to a Prometheus push gateway at the given URI.
 	// The URI may either have a scheme of "srv" or "tcp". A "srv" refers to a DNS SRV name and "tcp" conveys
 	// a host:port address, typically for local/onsite usage. The given service name will be qualified by the
@@ -134,6 +139,8 @@ func NewConfig(guid string, useStaging bool, features []Feature) *Config {
 	cfg.TimeoutWrite = DefaultTimeoutWrite
 	cfg.TimeoutPrepareEnd = DefaultTimeoutPrepareEnd
 	cfg.TimeoutAuth = DefaultTimeoutAuth
+	cfg.MaxConnectionAge = DefaultMaxConnectionAge
+	cfg.MaxConnectionAgeJitter = DefaultMaxConnectionAgeJitter
 	cfg.UseStaging = useStaging
 	if useStaging {
 		cfg.SrvQueries = DefaultStagingSrvEndpoints
