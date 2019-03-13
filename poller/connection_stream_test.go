@@ -148,14 +148,14 @@ func TestEleConnectionStream_ReConnectOldOnes(t *testing.T) {
 	require.NoError(t, err)
 
 	cs := poller.NewCustomConnectionStream(ctx, &config.Config{
-		ProxyUrl:               proxyUrl,
-		MaxConnectionAge:       100 * time.Millisecond,
-		MaxConnectionAgeJitter: 10 * time.Millisecond,
-		ReconnectMinBackoff:    1 * time.Millisecond,
-		ReconnectMaxBackoff:    1 * time.Millisecond,
-		UseSrv:                 false,
-		Addresses:              []string{"localhost"},
-		SrvQueries:             nil,
+		ProxyUrl:                    proxyUrl,
+		MaxProxyConnectionAge:       100 * time.Millisecond,
+		MaxProxyConnectionAgeJitter: 10 * time.Millisecond,
+		ReconnectMinBackoff:         1 * time.Millisecond,
+		ReconnectMaxBackoff:         1 * time.Millisecond,
+		UseSrv:                      false,
+		Addresses:                   []string{"localhost"},
+		SrvQueries:                  nil,
 	}, nil, connFactory)
 
 	consumer := newPhasingEventConsumer()

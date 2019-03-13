@@ -97,8 +97,8 @@ type Config struct {
 	// is reset upon receipt of each poller.prepare.block.
 	TimeoutPrepareEnd time.Duration
 
-	MaxConnectionAge       time.Duration
-	MaxConnectionAgeJitter time.Duration
+	MaxProxyConnectionAge       time.Duration
+	MaxProxyConnectionAgeJitter time.Duration
 
 	// If configured, then metrics will be pushed to a Prometheus push gateway at the given URI.
 	// The URI may either have a scheme of "srv" or "tcp". A "srv" refers to a DNS SRV name and "tcp" conveys
@@ -139,8 +139,8 @@ func NewConfig(guid string, useStaging bool, features []Feature) *Config {
 	cfg.TimeoutWrite = DefaultTimeoutWrite
 	cfg.TimeoutPrepareEnd = DefaultTimeoutPrepareEnd
 	cfg.TimeoutAuth = DefaultTimeoutAuth
-	cfg.MaxConnectionAge = DefaultMaxConnectionAge
-	cfg.MaxConnectionAgeJitter = DefaultMaxConnectionAgeJitter
+	cfg.MaxProxyConnectionAge = DefaultMaxConnectionAge
+	cfg.MaxProxyConnectionAgeJitter = DefaultMaxConnectionAgeJitter
 	cfg.UseStaging = useStaging
 	if useStaging {
 		cfg.SrvQueries = DefaultStagingSrvEndpoints
