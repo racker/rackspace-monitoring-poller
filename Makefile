@@ -29,13 +29,16 @@ OS ?= linux
 # ARCH can be overridden by env variable
 ARCH ?= x86_64
 ifeq (${ARCH}, x86_64)
-# Go uses a GOARCH value of amd64 instead of the standard kernel/packaging convention
+# Go and dpkg uses a GOARCH value of amd64 instead of the kernel arch naming convention
 BIN_ARCH := amd64
+PKG_ARCH := amd64
 else ifeq (${ARCH}, x86)
 # ...and similarly for 386
 BIN_ARCH := 386
+PKG_ARCH := i386
 else
 BIN_ARCH := ${ARCH}
+PKG_ARCH := ${ARCH}
 endif
 
 BIN_NAME := ${EXE}_${OS}_${BIN_ARCH}
@@ -58,12 +61,12 @@ DEB_CONFIG_FILES := ${APP_CFG} ${LOGROTATE_CFG}
 RPM_CONFIG_FILES := ${APP_CFG} ${LOGROTATE_CFG}
 
 PKG_VERSION := ${GIT_TAG}-${TAG_DISTANCE}
-PKG_BASE := ${APP_NAME}_${PKG_VERSION}_${ARCH}
+PKG_BASE := ${APP_NAME}_${PKG_VERSION}_${PKG_ARCH}
 
 
 define YAML_HDR
 name: ${APP_NAME}
-arch: ${ARCH}
+arch: ${PKG_ARCH}
 maintainer: ele-dev@lists.rackspace.com
 platform: ${OS}
 version: ${PKG_VERSION}
