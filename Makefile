@@ -66,7 +66,7 @@ PKG_BASE := ${APP_NAME}_${PKG_VERSION}_${PKG_ARCH}
 
 define YAML_HDR
 name: ${APP_NAME}
-arch: ${ARCH}
+arch: ${PKG_ARCH}
 maintainer: ele-dev@lists.rackspace.com
 platform: ${OS}
 version: ${PKG_VERSION}
