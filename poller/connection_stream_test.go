@@ -1,6 +1,7 @@
 package poller_test
 
 import (
+	"net/url"
 	"testing"
 
 	"context"
@@ -8,13 +9,13 @@ import (
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/config"
 	"github.com/racker/rackspace-monitoring-poller/poller"
-	"github.com/stretchr/testify/assert"
-	"time"
-	"os"
-	"net"
-	"github.com/stretchr/testify/require"
-	"strconv"
 	"github.com/racker/rackspace-monitoring-poller/protocol/metric"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"net"
+	"os"
+	"strconv"
+	"time"
 )
 
 func TestConnectionStream_Connect(t *testing.T) {
@@ -105,6 +106,81 @@ func TestConnectionStream_Connect(t *testing.T) {
 				assert.Fail(t, "Didn't see connection stream closure")
 			}
 		})
+	}
+}
+
+func TestEleConnectionStream_ReConnectOldOnes(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	connClosed := make(chan struct{}, 1)
+	reconnect := make(chan struct{}, 1)
+	closureTimeChan := make(chan time.Time, 1)
+
+	conn := NewMockConnection(ctrl)
+	conn.EXPECT().Connect(gomock.Any(), gomock.Any(), gomock.Not(nil))
+	conn.EXPECT().Done().AnyTimes().Return(connClosed)
+	conn.EXPECT().GetLogPrefix().AnyTimes().Return("1234")
+	conn.EXPECT().Close().AnyTimes().Do(func() {
+		t.Log("Mock conn is closing")
+		close(connClosed)
+		closureTimeChan <- time.Now()
+	})
+	preAuthedChannel := make(chan struct{}, 1)
+	close(preAuthedChannel)
+	conn.EXPECT().Authenticated().AnyTimes().Return(preAuthedChannel)
+
+	connFactory := func(address string, guid string, stream poller.ChecksReconciler) poller.Connection {
+		// only provide mock connection until first closure
+		select {
+		case <-connClosed:
+			reconnect <- struct{}{}
+			return nil
+		default:
+			return conn
+		}
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	proxyUrl, err := url.Parse("http://localhost:5555")
+	require.NoError(t, err)
+
+	cs := poller.NewCustomConnectionStream(ctx, &config.Config{
+		ProxyUrl:                    proxyUrl,
+		MaxProxyConnectionAge:       100 * time.Millisecond,
+		MaxProxyConnectionAgeJitter: 10 * time.Millisecond,
+		ReconnectMinBackoff:         1 * time.Millisecond,
+		ReconnectMaxBackoff:         1 * time.Millisecond,
+		UseSrv:                      false,
+		Addresses:                   []string{"localhost"},
+		SrvQueries:                  nil,
+	}, nil, connFactory)
+
+	consumer := newPhasingEventConsumer()
+	cs.RegisterEventConsumer(consumer)
+
+	connectTime := time.Now()
+	cs.Connect()
+	consumer.waitFor(t, 15*time.Millisecond, poller.EventTypeRegister, gomock.Eq(conn))
+
+	select {
+	case closureTime := <-closureTimeChan:
+		closureDelta := closureTime.Sub(connectTime)
+		// expected closure upper bound is at least max age + max age jitter + 10ms more for timing fuzziness
+		assert.True(t, closureDelta >= 100*time.Millisecond && closureDelta < 120*time.Millisecond,
+			"Closure delta is out of bounds", closureDelta)
+		break
+	case <-time.After(150 * time.Millisecond):
+		assert.Fail(t, "Didn't see connection stream closure")
+	}
+
+	select {
+	case <-reconnect:
+		break
+	case <-time.After(10 * time.Millisecond):
+		assert.Fail(t, "Didn't see re-connect")
 	}
 }
 

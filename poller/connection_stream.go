@@ -23,12 +23,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"math/rand"
 	"net"
 	"sync"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/jpillora/backoff"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/racker/rackspace-monitoring-poller/check"
 	"github.com/racker/rackspace-monitoring-poller/config"
@@ -305,6 +306,7 @@ func (cs *EleConnectionStream) connectBySrv(qry string) {
 }
 
 func (cs *EleConnectionStream) runHostConnection(addr string) {
+
 	log.WithFields(log.Fields{
 		"prefix": cs.GetLogPrefix(),
 		"addr":   addr,
@@ -321,6 +323,8 @@ func (cs *EleConnectionStream) runHostConnection(addr string) {
 		Factor: cs.config.ReconnectFactorBackoff,
 		Jitter: true,
 	}
+
+	var maxConnectionAgeChan <-chan time.Time
 
 reconnect:
 	for {
@@ -340,6 +344,14 @@ reconnect:
 		// Successful connection. reset backoff
 		b.Reset()
 
+		if cs.config.ProxyUrl != nil && cs.config.MaxProxyConnectionAge > 0 {
+			maxConnectionAge := cs.config.MaxProxyConnectionAge +
+				time.Duration(float64(cs.config.MaxProxyConnectionAgeJitter)*rand.Float64())
+			maxConnectionAgeChan = time.After(maxConnectionAge)
+
+			log.WithField("maxConnectionAge", maxConnectionAge).Debug("Limiting max connection age for proxied connection")
+		}
+
 		for {
 			select {
 			case <-pendingAuth:
@@ -355,6 +367,9 @@ reconnect:
 				// external cancellation
 				conn.Close()
 				return
+
+			case <-maxConnectionAgeChan:
+				conn.Close()
 
 			case <-conn.Done():
 				// connection closed

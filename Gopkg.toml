@@ -59,7 +59,7 @@
 
 [[constraint]]
   name = "github.com/shirou/gopsutil"
-  version = "~2.18.2"
+  version = "~2.18.12"
 
 [[constraint]]
   name = "github.com/sirupsen/logrus"
