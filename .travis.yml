@@ -2,6 +2,8 @@ language: go
 sudo: true
 services:
 - docker
+env:
+  - GO111MODULE=on
 go:
   - 1.12.5
 
