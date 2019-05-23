@@ -10,7 +10,7 @@ RUN yum install -y \
 VOLUME ["/go"]
 ENV GOPATH=/go
 
-ARG GOLANG_VERSION=1.10.2
+ARG GOLANG_VERSION=1.12.5
 
 ADD https://dl.google.com/go/go${GOLANG_VERSION}.linux-amd64.tar.gz /tmp/go${GOLANG_VERSION}.linux-amd64.tar.gz
 
