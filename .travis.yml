@@ -3,15 +3,15 @@ sudo: true
 services:
 - docker
 go:
-- 1.10.2
+  - 1.12.5
 
 script:
 - make test build install-nfpm test-integrationcli package-debs-local
 - docker build -t racker/go_centos_7 -f contrib/docker-builder/Dockerfile.centos7 contrib/docker-builder
 - >
   docker run --rm
-  -v ${PWD}:/go/src/github.com/racker/rackspace-monitoring-poller
-  -w /go/src/github.com/racker/rackspace-monitoring-poller
+  -v ${PWD}:/build
+  -w /build
   racker/go_centos_7
   make package-rpms-local
 

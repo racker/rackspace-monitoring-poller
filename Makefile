@@ -181,13 +181,13 @@ generate-mocks: ${GOPATH}/bin/mockgen
 	sed -i '' s,$(PROJECT_VENDOR)/,, check/pinger_mock_test.go
 	${GOPATH}/bin/mockgen -destination mock_golang/mock_conn.go -package mock_golang net Conn
 
-test: vendor
+test:
 	go test -short -v
 
 test-integrationcli: build
 	go test -v github.com/racker/rackspace-monitoring-poller/integrationcli
 
-build: ${GOPATH}/bin/gox vendor
+build: ${GOPATH}/bin/gox
 	CGO_ENABLED=0 ${GOPATH}/bin/gox \
 	  -ldflags "-s -w -X main.version=${PKG_VERSION}" \
 	  -osarch "linux/386 linux/amd64 darwin/amd64 windows/386 windows/amd64" \
@@ -195,9 +195,6 @@ build: ${GOPATH}/bin/gox vendor
 
 coverage: ${GOPATH}/bin/goveralls
 	contrib/combine-coverage.sh --coveralls
-
-vendor: ${GOPATH}/bin/dep Gopkg.lock
-	${GOPATH}/bin/dep ensure -vendor-only
 
 install-nfpm:
 	wget -O ${BUILD_DIR}/nfpm.tar.gz https://github.com/goreleaser/nfpm/releases/download/v0.8.2/nfpm_0.8.2_Linux_x86_64.tar.gz
