@@ -2,14 +2,9 @@
 
 ## Prepare your workspace
 
-With this repository cloned into your `$GOPATH`, install required tools and populate the external dependencies 
-before building/running:
+This module uses Go modules, so be sure to clone this repo **outside** of your `$GOPATH`.
 
-```
-make prep
-```
-
-Finally, you can build an instance of the `rackspace-monitoring-poller` executable using:
+With Go 1.11 or newer, you can build an instance of the `rackspace-monitoring-poller` executable using:
 
 ```
 go build
@@ -22,9 +17,9 @@ of a Go container:
 
 ```bash
 docker run --rm \
-  -v ${PWD}:/go/src/github.com/racker/rackspace-monitoring-poller \
-  -w /go/src/github.com/racker/rackspace-monitoring-poller \
-  golang:1.10.2 \
+  -v ${PWD}:/build \
+  -w /build \
+  golang:1.12.5 \
   make build
 ```
 
