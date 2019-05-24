@@ -206,7 +206,7 @@ func (conn *EleConnection) dial(config *config.Config, tlsConfig *tls.Config) (e
 	if config.ProxyUrl != nil {
 		log.WithFields(log.Fields{
 			"prefix": conn.GetLogPrefix(),
-			"proxy":  config.ProxyUrl,
+			"proxy":  config.ProxyUrl.Host,
 		}).Info("Connecting to agent/poller endpoint via proxy")
 		proxyConn, err = tunnel.DialViaProxy(config.ProxyUrl, conn.address)
 		if err != nil {
